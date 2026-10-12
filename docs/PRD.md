@@ -50,7 +50,6 @@ main에 push하면 GitHub Actions가 검사(lint·typecheck·test·results 검�
 - 8개 모델 모두 생성 시도 기록이 있고(성공·실패 모두), 결과물이 있는 모델은 검증과 판정이 끝나 있다.
 - 공개 URL에서 4개 탭이 동작하고, 휴대폰 화면에서도 쓸 수 있다.
 - 생성에 추가 결제가 한 번도 발생하지 않는다.
-- phase별 개발 일지(`docs/devlog/<phase>.md`)가 남아 있다.
 
 ## 개발 순서
 
@@ -64,6 +63,6 @@ main에 push하면 GitHub Actions가 검사(lint·typecheck·test·results 검�
 | 2 | Playwright 검증기(생성 직후 자동 실행 포함), check:results, Astro 결과 탭 | Gemini 1개 생성(자동 검증 포함), 결과 탭 로컬 확인 |
 | 3 | GitHub Actions 배포 워크플로, Claude Code 어댑터 | 공개 레포 생성·Pages 설정·push(첫 배포), Claude smoke |
 | 4 | Codex CLI 어댑터 | Codex smoke, 8개 일괄 생성과 검증 |
-| 5 | 판정 도우미, 비교표·프롬프트·소개 탭, 휴대폰 화면, README | 8개 판정, devlog·회고 검토 |
+| 5 | 판정 도우미, 비교표·프롬프트·소개 탭, 휴대폰 화면, README | 8개 판정 |
 
-첫 실제 생성은 검증기가 생긴 2번 뒤에 한다(ADR-022). phase가 끝난 뒤의 절차(merge·devlog·사람이 할 일)는 `docs/OPERATIONS.md` "하네스로 개발하기".
+첫 실제 생성은 검증기가 생긴 2번 뒤에 한다(ADR-022). phase가 끝난 뒤의 절차(merge·사람이 할 일)는 `docs/OPERATIONS.md` "하네스로 개발하기".

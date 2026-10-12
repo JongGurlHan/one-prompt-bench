@@ -31,7 +31,7 @@
 - CRITICAL: 새 기능 구현 시 반드시 테스트를 먼저 작성하고, 테스트가 통과하는 구현을 작성할 것 (TDD)
 - 커밋 메시지는 conventional commits 형식을 따를 것 (feat:, fix:, docs:, refactor:, test:, chore:, data:)
 - 개발은 하네스로 한다: PRD "개발 순서" 표의 한 줄 = phase 하나(`phases/NN-<slug>`, 날짜와 묶지 않음), 계획은 `/harness`, 실행은 `python scripts/execute.py <phase>`.
-- phase가 끝나면 `/devlog <phase>`로 개발 일지 초안을 만든다. 세션을 넘길 때는 `/handoff`로 `PROGRESS.md`를 갱신한다.
+- 세션을 넘길 때는 `/handoff`로 `PROGRESS.md`를 갱신한다. 개발 일지(devlog)는 쓰지 않는다(ADR-020).
 
 ## 명령어
 ```

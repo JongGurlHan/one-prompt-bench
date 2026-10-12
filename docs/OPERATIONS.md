@@ -82,7 +82,6 @@ python scripts/execute.py <phase> --resume        # 중단된 step 이어받기
 - 실행 전에 `phases/` 밖의 변경을 모두 커밋한다.
 - **Claude 사용 한도에 걸리면** step이 `blocked`로 멈추고 한도 메시지가 표시된다. 한도가 풀린 뒤 `--reset-failed`로 다시 실행한다.
 - phase가 끝나면 `feat-<phase>` 브랜치를 확인하고 main에 merge한다(`--no-ff`). 그다음 PRD.md "개발 순서" 표의 "사람이 할 일"을 한다.
-- phase가 끝나면 Claude Code에서 `/devlog <phase>`를 실행해 `docs/devlog/<phase>.md` 초안을 만들고, 검토해서 확정한다.
 
 ## 새 모델 추가
 

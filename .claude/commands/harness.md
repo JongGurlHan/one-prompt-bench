@@ -170,6 +170,5 @@ Windows: 출력·파일은 UTF-8로 처리되고, npm 전역 설치의 `claude.c
 1. `feat-{phase}` 브랜치의 결과(각 step의 summary·handoff, `npm test`)를 사용자와 함께 확인한다. 문제가 있으면 다음 phase의 step으로 고치거나 사용자에게 묻는다.
 2. 사용자가 main에 merge한다(`git merge --no-ff`, squash 금지 — `docs/OPERATIONS.md` "생성").
 3. `docs/PRD.md` "개발 순서" 표의 "사람이 할 일"을 안내한다. 실제 모델 호출은 사용자가 `! <명령>`으로 직접 실행한다.
-4. `/devlog <phase>`로 그 phase의 개발 일지 초안을 만든다.
-5. handoff에 남은 결정·⚠ 확인 결과 중 다음 phase도 알아야 할 것은 `docs/`(ADR·ARCHITECTURE·DATA)에 옮겨 적는다. phase 사이에는 index.json의 handoff가 전달되지 않기 때문이다.
-6. `/handoff`로 `PROGRESS.md`를 갱신한다.
+4. handoff에 남은 결정·⚠ 확인 결과 중 다음 phase도 알아야 할 것은 `docs/`(ADR·ARCHITECTURE·DATA)에 옮겨 적는다. phase 사이에는 index.json의 handoff가 전달되지 않기 때문이다.
+5. `/handoff`로 `PROGRESS.md`를 갱신한다.

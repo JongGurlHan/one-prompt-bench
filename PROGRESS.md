@@ -9,12 +9,12 @@ aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. 
 
 ## 진행 상태
 
-- [x] 하네스 정비: CLAUDE.md, docs 7종(PRD·ARCHITECTURE·ADR·DATA·UI_GUIDE·COPY·OPERATIONS), `/harness`·`/review` 프로젝트화, `/devlog`·`/handoff` 신규
+- [x] 하네스 정비: CLAUDE.md, docs 7종(PRD·ARCHITECTURE·ADR·DATA·UI_GUIDE·COPY·OPERATIONS), `/harness`·`/review` 프로젝트화, `/handoff` 신규 (`/devlog`는 2026-10-12에 삭제, ADR-020)
 - [x] 훅: 실제 모델 호출(gen·smoke·`claude -p`·`codex exec`·Gemini API)·`.env`/API 키 출력 차단 (명령 자리에서만 매칭). settings.json에서 `.env` Read 거부. 파이프라인 진입점 직접 실행(gen·smoke)도 차단 (2026-10-12)
 - [x] execute.py: Claude 구독 사용 한도 메시지 감지 → 재시도 없이 `blocked` (하네스 테스트 296개 통과)
 - [x] 기존 코드 → `packages/core/`(src·test·examples·scripts), 데이터 → `models.json`·`prompts/`, 시안 → `docs/design/`. scratch에서 core 테스트 17개·check-samples 통과 확인 (package.json은 아직 없음 — 첫 phase step 0에서 workspace 연결)
 - [x] 기획 원본 폴더 삭제(사용자), 이번 변경 커밋·push (2026-10-12, origin/main)
-- [x] '일차' 개념 제거 → PRD "개발 순서"(날짜 없음), phase 이름 `NN-<slug>`, phase별 개발 일지 (2026-10-12, ADR-020)
+- [x] '일차' 개념 제거 → PRD "개발 순서"(날짜 없음), phase 이름 `NN-<slug>` (2026-10-12, ADR-020)
 - [x] MVP 범위 리뷰 반영: 확정/기준값 등급(CLAUDE.md "문서"), 문서 간 중복 정리, 스크린샷 JPEG(sharp 제거, ADR-010), 판정 sha 불일치 = check:results 실패(ADR-012) (2026-10-12)
 - [ ] 첫 phase 계획 (`/harness`) → 실행 → 사람 작업 (PRD.md 개발 순서 표)
 
