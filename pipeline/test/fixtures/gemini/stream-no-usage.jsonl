@@ -1,0 +1,2 @@
+{"candidates":[{"content":{"parts":[{"text":"<!DOCTYPE html>\n<html><body>Hello</body></html>\n"}],"role":"model"},"index":0}]}
+{"candidates":[{"content":{"parts":[{"text":""}],"role":"model"},"finishReason":"STOP","index":0}]}
