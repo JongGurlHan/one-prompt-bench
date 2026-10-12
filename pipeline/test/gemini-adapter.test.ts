@@ -115,6 +115,21 @@ test('본문: 한 청크 안에 thought와 텍스트가 섞여도 thought만 빠
   assert.equal(res.text, 'ABC');
 });
 
+/* ───────── 실제 smoke 원본 (2026-10-12, gemini-3.8-flash, SDK 2.28.0) ───────── */
+
+test('실제 출력(fixture smoke-ok): 본문·STOP·누적 usage를 정규화한다', async () => {
+  // 청크 3개: 본문 2개 + 빈 text에 thoughtSignature만 있는 마지막 청크(finishReason STOP). thought 본문 part는 오지 않는다
+  const res = await generateFrom(await loadChunks('smoke-ok'));
+  assert.equal(res.text, '```html\n<!DOCTYPE html>\n<html>\n<body>\n  Hello\n</body>\n</html>\n```');
+  assert.equal(res.stopReason, 'end');
+  assert.equal(res.rawStopReason, 'STOP');
+  // usageMetadata는 청크마다 누적값: prompt 35 + candidates 20 + thoughts 561 = total 616
+  assert.deepEqual(res.usage, { inputTokens: 35, outputTokens: 581, reasoningTokens: 561 });
+  UsageSchema.parse(res.usage);
+  assert.equal(res.resolvedModelId, 'gemini-3.8-flash');
+  assert.equal(res.requestId, 'jo_MaviUE8f91e8PqOK7kQE');
+});
+
 /* ───────── 사용량 ───────── */
 
 test('사용량: 마지막 usageMetadata 기준, output = candidates + thoughts, 캐시분은 promptTokenCount에 이미 포함', async () => {
