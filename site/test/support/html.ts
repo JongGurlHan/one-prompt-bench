@@ -28,6 +28,45 @@ export function element(html: string, name: string): Element {
   return found;
 }
 
+/**
+ * 이름이 name이고 속성이 where를 만족하는 요소 전부. elements와 달리 같은 이름의 중첩을 세어
+ * 짝이 맞는 닫는 태그까지를 inner로 준다 (div 안의 div 등). 바깥 요소와 그 안의 요소를 모두 돌려준다.
+ */
+export function findAll(html: string, name: string, where: (attrs: Map<string, string>) => boolean = () => true): Element[] {
+  const tags = [...html.matchAll(new RegExp(`<(/?)${name}\\b([^>]*)>`, 'gi'))];
+  const out: Element[] = [];
+  tags.forEach((open, i) => {
+    if (open[1] === '/') return;
+    const attrs = attributes(open[2] ?? '');
+    if (!where(attrs)) return;
+    const start = open.index + open[0].length;
+    let inner = '';
+    if (!VOID.has(name)) {
+      let depth = 1;
+      for (const tag of tags.slice(i + 1)) {
+        depth += tag[1] === '/' ? -1 : 1;
+        if (depth === 0) {
+          inner = html.slice(start, tag.index);
+          break;
+        }
+      }
+      if (depth !== 0) throw new Error(`unclosed ${open[0]}`);
+    }
+    out.push({ tag: open[0], attrs, inner });
+  });
+  return out;
+}
+
+/** findAll의 첫 요소. 없으면 throw */
+export function find(html: string, name: string, where?: (attrs: Map<string, string>) => boolean): Element {
+  const found = findAll(html, name, where)[0];
+  if (!found) throw new Error(`no matching <${name}> element`);
+  return found;
+}
+
+/** class 속성에 그 이름이 있는지 (findAll의 where용) */
+export const hasClass = (cls: string) => (attrs: Map<string, string>) => (attrs.get('class') ?? '').split(/\s+/).includes(cls);
+
 /** 속성 문자열 → 이름(소문자)·값(엔티티 해제). 값 없는 속성은 '' */
 export function attributes(source: string): Map<string, string> {
   const attrs = new Map<string, string>();
