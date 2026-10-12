@@ -26,6 +26,7 @@ npm workspaces 모노레포. 모든 TypeScript는 ESM(`"type": "module"`, NodeNe
 │   ├── src/index.ts                공개 진입점 (`@opb/core`, 빌드 없이 TS 소스를 직접 내보냄)
 │   ├── src/results.ts              (신규) results/ 읽기·검증·조인 — 사이트와 check:results가 공유
 │   ├── src/display.ts              (신규) 상태 라벨·숫자 포맷 등 표시 규칙 (DATA.md "표시 규칙")
+│   ├── scripts/check-results.ts    (신규) `npm run check:results` — Nest 없이 core만 쓴다
 │   ├── test/  examples/  scripts/check-samples.ts
 ├── pipeline/                   @opb/pipeline — NestJS 스탠드얼론 CLI
 │   ├── src/main.ts                 진입점 → cli.ts(parseArgs) → createApplicationContext. 토큰은 tokens.ts
@@ -54,7 +55,7 @@ npm workspaces 모노레포. 모든 TypeScript는 ESM(`"type": "module"`, NodeNe
 | `npm test` | 전 워크스페이스 테스트 (가짜 어댑터·로컬 픽스처만) | 없음 |
 | `npm run build` | 사이트 빌드 → `site/dist/` | 없음 |
 | `npm run dev` | 사이트 개발 서버 | 없음 |
-| `npm run check:results` | results/ 전수 검사 (배포 게이트, DATA.md) | 없음 |
+| `npm run check:results` | results/ 전수 검사 (배포 게이트, DATA.md). `OPB_DATA_ROOT`로 다른 데이터 루트를 검사할 수 있다 | 없음 |
 | `npm run validate -- <slug…> \| --all` | Playwright 재검증 (results/ 갱신, three.js CDN 접속) | 없음 |
 | `npm run judge -- <slug>` | 판정 기록 (대화형) | 없음 |
 | `npm run smoke -- <slug>` | 짧은 실호출로 도구·인증·출력 파싱 확인 → `results-smoke/` | **있음 — 사람만** |
@@ -155,12 +156,16 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 
 ## 검증기 (Playwright, `pipeline/src/validation/`)
 
-- 로컬 정적 서버로 레포를 열고, 사이트와 **같은 조건**으로 `<iframe sandbox="allow-scripts" src=".../results/<slug>/index.html">`(1280×800)을 담은 검증용 페이지를 띄운다.
-- 기록: `loaded`(iframe load 이벤트, 30초 제한), `consoleErrors`(console error), `pageErrors`(처리되지 않은 예외), `externalRequests`(로컬 서버가 아닌 모든 요청의 url·resourceType). iframe 안의 이벤트까지 잡히는지 테스트로 확인한다.
-- 스크린샷: iframe load를 0초로 5·15·25·35초에 iframe 영역만 찍는다(spring/summer/autumn/winter). Playwright의 JPEG(`type: 'jpeg'`, quality 80)로 `results/<slug>/<label>.jpg`에 바로 저장한다. 변환 라이브러리는 쓰지 않는다.
-- headless Chromium에서 WebGL이 동작해야 한다(SwiftShader 플래그 등). ⚠ 첫 구현 때 three.js 픽스처로 확인.
-- 검증 결과는 `meta.json`의 `validation`만 갱신한다. 다른 필드는 건드리지 않고, 저장 전에 스키마로 검사한다.
-- 테스트: `test/fixtures/`의 로컬 HTML로 실행하고, 외부 URL은 `page.route`로 가로채 가짜 응답을 준다. 테스트에서 실제 네트워크를 쓰지 않는다.
+- 로컬 정적 서버(127.0.0.1)를 띄우고, 사이트와 **같은 조건**으로 `<iframe sandbox="allow-scripts" src=".../results/<slug>/index.html">`(1280×800)을 담은 검증용 페이지를 연다. sandbox 값은 core 상수 `RESULT_IFRAME_SANDBOX` 하나를 사이트와 함께 쓴다. 서버는 그 모델의 결과물만 내준다.
+- 대상: meta.json이 스키마를 통과하고 `outcome`이 `ok`인 모델만.
+- 기록: `loaded`(iframe load 이벤트, 30초 제한), `consoleErrors`(console error), `pageErrors`(처리되지 않은 예외), `externalRequests`(로컬 서버가 아닌 http(s) 요청의 url·resourceType, 요청 순서대로. data:·blob:은 넣지 않는다). iframe 안의 이벤트까지 잡히는지 테스트로 확인한다.
+- 스크린샷: iframe load를 0초로 5·15·25·35초에 iframe 영역만 찍는다(spring/summer/autumn/winter). Playwright의 JPEG(`type: 'jpeg'`, quality 80)로 `results/<slug>/<label>.jpg`에 바로 저장한다. 변환 라이브러리는 쓰지 않는다. 기록하는 `atMs`는 계획한 시점(5000·15000·…)이다.
+- load가 30초 안에 오지 않으면 `loaded: false`로 기록하고, 그 시점을 0초로 스크린샷 4장은 그대로 찍는다(방문자가 보는 화면을 남긴다).
+- headless Chromium에서 WebGL이 동작해야 한다(SwiftShader 플래그 등). ⚠ 첫 구현 때 WebGL 픽스처로 확인(three.js 본체는 테스트에서 네트워크로 받을 수 없다).
+- 검증 결과는 `meta.json`의 `validation`만 갱신한다. 다른 필드·judgment.json·결과물은 건드리지 않고, 저장 전에 스키마로 검사한다. 재검증하면 스크린샷을 덮어쓴다.
+- Nest 컨텍스트를 만들 때는 브라우저를 띄우지 않는다. 검증할 때 띄우고 끝나면 닫는다.
+- `npm run validate -- <slug…> | --all`: `--all`은 outcome이 ok인 모델 전부이고 나머지는 건너뜀으로 출력한다. slug를 직접 줬는데 ok가 아니면 실패로 보고하고 다음 모델을 계속한 뒤 exit 1이다. 모르는 slug면 아무것도 하지 않고 exit 1. 모델을 부르지 않으므로 preflight는 없다.
+- 테스트: `test/fixtures/`의 로컬 HTML로 실행하고, 외부 URL은 `page.route`로 가로채 가짜 응답을 준다. 테스트에서 실제 네트워크를 쓰지 않는다. 스크린샷 시점·load 제한 시간은 주입해서 짧게 돌린다.
 
 ## 판정 도우미 (`npm run judge -- <slug>`)
 
@@ -172,9 +177,9 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 
 ## 사이트 (Astro, `site/`)
 
-- 정적 출력(`output: 'static'`). 페이지: `/`(결과 탭, 첫 화면), `/compare/`, `/prompt/`, `/intro/`, `/view/<slug>/`(새 창용 전체 화면 래퍼).
-- **데이터는 빌드 때만 읽는다**: `core/src/results.ts`로 `models.json`·`results/`·`prompts/`를 읽고 검증·조인해서, 표시 값은 `core/src/display.ts`로 만든다. 데이터 위치는 기본이 레포 루트이고, 테스트에서는 환경변수 `OPB_DATA_ROOT`로 픽스처 폴더를 가리킨다.
-- 빌드 때 `results/<slug>/index.html`과 `response.txt`를 `dist/r/<slug>/`로 복사한다. 스크린샷(jpg)과 meta.json은 복사하지 않는다.
+- 정적 출력(`output: 'static'`). 페이지: `/`(결과 탭, 첫 화면), `/compare/`, `/prompt/`, `/intro/`, `/view/<slug>/`(새 창용 전체 화면 래퍼). 헤더에는 페이지가 있는 탭만 둔다(ADR-024 — phase 2~4는 결과 탭 하나).
+- **데이터는 빌드 때만 읽는다**: `core/src/results.ts`로 `models.json`·`results/`·`prompts/`를 읽고 검증·조인해서, 표시 값은 `core/src/display.ts`로 만든다. 데이터 위치는 기본이 레포 루트이고, 테스트에서는 환경변수 `OPB_DATA_ROOT`로 OS 임시 디렉토리에 만든 데이터를 가리킨다. 빌드가 검사하는 범위는 DATA.md "사이트 빌드의 데이터 검사".
+- 빌드 때 `results/<slug>/index.html`과 `response.txt`를 `dist/r/<slug>/`로 바이트 그대로 낸다. `npm run dev`에서도 같은 주소로 열린다. 스크린샷(jpg)·meta.json·judgment.json은 내지 않는다.
 - **결과물 실행은 항상 `<iframe sandbox="allow-scripts">` 안에서만.** `allow-same-origin`을 절대 넣지 않는다. GitHub Pages는 사용자 계정의 모든 Pages 사이트가 한 출처(`<user>.github.io`)를 쓰기 때문이다. "새 창에서 열기"는 `/view/<slug>/`(같은 샌드박스 iframe을 화면 가득)로 연다. 결과물 파일을 직접 링크하지 않는다.
 - 한 번에 결과물 하나만 실행한다. 모델을 바꾸면 iframe의 src를 바꾸고, "다시 시작"은 같은 src를 다시 불러온다.
 - 결과물이 없는 모델은 이유를 보여 주고, 응답 원문(response.txt)은 그 모델을 고를 때 `fetch`로 불러온다(첫 화면 용량을 줄이기 위해).
@@ -208,3 +213,5 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 
 typescript ^6.0.3(ADR-023 — 7은 typescript-eslint 미지원), tsx ^4.23.15, zod ^4.6.5(`z.iso.datetime`, `z.url()` 사용), @types/node ^26.6.4, ESLint ^10.12 + typescript-eslint ^8.71.1, NestJS ^12.1.2(@nestjs/common·core, reflect-metadata ^0.2.2, rxjs ^7.8.2), @google/genai ^2.28.0, dotenv ^18.0.7. Node ≥ 22 (개발 PC는 24.14).
 TS 6은 `types` 기본값이 `[]`라 `tsconfig.base.json`에 `types: ["node"]`를 둔다. phase 2의 astro check도 TS 6과 맞는지 확인한다.
+
+phase 2 계획 때(2026-10-12) 확인한 최신값: astro 7.3.8(Node ≥ 22.12 요구 → 루트 `engines`도 맞춘다), @astrojs/check 0.9.10(typescript peer `^5.0.0 || ^6.0.0`), playwright 1.64.0(라이브러리만 쓰고 `@playwright/test` 러너는 쓰지 않는다).

@@ -8,7 +8,7 @@
 
 - 사이트 이름: One Prompt Bench
 - 헤더 부제: 하나의 프롬프트, 모델마다 다른 나무
-- 탭: 소개 · 결과 · 비교표 · 프롬프트 (첫 화면은 결과)
+- 탭: 소개 · 결과 · 비교표 · 프롬프트 (첫 화면은 결과). 헤더에는 페이지가 있는 탭만 이 순서로 둔다(ADR-024)
 - `<html lang="ko">`, 페이지 `<title>`: `<탭 이름> — One Prompt Bench`, 결과 탭(`/`)은 `One Prompt Bench` (추가)
 - meta description·og:description: 소개 탭 "제목 아래 문장" (추가)
 - 판정 기호: ✓ 충족 · △ 부분 충족 · ✗ 미충족 · 판정 전

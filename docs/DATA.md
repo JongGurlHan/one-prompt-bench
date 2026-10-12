@@ -73,15 +73,26 @@ phase 1에서 반영한 변경(SDK 방식 → CLI 방식): `runtime.sdkPackage`�
 
 ## check:results (배포 게이트)
 
-`npm run check:results`는 아래 중 하나라도 어기면 실패한다(배포 중단). 결과가 하나도 없어도 통과한다.
+`npm run check:results`(`packages/core/scripts/check-results.ts`)는 아래 중 하나라도 어기면 실패한다(배포 중단). 처음 어긴 것에서 멈추지 않고 어긴 것을 모두 `경로: 이유`로 보고한다. 결과가 하나도 없어도(`results/` 없음 포함) 통과한다.
 
 1. `models.json`이 스키마를 통과한다.
-2. `results/` 아래 폴더 이름이 모두 models.json의 slug다.
+2. `results/` 아래 항목은 모두 폴더이고, 이름이 models.json의 slug다.
 3. 모든 결과 폴더에 `meta.json`이 있고 스키마를 통과하며 `modelSlug`가 폴더 이름과 같다. meta.json이 없는 폴더(중단된 생성)는 실패다.
 4. meta.json이 가리키는 파일(`responseTextPath`, `output.path`, 스크린샷)이 실제로 있다.
 5. `index.html`의 sha256이 `output.sha256`과 같다.
 6. `outcome`이 `ok`면 `validation`이 null이 아니다.
 7. `judgment.json`이 있으면 스키마를 통과하고, `modelSlug`·`prompt`가 meta.json과 같고, `outputSha256`이 meta.json의 `output.sha256`과 같다 (ADR-012).
+8. meta.json의 `runtime.generator.tool`이 models.json `provider`의 생성 도구(`GENERATOR_BY_PROVIDER`)와 같다.
+9. meta.json이 가리키는 경로(`responseTextPath`, `output.path`, 스크린샷)는 모두 `results/<slug>/` 안이다.
+
+8·9는 phase 2 계획 때 더했다(8은 `check-samples.ts`에 있던 대조). 문서에 없는 경우를 만나면 엄격한 쪽(실패)으로 정한다.
+
+### 사이트 빌드의 데이터 검사
+
+사이트 빌드(`loadResults`)는 check:results보다 느슨하다. 로컬에서 생성 직후 상태를 볼 수 있게 하려는 것이고, 공개 배포는 check:results가 막는다.
+- models.json·meta.json·judgment.json 중 스키마를 통과하지 못하는 파일이 있으면 빌드가 실패한다(파일 경로를 보여 준다).
+- meta.json이 없는 폴더는 "생성 전", `ok`인데 `validation`이 null이면 "검증 전"으로 보인다.
+- 파일 존재·sha256·판정 대조(규칙 4·5·7)는 check:results만 검사한다.
 
 ## 표시 규칙 (`packages/core/src/display.ts`)
 

@@ -88,7 +88,7 @@
 
 - 콘텐츠 최대 폭 1200px, 좌우 여백 32px(휴대폰 16px). 정렬은 왼쪽 정렬이다.
 - 섹션 간격 24px, 카드 간 16px, 목록 항목 간 6px.
-- **헤더**: 흰 바탕에 아래쪽 1px `--border`. 왼쪽에 사이트 이름과 부제(Mono 13px `--text-muted`), 오른쪽에 탭 4개(소개·결과·비교표·프롬프트). 탭은 `padding 10px 16px`, 현재 탭은 `--nav-active-bg` 바탕에 `aria-current="page"`. 좁으면 줄바꿈한다.
+- **헤더**: 흰 바탕에 아래쪽 1px `--border`. 왼쪽에 사이트 이름과 부제(Mono 13px `--text-muted`), 오른쪽에 탭 4개(소개·결과·비교표·프롬프트). 페이지가 있는 탭만 둔다(ADR-024 — phase 2~4는 "결과" 하나). 탭은 `padding 10px 16px`, 현재 탭은 `--nav-active-bg` 바탕에 `aria-current="page"`. 좁으면 줄바꿈한다.
 - **카드**: `--surface` 바탕, 1px `--border`, 14px 둥글기, `padding 16px`. 그림자는 없다.
 - **버튼**: 작은 버튼은 13px/500, `padding 8px 12px`, `min-height 36px`, 1px `--border-strong`, 흰 바탕, `--accent` 글자다. 주 버튼(소개 탭 "결과 보러 가기")은 `--accent` 바탕에 흰 글자, `padding 12px 20px`, 10px 둥글기다. 보조 큰 버튼은 흰 바탕에 `--border-strong`.
 - **칩**: Mono 12px, `padding 4px 10px`, 1px `--border-strong`, 999px.
@@ -101,6 +101,7 @@
 ### 결과 탭 (`/`, 시안 Main.dc.html — A안)
 - 상단: h1 + 설명 + 칩 3개(`season-tree-v1`, `모델 {N}개`, `모델당 1회 생성`).
 - 두 열(`flex-wrap`): 왼쪽 목록(`flex 1 1 280px`, 최대 340px), 오른쪽 결과(`flex 999 1 560px`).
+- **첫 선택**: 목록 순서에서 결과물이 있는 첫 모델, 하나도 없으면 맨 위 모델(ADR-025). 빌드 때 정해 HTML에 넣어서 스크립트가 돌기 전에도 그 모델이 보인다.
 - **모델 목록**: 제목 "모델"과 오른쪽 "출시일 최신순"(12px muted). 각 항목은 `<button>`(`min-height 56px`, `padding 10px 14px`, 10px 둥글기)이다. 왼쪽에 표시명(15px/600)과 "회사 · 생성 도구"(12px muted), 오른쪽에 출시일(Mono 12px)과 상태 배지. 선택된 항목은 `--surface-selected` 바탕에 2px `--accent` 테두리, `aria-pressed="true"`. 목록 아래 점선(1px dashed `--border-strong`) 범례 상자 "상태 표시"에 모든 라벨 배지를 둔다.
 - **실행 카드**: 머리 줄에 표시명(600) + "회사 · 도구로 생성 · YYYY-MM-DD 출시"(12px muted), 오른쪽에 [다시 시작] [새 창에서 열기] 작은 버튼. 아래 실행 영역은 `aspect-ratio 16 / 10`, `--viewer-bg`이고 iframe이 영역을 가득 채운다(`border 0`, `title`은 COPY). 샌드박스 속성은 ARCHITECTURE "사이트".
 - **결과물이 없을 때**: 실행 영역에 라벨 이유 문구(COPY "결과물이 없을 때")를 `--viewer-title`로 가운데 보여주고, 버튼 두 개는 숨긴다. 원문이 있는 라벨이면 실행 카드 아래에 "응답 원문" 카드를 둔다. `<pre>`(Mono 13px, `white-space: pre-wrap`, `max-height 480px`, `overflow auto`)이고, 모델을 고를 때 불러온다.
