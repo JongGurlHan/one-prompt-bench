@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>validator fixture: webgl</title>
+<style>html, body { margin: 0; height: 100%; } canvas { display: block; width: 100%; height: 100%; }</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+  // three.js 없이 WebGL 컨텍스트를 직접 만든다 (테스트는 네트워크로 three.js를 받을 수 없다)
+  const canvas = document.getElementById('c');
+  canvas.width = 1280;
+  canvas.height = 800;
+  const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+  if (!gl) {
+    console.error('fixture webgl: no context');
+  } else {
+    const version = typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext ? 'webgl2' : 'webgl1';
+    const debug = gl.getExtension('WEBGL_debug_renderer_info');
+    const renderer = debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+    gl.clearColor(0.2, 0.6, 0.3, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    console.log('fixture webgl: ' + version + ' | ' + renderer);
+  }
+</script>
+</body>
+</html>

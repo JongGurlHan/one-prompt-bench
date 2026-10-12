@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>validator fixture: load never fires</title>
+<style>html, body { margin: 0; height: 100%; background: #f4a460; }</style>
+</head>
+<body>
+<p>waiting for a script that never answers</p>
+<!-- 응답하지 않는 외부 스크립트가 파서를 막아 iframe load 이벤트가 오지 않는다 -->
+<script src="https://cdn.example.com/never-answers.js"></script>
+</body>
+</html>

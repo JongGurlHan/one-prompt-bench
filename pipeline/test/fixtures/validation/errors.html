@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>validator fixture: errors</title>
+</head>
+<body>
+<p>errors</p>
+<script>
+  // 콘솔 에러 2개, 잡히지 않은 예외 1개(동기 스크립트), 잡히지 않은 예외 1개(타이머), 처리되지 않은 Promise 거부 1개
+  console.error('fixture console error 1');
+  console.log('fixture log is not an error');
+  setTimeout(() => {
+    console.error('fixture console error 2');
+    throw new Error('fixture uncaught in timer');
+  }, 0);
+  Promise.reject(new Error('fixture unhandled rejection'));
+  throw new Error('fixture uncaught at load');
+</script>
+</body>
+</html>

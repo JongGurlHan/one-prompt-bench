@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>validator fixture: ok</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #87ceeb; }
+  #ground { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; background: #3a7d2c; }
+</style>
+</head>
+<body>
+<div id="ground"></div>
+<canvas id="c" width="320" height="200"></canvas>
+<script>
+  // 외부 요청·에러 없이 2D 캔버스에 나무를 그린다 (console.log·warn은 에러로 세지 않는다)
+  const ctx = document.getElementById('c').getContext('2d');
+  ctx.fillStyle = '#6b3e1f';
+  ctx.fillRect(150, 100, 20, 100);
+  ctx.fillStyle = '#2e8b57';
+  ctx.beginPath();
+  ctx.arc(160, 80, 60, 0, Math.PI * 2);
+  ctx.fill();
+  console.log('fixture ok: drawn');
+  console.warn('fixture ok: a warning is not an error');
+</script>
+</body>
+</html>

@@ -15,7 +15,8 @@
     "test": "npm test --workspaces --if-present",
     "check:results": "tsx packages/core/scripts/check-results.ts",
     "gen": "tsx --tsconfig pipeline/tsconfig.json pipeline/src/main.ts gen",
-    "smoke": "tsx --tsconfig pipeline/tsconfig.json pipeline/src/main.ts smoke"
+    "smoke": "tsx --tsconfig pipeline/tsconfig.json pipeline/src/main.ts smoke",
+    "validate": "tsx --tsconfig pipeline/tsconfig.json pipeline/src/main.ts validate"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

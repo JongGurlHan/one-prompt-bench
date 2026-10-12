@@ -22,7 +22,7 @@ export const GIT = Symbol('GIT');
 /** 사람에게 y/N 확인 — system/confirm.ts Confirm */
 export const CONFIRM = Symbol('CONFIRM');
 
-/** 생성 직후 검증기 — validation/validator.ts Validator (phase 1은 자리표시) */
+/** 검증기 — validation/validator.ts Validator (gen의 생성 직후 검증과 validate 명령이 함께 쓴다) */
 export const VALIDATOR = Symbol('VALIDATOR');
 
 /** 사람이 읽는 출력. 실제는 console, 테스트는 수집기 */
