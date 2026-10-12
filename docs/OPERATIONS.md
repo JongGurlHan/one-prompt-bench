@@ -54,7 +54,7 @@ npm run validate -- gpt-6-sol    # 한 모델
 ```
 `meta.json`의 `validation`과 스크린샷만 바뀌고 결과물은 그대로다. 판정은 유지된다.
 
-## 판정 (5일차, 이후 새 모델마다)
+## 판정 (판정 도우미가 생긴 뒤, 이후 새 모델마다)
 
 1. `npm run dev`로 로컬 사이트를 열고 결과 탭에서 그 모델을 50초 이상(한 바퀴 넘게) 지켜본다. 사이트와 같은 샌드박스 조건이다.
 2. `results/<slug>/`의 스크린샷 4장(spring·summer·autumn·winter = 5·15·25·35초)을 본다. "계절마다 10초"는 스크린샷이 맞는 계절인지로 판단한다.
@@ -63,7 +63,7 @@ npm run validate -- gpt-6-sol    # 한 모델
 
 결과물이 없는 모델(HTML 없음·잘림·거부·생성 실패·한도 초과)은 판정하지 않는다.
 
-## 배포 (3일차에 최초 설정)
+## 배포 (배포 워크플로가 생긴 phase 뒤에 최초 설정)
 
 1. GitHub에 **공개** 레포를 만들고 push한다(무료 플랜의 Pages는 공개 레포만).
 2. 레포 Settings → Pages → Source를 "GitHub Actions"로 한다.
@@ -73,16 +73,16 @@ npm run validate -- gpt-6-sol    # 한 모델
 ## 하네스로 개발하기
 
 ```bash
-python scripts/execute.py day1-<slug>                 # phase 실행 (feat-<phase> 브랜치)
-python scripts/execute.py day1-<slug> --reset-failed  # error/blocked 해결 후 재실행
-python scripts/execute.py day1-<slug> --resume        # 중단된 step 이어받기
+python scripts/execute.py <phase>                 # phase 실행 (예: 01-pipeline-core, feat-<phase> 브랜치)
+python scripts/execute.py <phase> --reset-failed  # error/blocked 해결 후 재실행
+python scripts/execute.py <phase> --resume        # 중단된 step 이어받기
 ```
 
 - phase 계획은 Claude Code에서 `/harness`로 만든다. 상세 규칙은 `.claude/commands/harness.md`.
 - 실행 전에 `phases/` 밖의 변경을 모두 커밋한다.
 - **Claude 사용 한도에 걸리면** step이 `blocked`로 멈추고 한도 메시지가 표시된다. 한도가 풀린 뒤 `--reset-failed`로 다시 실행한다.
-- phase가 끝나면 `feat-<phase>` 브랜치를 확인하고 main에 merge한다(`--no-ff`). 그다음 PRD.md 일정표의 "사람이 할 일"을 한다.
-- 일차가 끝나면 Claude Code에서 `/devlog N`을 실행해 `docs/devlog/day-N.md` 초안을 만들고, 검토해서 확정한다.
+- phase가 끝나면 `feat-<phase>` 브랜치를 확인하고 main에 merge한다(`--no-ff`). 그다음 PRD.md "개발 순서" 표의 "사람이 할 일"을 한다.
+- phase가 끝나면 Claude Code에서 `/devlog <phase>`를 실행해 `docs/devlog/<phase>.md` 초안을 만들고, 검토해서 확정한다.
 
 ## 새 모델 추가
 

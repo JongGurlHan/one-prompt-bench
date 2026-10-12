@@ -30,8 +30,8 @@
 
 이 프로젝트 전용 원칙:
 
-8. **phase = 일차** — `docs/PRD.md` 일정표의 일차 하나가 phase 하나다. 디렉토리는 `dayN-<slug>`(예: `day1-pipeline-core`). 표의 "사람이 할 일"(생성·smoke·배포 설정·판정)은 step에 넣지 않는다. 무인 세션은 할 수 없다. 대신 phase 계획을 보여줄 때 "phase 뒤에 사람이 할 일"로 함께 안내한다.
-9. **실호출 금지 AC** — AC와 step 작업에 `npm run gen`·`smoke`·`validate`(실제 results 대상)·`judge`를 넣지 않는다. 어댑터는 CLI 출력 fixture로, 검증기는 로컬 HTML과 `page.route`로 테스트한다. 기본 AC 묶음은 `npm run lint`, `npm run typecheck`, `npm test`이고, 사이트를 건드리는 step은 `npm run build`, results를 읽는 코드를 건드리는 step은 `npm run check:results`를 더한다. 1일차 step 0(워크스페이스 연결) 전에는 npm 명령이 없으니, 그 step의 AC는 step이 만드는 명령으로 정한다.
+8. **phase = 개발 순서의 한 줄** — `docs/PRD.md` "개발 순서" 표의 한 줄이 phase 하나다. 디렉토리는 `NN-<slug>`(NN은 표의 순서를 두 자리로, 예: `01-pipeline-core`). phase는 날짜와 묶지 않는다. 하루에 여러 phase를 해도, phase 하나를 여러 날 해도 된다. 표의 "사람이 할 일"(생성·smoke·배포 설정·판정)은 step에 넣지 않는다. 무인 세션은 할 수 없다. 대신 phase 계획을 보여줄 때 "phase 뒤에 사람이 할 일"로 함께 안내한다.
+9. **실호출 금지 AC** — AC와 step 작업에 `npm run gen`·`smoke`·`validate`(실제 results 대상)·`judge`를 넣지 않는다. 어댑터는 CLI 출력 fixture로, 검증기는 로컬 HTML과 `page.route`로 테스트한다. 기본 AC 묶음은 `npm run lint`, `npm run typecheck`, `npm test`이고, 사이트를 건드리는 step은 `npm run build`, results를 읽는 코드를 건드리는 step은 `npm run check:results`를 더한다. 첫 phase의 step 0(워크스페이스 연결) 전에는 npm 명령이 없으니, 그 step의 AC는 step이 만드는 명령으로 정한다.
 10. **문서 섹션을 가리킨다** — 어댑터 step은 ARCHITECTURE "도구별 호출 사양"과 DATA "정규화 규칙"을, 화면 step은 UI_GUIDE의 해당 탭 절과 COPY의 해당 탭 절을, 데이터 step은 DATA "스키마 변경 예정"·"표시 규칙"을 "관련 파일"에 적는다.
 11. **⚠ 항목은 열어 둔다** — 실제 도구 출력으로 확인해야 하는 사양(⚠)은 추측으로 확정하지 않는다. 파싱 코드는 필드가 없을 때 null·unknown으로 안전하게 떨어지게 하고, 확인이 필요한 점을 handoff에 남기라고 step에 적는다.
 12. **외부 설치** — Playwright 브라우저(`npx playwright install chromium`) 같은 내려받기는 그것이 처음 필요한 step의 작업에 넣는다. AC에 넣지 않는다.
@@ -48,7 +48,7 @@
 {
   "phases": [
     {
-      "dir": "day1-pipeline-core",
+      "dir": "01-pipeline-core",
       "status": "pending"
     }
   ]
@@ -64,7 +64,7 @@
 ```json
 {
   "project": "One Prompt Bench",
-  "phase": "day1-pipeline-core",
+  "phase": "01-pipeline-core",
   "model": "claude-opus-5-5",
   "timeout_sec": 3600,
   "steps": [
@@ -169,7 +169,7 @@ Windows: 출력·파일은 UTF-8로 처리되고, npm 전역 설치의 `claude.c
 
 1. `feat-{phase}` 브랜치의 결과(각 step의 summary·handoff, `npm test`)를 사용자와 함께 확인한다. 문제가 있으면 다음 phase의 step으로 고치거나 사용자에게 묻는다.
 2. 사용자가 main에 merge한다(`git merge --no-ff`, squash 금지 — `docs/OPERATIONS.md` "생성").
-3. `docs/PRD.md` 일정표의 "사람이 할 일"을 안내한다. 실제 모델 호출은 사용자가 `! <명령>`으로 직접 실행한다.
-4. `/devlog N`으로 그 일차의 개발 일지 초안을 만든다.
+3. `docs/PRD.md` "개발 순서" 표의 "사람이 할 일"을 안내한다. 실제 모델 호출은 사용자가 `! <명령>`으로 직접 실행한다.
+4. `/devlog <phase>`로 그 phase의 개발 일지 초안을 만든다.
 5. handoff에 남은 결정·⚠ 확인 결과 중 다음 phase도 알아야 할 것은 `docs/`(ADR·ARCHITECTURE·DATA)에 옮겨 적는다. phase 사이에는 index.json의 handoff가 전달되지 않기 때문이다.
 6. `/handoff`로 `PROGRESS.md`를 갱신한다.

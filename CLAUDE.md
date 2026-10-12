@@ -3,7 +3,7 @@
 같은 프롬프트("사계절이 바뀌는 3D 나무")를 여러 LLM에 한 번씩 보내 받은 단일 HTML 결과물을 나란히 실행·비교하는 정적 사이트 MVP. 원칙: **추가 결제 0원**, 기록의 정직성(사람이 결과물을 고치지 않음), 얇게 끝까지.
 
 ## 문서 (설계의 단일 출처)
-- `docs/PRD.md` 요구사항·MVP 제외·일정 / `docs/ARCHITECTURE.md` 구조·파이프라인·사이트·배포·테스트 / `docs/ADR.md` 결정과 이유
+- `docs/PRD.md` 요구사항·MVP 제외·개발 순서 / `docs/ARCHITECTURE.md` 구조·파이프라인·사이트·배포·테스트 / `docs/ADR.md` 결정과 이유
 - `docs/DATA.md` 데이터 형식·스키마 변경 예정·표시 규칙·check:results / `docs/UI_GUIDE.md` 토큰·화면 / `docs/COPY.md` 확정 문구
 - `docs/OPERATIONS.md` 사람이 직접 하는 일(생성·판정·배포) / `docs/design/*.dc.html` 시안 원본(참고용)
 - 대화형 세션을 시작하면 `PROGRESS.md`(작업 인계)를 먼저 읽는다. 무인 step 세션은 읽지 않아도 된다.
@@ -29,8 +29,8 @@
 ## 개발 프로세스
 - CRITICAL: 새 기능 구현 시 반드시 테스트를 먼저 작성하고, 테스트가 통과하는 구현을 작성할 것 (TDD)
 - 커밋 메시지는 conventional commits 형식을 따를 것 (feat:, fix:, docs:, refactor:, test:, chore:, data:)
-- 개발은 하네스로 한다: 일차 하나 = phase 하나(`phases/dayN-<slug>`), 계획은 `/harness`, 실행은 `python scripts/execute.py <phase>`.
-- 일차가 끝나면 `/devlog N`으로 개발 일지 초안을 만든다. 세션을 넘길 때는 `/handoff`로 `PROGRESS.md`를 갱신한다.
+- 개발은 하네스로 한다: PRD "개발 순서" 표의 한 줄 = phase 하나(`phases/NN-<slug>`, 날짜와 묶지 않음), 계획은 `/harness`, 실행은 `python scripts/execute.py <phase>`.
+- phase가 끝나면 `/devlog <phase>`로 개발 일지 초안을 만든다. 세션을 넘길 때는 `/handoff`로 `PROGRESS.md`를 갱신한다.
 
 ## 명령어
 ```
@@ -45,4 +45,4 @@ npm run judge -- <slug>             # 판정 기록 (사람용, 대화형)
 npm run gen -- …  /  npm run smoke -- …   # 실제 모델 호출 — 사람만
 python -m pytest scripts            # 하네스 테스트
 ```
-(1일차 step 0 전에는 package.json이 없어 npm 명령이 동작하지 않는다.)
+(첫 phase의 step 0 전에는 package.json이 없어 npm 명령이 동작하지 않는다.)

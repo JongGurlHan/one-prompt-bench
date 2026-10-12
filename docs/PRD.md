@@ -1,4 +1,4 @@
-# PRD: One Prompt Bench — 요구사항과 일정
+# PRD: One Prompt Bench — 요구사항과 개발 순서
 
 ## 목표
 
@@ -50,20 +50,20 @@ main에 push하면 GitHub Actions가 검사(lint·typecheck·test·results 검�
 - 8개 모델 모두 생성 시도 기록이 있고(성공·실패 모두), 결과물이 있는 모델은 검증과 판정이 끝나 있다.
 - 공개 URL에서 4개 탭이 동작하고, 휴대폰 화면에서도 쓸 수 있다.
 - 생성에 추가 결제가 한 번도 발생하지 않는다.
-- 일차별 개발 일지(`docs/devlog/day-N.md`)가 남아 있다.
+- phase별 개발 일지(`docs/devlog/<phase>.md`)가 남아 있다.
 
-## 일정 (5일 이내, 일차로 표시)
+## 개발 순서
 
-원칙: **얇게 끝까지 먼저.** 생성 → 검증 → 사이트 → 배포를 가장 단순한 형태로 먼저 잇고, 그다음 모델을 늘린다. 사이트가 일찍 공개되어 일정이 밀려도 공개된 링크가 남는다. 밀리면 범위는 그대로 두고 하루씩 연장한다.
+원칙: **얇게 끝까지 먼저.** 생성 → 검증 → 사이트 → 배포를 가장 단순한 형태로 먼저 잇고, 그다음 모델을 늘린다. 사이트가 일찍 공개되므로 도중에 멈춰도 공개된 링크가 남는다.
 
-일차 하나 = 하네스 phase 하나 (`phases/dayN-<slug>/`). phase가 끝나면 사람이 할 일을 한다.
+표의 한 줄 = 하네스 phase 하나 (`phases/NN-<slug>/`, NN은 표의 순서를 두 자리로. 예: `01-pipeline-core`). phase가 끝나면 사람이 할 일을 한다. 순서는 지키고 속도는 정하지 않는다. 하루에 phase 여러 개를 끝내도 되고, phase 하나를 여러 날 해도 된다.
 
-| 일차 | phase에서 만들 것 (무인 세션) | 사람이 할 일 |
+| 순서 | phase에서 만들 것 (무인 세션) | 사람이 할 일 |
 |---|---|---|
 | 1 | 모노레포·core 연결, NestJS 뼈대, Gemini 어댑터, 일괄 실행(batch)·smoke 명령 | 추가 결제 차단 체크리스트, `.env`에 GEMINI_API_KEY, Gemini smoke → 1개 생성 |
-| 2 | Playwright 검증기(생성 직후 자동 실행 포함), check:results, Astro 결과 탭 | 1일차 결과물 검증 실행, 결과 탭 로컬 확인 |
+| 2 | Playwright 검증기(생성 직후 자동 실행 포함), check:results, Astro 결과 탭 | Gemini 결과물 검증 실행, 결과 탭 로컬 확인 |
 | 3 | GitHub Actions 배포 워크플로, Claude Code 어댑터 | 공개 레포 생성·Pages 설정·push(첫 배포), Claude smoke |
 | 4 | Codex CLI 어댑터 | Codex smoke, 8개 일괄 생성과 검증 |
 | 5 | 판정 도우미, 비교표·프롬프트·소개 탭, 휴대폰 화면, README | 8개 판정, devlog·회고 검토 |
 
-각 일차가 끝나면 `/devlog N`으로 개발 일지 초안을 만들고 사람이 검토해 확정한다 (`docs/OPERATIONS.md`).
+각 phase가 끝나면 `/devlog <phase>`로 개발 일지 초안을 만들고 사람이 검토해 확정한다 (`docs/OPERATIONS.md`).

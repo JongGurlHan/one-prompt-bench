@@ -46,7 +46,7 @@ results/<slug>/
 - `cost`: `inputUsd`·`outputUsd`·`totalUsd`, `pricingAsOf` — models.json 정가로 계산
 - `validation`: 생성 직후 null, 검증기가 채움 (`loaded`, `consoleErrors`, `pageErrors`, `externalRequests`, `screenshots`, `environment`, `checkedAt`)
 
-### 스키마 변경 예정 (아직 코드에 없음, 1일차에 반영)
+### 스키마 변경 예정 (아직 코드에 없음, 첫 phase에서 반영)
 
 실제 데이터가 아직 없으므로 `schemaVersion`은 1을 유지한다.
 

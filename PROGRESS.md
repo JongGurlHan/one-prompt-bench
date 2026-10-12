@@ -5,21 +5,22 @@
 
 ## 지금 하는 일
 
-aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. 준비 단계(하네스를 프로젝트에 맞게 정비, 기획 보완)가 끝났다. 다음은 **1일차 phase 계획**이다. 설계는 전부 `docs/`에 있다(CLAUDE.md "문서" 절).
+aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. 준비 단계(하네스를 프로젝트에 맞게 정비, 기획 보완)가 끝났다. 다음은 **첫 phase(`01-pipeline-core`) 계획**이다. 설계는 전부 `docs/`에 있다(CLAUDE.md "문서" 절).
 
 ## 진행 상태
 
 - [x] 하네스 정비: CLAUDE.md, docs 7종(PRD·ARCHITECTURE·ADR·DATA·UI_GUIDE·COPY·OPERATIONS), `/harness`·`/review` 프로젝트화, `/devlog`·`/handoff` 신규
 - [x] 훅: 실제 모델 호출(gen·smoke·`claude -p`·`codex exec`·Gemini API)·`.env`/API 키 출력 차단 (명령 자리에서만 매칭). settings.json에서 `.env` Read 거부
 - [x] execute.py: Claude 구독 사용 한도 메시지 감지 → 재시도 없이 `blocked` (하네스 테스트 296개 통과)
-- [x] 기존 코드 → `packages/core/`(src·test·examples·scripts), 데이터 → `models.json`·`prompts/`, 시안 → `docs/design/`. scratch에서 core 테스트 17개·check-samples 통과 확인 (package.json은 아직 없음 — 1일차 step 0에서 workspace 연결)
+- [x] 기존 코드 → `packages/core/`(src·test·examples·scripts), 데이터 → `models.json`·`prompts/`, 시안 → `docs/design/`. scratch에서 core 테스트 17개·check-samples 통과 확인 (package.json은 아직 없음 — 첫 phase step 0에서 workspace 연결)
 - [x] 기획 원본 폴더 삭제(사용자), 이번 변경 커밋·push (2026-10-12, origin/main)
-- [ ] 1일차 phase 계획 (`/harness`) → 실행 → 사람 작업 (PRD.md 일정표)
+- [x] '일차' 개념 제거 → PRD "개발 순서"(날짜 없음), phase 이름 `NN-<slug>`, phase별 개발 일지 (2026-10-12, ADR-020)
+- [ ] 첫 phase 계획 (`/harness`) → 실행 → 사람 작업 (PRD.md 개발 순서 표)
 
 ## 다음 세션이 바로 할 일
 
 1. `git status`가 깨끗한지 확인한다(하네스는 `phases/` 밖에 커밋 안 된 변경이 있으면 시작하지 않는다). 루트의 빈 `migra/` 폴더는 사용자가 만든 것으로 보이며 git에 잡히지 않는다 — 용도를 모르면 사용자에게 묻는다.
-2. `/harness`로 `phases/day1-pipeline-core` 계획 초안을 만든다. 범위는 PRD.md 일정표의 1일차(모노레포·core 연결, NestJS 뼈대, DATA.md "스키마 변경 예정" 반영, Gemini 어댑터, batch·preflight·smoke 명령)다. step 0은 npm workspaces 연결이고, 이때 기존 core 테스트가 그대로 통과해야 한다.
+2. `/harness`로 `phases/01-pipeline-core` 계획 초안을 만든다. 범위는 PRD.md 개발 순서 표의 1번(모노레포·core 연결, NestJS 뼈대, DATA.md "스키마 변경 예정" 반영, Gemini 어댑터, batch·preflight·smoke 명령)다. step 0은 npm workspaces 연결이고, 이때 기존 core 테스트가 그대로 통과해야 한다.
 3. 계획을 보여줄 때 phase 뒤에 사람이 할 일(추가 결제 차단 체크리스트, `.env`, Gemini smoke → 1개 생성)을 함께 안내한다.
 
 ## 사용자 결정·답변 (모두 ADR에 기록됨)

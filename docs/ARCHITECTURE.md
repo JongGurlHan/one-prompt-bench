@@ -33,7 +33,7 @@ npm workspaces 모노레포. 모든 TypeScript는 ESM(`"type": "module"`, NodeNe
 │   ├── src/judging/                판정 도우미
 │   └── test/fixtures/              CLI 출력 샘플, 검증용 HTML
 ├── site/                       @opb/site — Astro 정적 사이트
-├── docs/                       설계 문서 (devlog/는 일차별 개발 일지, design/은 시안 원본)
+├── docs/                       설계 문서 (devlog/는 phase별 개발 일지, design/은 시안 원본)
 ├── phases/                     하네스 phase 계획·상태
 ├── scripts/                    하네스 (Python: execute.py, 테스트)
 └── .github/workflows/deploy.yml
