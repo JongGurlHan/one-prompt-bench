@@ -1,0 +1,8 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    // Nest 데코레이터. emitDecoratorMetadata는 tsx(esbuild)가 지원하지 않으므로 켜지 않고 @Inject(TOKEN)을 명시한다
+    "experimentalDecorators": true
+  },
+  "include": ["src", "test"]
+}
