@@ -12,11 +12,13 @@ import {
   loadPrompt,
   maxOutputTokensFor,
   runGeneration,
+  loadResults,
   sortByRelease,
   type PromptSpec,
   type RunInput,
   type RunnerDeps,
 } from '@opb/core';
+import { makeDataRoot, writeResult } from '@opb/core/testing';
 
 // '@opb/core'가 빌드 없이 TS 소스로 해석되는지 (tsx 실행, tsc NodeNext 양쪽)
 test('@opb/core의 값을 pipeline에서 import해 쓸 수 있다', () => {
@@ -45,4 +47,12 @@ test('batch·smoke가 쓸 core 공개 API가 진입점에 있다', () => {
   const deps: RunnerDeps = { now: () => new Date(0), sleep: async () => {} };
   assert.equal(input.maxOutputTokens, null);
   assert.equal(deps.now().getTime(), 0);
+});
+
+// 다음 step(검증기·사이트) 테스트가 쓰는 가짜 데이터 루트 빌더가 서브패스로 해석되는지
+test('@opb/core/testing의 빌더로 만든 데이터를 loadResults로 읽을 수 있다', async () => {
+  const root = await makeDataRoot();
+  const { record } = await writeResult(root, 'gemini-a', { outcome: 'ok' });
+  const entry = (await loadResults(root)).find((e) => e.model.slug === 'gemini-a');
+  assert.deepEqual(entry?.record, record);
 });
