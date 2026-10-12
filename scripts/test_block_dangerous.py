@@ -171,6 +171,45 @@ def test_allows_project_safe(cmd):
     assert run_hook(cmd).returncode == 0, cmd
 
 
+@pytest.mark.parametrize("cmd", [
+    # 셸이 실행하지 않는 heredoc 본문(파일 내용·python 코드·커밋 메시지)은 글이다
+    # 회귀: 결과 보고 JSON을 쓰는 python heredoc의 "git clean … --force" 글자로 차단됐다 (phase 01 step 3)
+    "python - <<'EOF'\nimport json\nsummary = (\"preflight(API 키/git clean, 순수 판정)·batch(대상 선택, --force y/N 확인)\")\nEOF",
+    "cat > notes.md <<'EOF'\n- rm -rf dist 는 훅이 막는다\nEOF",
+    "cat > docs/x.md <<EOF\nnpm run gen -- gemini-3-8-flash\nEOF",
+    "git commit -F - <<'EOF'\nfix: git reset --hard 오탐을 고친다\nEOF",
+    "cat <<-EOF > a.txt\n\trm -rf x\n\tEOF",
+    "cat > deploy.sh <<'EOF'\nrm -rf build\nEOF",  # 스크립트를 쓰기만 하고 실행하지 않는다
+    "cat > a.txt <<A && cat > b.txt <<B\nrm -rf x\nA\ngit push -f\nB",
+])
+def test_allows_data_heredoc(cmd):
+    assert run_hook(cmd).returncode == 0, cmd
+
+
+@pytest.mark.parametrize("cmd", [
+    # heredoc 본문을 셸이 실행하면 명령이다
+    "bash <<'EOF'\nrm -rf dist\nEOF",
+    "sh -s <<EOF\ngit push --force\nEOF",
+    "cat <<'EOF' | bash\nrm -rf dist\nEOF",
+    "ssh host <<'EOF'\nrm -rf /srv/app\nEOF",
+    "bash <<'EOF'\nnpm run gen -- gpt-6-sol\nEOF",
+    "powershell -Command - <<'EOF'\nrd /s /q build\nEOF",
+    # 쓴 스크립트를 같은 명령에서 실행한다
+    "cat > x.sh <<'EOF'\nrm -rf build\nEOF\nbash x.sh",
+    "cat > x.sh <<'EOF'\nrm -rf build\nEOF\nchmod +x x.sh && ./x.sh",
+    "cat > x.sh <<'EOF'\nrm -rf build\nEOF\nsource x.sh",
+    # heredoc이 끝난 뒤의 명령
+    "cat > a.txt <<'EOF'\nhello\nEOF\nrm -rf dist",
+    # heredoc이 아닌 경우: 끝 줄이 없거나, << 가 따옴표 안에 있다
+    "cat <<EOF\nrm -rf dist",
+    "echo \"a <<EOF\"\nrm -rf dist\nEOF",
+])
+def test_blocks_executed_heredoc(cmd):
+    r = run_hook(cmd)
+    assert r.returncode == 2, cmd
+    assert "BLOCKED" in r.stderr
+
+
 def test_ignores_non_bash_tool():
     assert run_hook("rm -rf /", tool_name="Write").returncode == 0
 

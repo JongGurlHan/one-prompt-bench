@@ -6,6 +6,8 @@ Claude Code 규약: 도구 입력은 stdin JSON으로 들어오고, exit 2 + std
 (exit 1 은 차단되지 않는 일반 오류로 처리된다.)
 
 정규식 기반의 과속방지턱일 뿐 샌드박스가 아니다. settings.json 의 permissions.deny 와 함께 쓴다.
+셸이 실행하지 않는 heredoc 본문(파일 내용·python 코드·커밋 메시지)은 글로 보고 검사에서 뺀다.
+그래서 python heredoc 안에서 os.system("rm -rf …")을 부르는 식의 우회는 막지 못한다.
 실제 모델 호출(생성·smoke)은 구독 한도와 요금을 쓰므로 사람이 `! <명령>`으로 직접 실행한다.
 `!` 로 실행한 명령은 이 훅을 거치지 않는다. (docs/OPERATIONS.md)
 """
@@ -30,6 +32,42 @@ LIVE_SCRIPTS = r"(?:gen|generate|smoke)"  # 실제 모델을 부르는 npm 스�
 ENTRY = r"\bmain\.[cm]?[jt]s(?=[\s;&|)]|$)"
 ENV_FILE = r"(?:^|[\s/'\"=])\.env(?:\.(?!example\b|sample\b|template\b)[\w.-]+)?(?=[\s;&|)'\"]|$)"
 READERS = r"\b(?:cat|head|tail|less|more|bat|type|grep|egrep|rg|sed|awk|strings|xxd|od|nl|source)\b"
+
+# heredoc 연산자(<<EOF, <<-'EOF', <<"EOF", <<\EOF). <<< (here-string)·$((1<<2)) 는 아니다
+HEREDOC = re.compile(r"(?<!<)<<(-?)[ \t]*\\?(['\"]?)([A-Za-z_][\w.-]*)\2")
+QUOTED = re.compile(r"""'[^']*'|"(?:[^"\\]|\\.)*\"""")
+# heredoc 본문을 셸이 실행할 수 있는 명령: 셸·원격 셸·eval/source, 쓴 스크립트를 바로 실행하는 경우
+RUNS_SHELL = re.compile(
+    r"(?:^|[\s|;&(/`]|\$\()(?:bash|sh|zsh|dash|ksh|ash|fish|cmd|powershell|pwsh|ssh|eval|source)(?:\.exe)?(?=[\s;&|)<>`]|$)"
+    r"|(?:^|[;&|(\n`]|\$\()\s*(?:\.\s|\S*\.(?:sh|bash|zsh|ps1|cmd|bat)(?=[\s;&|)]|$))",
+    re.IGNORECASE,
+)
+
+
+def strip_data_heredocs(command: str) -> str:
+    """셸이 실행하지 않는 heredoc 본문을 빈 줄로 바꾼다. 본문을 뺀 명령에 셸 실행이 하나라도 있으면 원문 그대로 둔다.
+    끝 줄이 없거나 << 가 따옴표 안에 있으면 heredoc 으로 보지 않는다 — 애매하면 검사하는 쪽으로 둔다."""
+    lines = command.split("\n")
+    out, i = [], 0
+    while i < len(lines):
+        line = lines[i]
+        out.append(line)
+        i += 1
+        quoted = [m.span() for m in QUOTED.finditer(line)]
+        for m in HEREDOC.finditer(line):
+            if any(a < m.start() < b for a, b in quoted):
+                continue
+            strip_tabs, delim = m.group(1) == "-", m.group(3)
+            end = next((j for j in range(i, len(lines))
+                        if (lines[j].rstrip("\r").lstrip("\t") if strip_tabs else lines[j].rstrip("\r")) == delim),
+                       None)
+            if end is None:
+                break
+            out.extend("" for _ in range(i, end))
+            out.append(lines[end])
+            i = end + 1
+    stripped = "\n".join(out)
+    return command if RUNS_SHELL.search(stripped) else stripped
 
 DANGER = "위험한 명령({label})이 감지되었습니다. 다른 방법을 사용하세요."
 LIVE = ("실제 모델 호출({label})은 구독 한도·요금을 씁니다. 사람이 지시한 경우에도 직접 실행하게 안내하세요: "
@@ -64,7 +102,7 @@ def main():
         return 0
     if payload.get("tool_name") != "Bash":
         return 0
-    command = (payload.get("tool_input") or {}).get("command", "")
+    command = strip_data_heredocs((payload.get("tool_input") or {}).get("command", ""))
     for pattern, label, template in PATTERNS:
         if re.search(pattern, command):
             msg = f"BLOCKED: {template.format(label=label)}\n"
