@@ -7,21 +7,13 @@
     {
       "step": 0,
       "name": "results-core",
-      "status": "error",
+      "status": "pending",
       "ac": [
         "npm run lint",
         "npm run typecheck",
         "npm test",
         "npm run check:results"
-      ],
-      "started_at": "2026-10-12T17:06:34+0900",
-      "model": "claude-opus-5-5",
-      "session_id": "05136d9a-f202-4e63-a98d-324ab6f048a5",
-      "cost_usd": 1.1092,
-      "num_turns": 11,
-      "error_message": "[3회 시도 후 실패] `step0-result.json`이 없거나 올바른 JSON이 아니다 (claude exit 1).",
-      "failed_at": "2026-10-12T17:07:15+0900",
-      "attempts": 3
+      ]     
     },
     {
       "step": 1,
