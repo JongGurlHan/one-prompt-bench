@@ -3,18 +3,23 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
   },
   "workspaces": [
     "packages/core",
-    "pipeline"
+    "pipeline",
+    "site"
   ],
   "scripts": {
     "lint": "eslint .",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm test --workspaces --if-present",
+    "build": "npm run build -w @opb/site",
+    "dev": "npm run dev -w @opb/site",
+    "check:results": "tsx packages/core/scripts/check-results.ts",
     "gen": "tsx --tsconfig pipeline/tsconfig.json pipeline/src/main.ts gen",
-    "smoke": "tsx --tsconfig pipeline/tsconfig.json pipeline/src/main.ts smoke"
+    "smoke": "tsx --tsconfig pipeline/tsconfig.json pipeline/src/main.ts smoke",
+    "validate": "tsx --tsconfig pipeline/tsconfig.json pipeline/src/main.ts validate"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

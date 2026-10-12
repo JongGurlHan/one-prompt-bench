@@ -212,8 +212,8 @@ function describeOutcome(record: GenerationRecord): string {
   return record.outcome === 'api_failed' && last.type === 'error' ? `api_failed (${last.kind})` : record.outcome;
 }
 
-/** 터미널 칸 수: 한글 등 동아시아 전각 문자는 2칸 */
-function displayWidth(text: string): number {
+/** 터미널 칸 수: 한글 등 동아시아 전각 문자는 2칸 (validate 요약표도 쓴다) */
+export function displayWidth(text: string): number {
   let width = 0;
   for (const ch of text) {
     const cp = ch.codePointAt(0)!;

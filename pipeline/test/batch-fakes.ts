@@ -17,6 +17,7 @@ import {
   type ProviderResponse,
   type RunnerDeps,
   type StopReason,
+  type Validation,
 } from '@opb/core';
 import type { AdapterEntry, AdapterRegistry } from '../src/adapters/registry.js';
 import type { AppConfig } from '../src/config/config.js';
@@ -227,6 +228,17 @@ export function fakeGit(opts: { status?: string; head?: string; statusError?: Er
   return git;
 }
 
+/** 가짜 검증기가 돌려주는 값 (batch는 쓰지 않는다 — meta.json에도 쓰지 않는다) */
+const FAKE_VALIDATION: Validation = {
+  checkedAt: '2026-10-12T00:10:00.000Z',
+  environment: { browser: 'chromium', browserVersion: '0.0.0-fake' },
+  loaded: true,
+  consoleErrors: [],
+  pageErrors: [],
+  externalRequests: [],
+  screenshots: [],
+};
+
 export interface Harness {
   deps: BatchDeps;
   world: FakeWorld;
@@ -274,6 +286,7 @@ export function harness(
         validate: async (slug) => {
           h.validated.push(slug);
           await opts.validate?.(slug);
+          return FAKE_VALIDATION;
         },
       },
       run: (adapter, input) => runGeneration(adapter, input, DEFAULT_RUN_POLICY, fakeClock()),

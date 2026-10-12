@@ -4,6 +4,13 @@
       "dir": "01-pipeline-core",
       "status": "completed",
       "completed_at": "2026-10-12T15:41:21+0900"
+    },
+    {
+      "dir": "02-validator-results-tab",
+      "status": "completed",
+      "failed_at": "2026-10-12T17:07:15+0900",
+      "blocked_at": "2026-10-12T21:18:46+0900",
+      "completed_at": "2026-10-13T01:19:23+0900"
     }
   ]
 }

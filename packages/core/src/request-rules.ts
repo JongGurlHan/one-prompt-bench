@@ -28,14 +28,18 @@ export interface RequestReport {
 // 'three-stdlib'처럼 이름만 비슷한 다른 패키지는 걸리지 않도록 'three' 뒤에 @, /, ?, 끝만 허용
 const THREE_ANY = /(^|\/)three(@[^/?#]*)?(?=[/?#]|$)|\/three\.js\/|^threejs\.org\//;
 // 고정 버전: three@0.170.0 처럼 정확한 x.y.z, 또는 cdnjs의 r170 (latest, ^0.170, 0.170 같은 범위는 고정 아님)
-const THREE_PINNED = /(^|\/)three@\d+\.\d+\.\d+(?=[/?#]|$)|\/three\.js\/r\d+\//;
+// 캡처: 2 = x.y.z, 3 = r170 (pinnedThreeVersion)
+const THREE_PINNED = /(^|\/)three@(\d+\.\d+\.\d+)(?=[/?#]|$)|\/three\.js\/(r\d+)\//;
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|avif|svg|bmp|ico|hdr|exr|ktx2|basis)$/i;
 const SCRIPT_EXT = /\.(m?js|cjs)$/i;
 
+// 규칙은 호스트+경로에만 적용한다 (쿼리·해시 제외)
+const matchTarget = (u: URL) => `${u.hostname}${u.pathname}`;
+
 export function classifyRequest(req: ExternalRequest): RequestKind {
   const u = new URL(req.url);
-  const target = `${u.hostname}${u.pathname}`;
+  const target = matchTarget(u);
 
   if (THREE_ANY.test(target)) return THREE_PINNED.test(target) ? 'three' : 'three_unpinned';
   if (req.resourceType === 'image' || IMAGE_EXT.test(u.pathname)) return 'image';
@@ -49,4 +53,10 @@ export function judgeRequests(requests: readonly ExternalRequest[]): RequestRepo
   const verdict: Verdict =
     has('library') || has('image') ? 'violation' : has('three_unpinned') ? 'instruction_miss' : 'ok';
   return { verdict, items };
+}
+
+/** 버전이 고정된 three.js 요청의 버전(three@0.170.0 → 0.170.0, cdnjs r170 → r170). 고정이 아니면 null */
+export function pinnedThreeVersion(url: string): string | null {
+  const m = THREE_PINNED.exec(matchTarget(new URL(url)));
+  return m ? (m[2] ?? m[3] ?? null) : null;
 }

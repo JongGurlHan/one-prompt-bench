@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { NestFactory } from '@nestjs/core';
+import { chromium } from 'playwright';
 import { registeredTools, type AdapterRegistry } from '../src/adapters/registry.js';
 import { AppModule } from '../src/app.module.js';
 import { defaultRepoRoot } from '../src/config/config.js';
@@ -21,7 +22,8 @@ import {
   type Clock,
   type Output,
 } from '../src/tokens.js';
-import { PlaceholderValidator, type Validator } from '../src/validation/validator.js';
+import { ValidateService } from '../src/validation/validate.service.js';
+import { PlaywrightValidator, type Validator } from '../src/validation/validator.js';
 
 test('AppModule: @Inject(CLOCK)로 받은 시계가 서비스에 들어오고 동작한다 (tsx, 메타데이터 없이)', async () => {
   const app = await NestFactory.createApplicationContext(AppModule, { logger: false });
@@ -51,7 +53,7 @@ test('AppModule: BatchService의 모든 의존성이 @Inject(TOKEN)으로 들어
     assert.equal(batch.git, app.get<GitClient>(GIT));
     assert.equal(batch.confirm, app.get<Confirm>(CONFIRM));
     assert.equal(batch.validator, app.get<Validator>(VALIDATOR));
-    assert.ok(batch.validator instanceof PlaceholderValidator);
+    assert.ok(batch.validator instanceof PlaywrightValidator);
     assert.equal(batch.out, app.get<Output>(OUTPUT));
     assert.equal(batch.runner, app.get(GenerationRunner));
   } finally {
@@ -71,4 +73,37 @@ test('AppModule: SmokeService도 같은 레지스트리·git·출력·Runner를 
   } finally {
     await app.close();
   }
+});
+
+test('AppModule: ValidateService가 VALIDATOR(PlaywrightValidator)·REPO_ROOT·OUTPUT을 @Inject(TOKEN)으로 받는다', async () => {
+  const app = await NestFactory.createApplicationContext(AppModule, { logger: false });
+  try {
+    const validate = app.get(ValidateService);
+    assert.equal(validate.repoRoot, app.get<string>(REPO_ROOT));
+    assert.equal(validate.validator, app.get<Validator>(VALIDATOR));
+    assert.ok(validate.validator instanceof PlaywrightValidator);
+    assert.equal(validate.out, app.get<Output>(OUTPUT));
+    const validator = validate.validator as PlaywrightValidator;
+    assert.equal(validator.repoRoot, app.get<string>(REPO_ROOT));
+    assert.equal(validator.out, app.get<Output>(OUTPUT));
+  } finally {
+    await app.close();
+  }
+});
+
+test('AppModule: 컨텍스트를 만들고 닫을 때 브라우저를 띄우지 않는다 (검증할 때만 띄운다)', async (t) => {
+  // playwright의 chromium은 모듈 하나뿐인 객체라, 여기서 바꾸면 검증기가 쓰는 launch도 바뀐다
+  const launches: unknown[] = [];
+  t.mock.method(chromium, 'launch', async (...args: unknown[]) => {
+    launches.push(args);
+    throw new Error('컨텍스트 생성 중에 브라우저를 띄웠다');
+  });
+
+  const app = await NestFactory.createApplicationContext(AppModule, { logger: false });
+  app.get<Validator>(VALIDATOR);
+  app.get(ValidateService);
+  app.get(BatchService);
+  await app.close();
+
+  assert.deepEqual(launches, []);
 });

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { classifyRequest, judgeRequests, type ExternalRequest } from '../src/request-rules.js';
+import { classifyRequest, judgeRequests, pinnedThreeVersion, type ExternalRequest } from '../src/request-rules.js';
 
 const s = (url: string): ExternalRequest => ({ url, resourceType: 'script' });
 
@@ -53,4 +53,24 @@ test('종합 판정: 위반 > 지시 미준수 > 정상', () => {
   assert.equal(judgeRequests([pinned, font]).verdict, 'ok'); // 웹폰트는 참고만
   assert.equal(judgeRequests([unpinned, font]).verdict, 'instruction_miss');
   assert.equal(judgeRequests([unpinned, lib]).verdict, 'violation');
+});
+
+test('고정된 three.js 버전 꺼내기: three@x.y.z → x.y.z, cdnjs r170 → r170, 고정이 아니면 null', () => {
+  const cases: [string, string | null][] = [
+    ['https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js', '0.170.0'],
+    ['https://unpkg.com/three@0.160.1/examples/jsm/controls/OrbitControls.js', '0.160.1'],
+    ['https://esm.sh/three@0.169.0', '0.169.0'],
+    ['https://esm.sh/v135/three@0.170.0/es2022/three.mjs', '0.170.0'],
+    ['https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', 'r128'],
+    ['https://cdn.jsdelivr.net/npm/three/build/three.module.js', null],
+    ['https://unpkg.com/three@latest/build/three.module.js', null],
+    ['https://cdn.jsdelivr.net/npm/three@0.170/build/three.module.js', null],
+    ['https://cdn.jsdelivr.net/npm/three-stdlib@2.29.0/index.js', null],
+    ['https://threejs.org/build/three.module.js', null],
+  ];
+  for (const [url, version] of cases) {
+    assert.equal(pinnedThreeVersion(url), version, url);
+    // 버전이 나오는 것과 classifyRequest의 'three'(고정) 판정이 같은 규칙이다
+    assert.equal(version !== null, classifyRequest(s(url)) === 'three', url);
+  }
 });

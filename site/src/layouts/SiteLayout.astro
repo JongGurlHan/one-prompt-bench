@@ -1,0 +1,50 @@
+---
+import Head from '../components/Head.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import type { TabId } from '../lib/tabs.ts';
+import '../styles/tokens.css';
+import '../styles/base.css';
+
+// 탭 페이지 공통 레이아웃: 헤더 + 본문 (새 창 래퍼 /view/는 쓰지 않는다)
+interface Props {
+  title: string;
+  current: TabId;
+}
+
+const { title, current } = Astro.props;
+---
+
+<html lang="ko">
+  <head>
+    <Head title={title} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <SiteHeader current={current} />
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>
+
+<style>
+  main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  @media (max-width: 767px) {
+    main {
+      padding: 16px;
+    }
+  }
+</style>

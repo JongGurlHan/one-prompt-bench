@@ -1,0 +1,8 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    // TS 6은 types 기본값이 []라 node 타입을 명시한다 (빌드 때 데이터를 읽는 node:fs 등)
+    "types": ["node"],
+    "noUncheckedIndexedAccess": true
+  }
+}

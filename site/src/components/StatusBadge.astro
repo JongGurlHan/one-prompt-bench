@@ -1,0 +1,53 @@
+---
+import type { StatusBadge } from '@opb/core';
+
+// 상태 배지 (docs/UI_GUIDE.md "상태 배지"). 라벨과 계열은 core statusOf·STATUS_TONE이 정한다
+interface Props {
+  badge: StatusBadge;
+}
+
+const { badge } = Astro.props;
+---
+
+<span class="badge" data-tone={badge.tone}>{badge.label}</span>
+
+<style>
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    line-height: 1.5;
+    white-space: nowrap;
+  }
+
+  .badge[data-tone='green'] {
+    background: var(--badge-green-bg);
+    color: var(--badge-green-text);
+  }
+
+  .badge[data-tone='yellow'] {
+    background: var(--badge-yellow-bg);
+    color: var(--badge-yellow-text);
+  }
+
+  .badge[data-tone='red'] {
+    background: var(--badge-red-bg);
+    color: var(--badge-red-text);
+  }
+
+  .badge[data-tone='purple'] {
+    background: var(--badge-purple-bg);
+    color: var(--badge-purple-text);
+  }
+
+  .badge[data-tone='blue'] {
+    background: var(--badge-blue-bg);
+    color: var(--badge-blue-text);
+  }
+
+  .badge[data-tone='gray'] {
+    background: var(--badge-gray-bg);
+    color: var(--badge-gray-text);
+  }
+</style>

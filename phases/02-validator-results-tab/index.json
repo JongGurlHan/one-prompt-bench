@@ -1,0 +1,94 @@
+{
+  "project": "One Prompt Bench",
+  "phase": "02-validator-results-tab",
+  "model": "claude-opus-5-5",
+  "timeout_sec": 3600,
+  "steps": [
+    {
+      "step": 0,
+      "name": "results-core",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test",
+        "npm run check:results"
+      ],
+      "started_at": "2026-10-12T20:16:04+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "f8c53f2a-2bfe-4d42-b523-9260f92dbf8b",
+      "cost_usd": 4.609,
+      "num_turns": 46,
+      "summary": "core에 results.ts(loadResults·checkResults 규칙 1~9+엄격 추가), display.ts(상태 라벨·이유·포맷·ModelDisplay), sandbox.ts, check:results 스크립트, @opb/core/testing 가짜 데이터 루트 빌더와 테스트 추가",
+      "handoff": "API(@opb/core): loadResults(root)→ResultEntry[](스키마 위반이면 ResultsDataError, .issues에 경로), checkResults(root)→CheckIssue[], displayModel(entry)→ModelDisplay(전부 문자열, 없으면 NO_VALUE '—'), statusOf·missingOutputReason·STATUS_LEGEND·STATUS_TONE·fillCount·REQUIREMENT_LABEL·MARK_LABEL, RESULT_IFRAME_SANDBOX(src/sandbox.ts). request-rules에 pinnedThreeVersion(url) 추가(기존 THREE_PINNED에 캡처만 더함).\n@opb/core/testing(packages/core/test/support/testing.ts): makeDataRoot(models=FAKE_MODELS)→임시 루트(models.json+prompts/, results/ 없음), writeResult(root, slug, spec)→{record,judgment,files}, buildResult(model, spec)(파일 없이), patchJson(root, rel, fn)(스키마 검사 없이 고치기), fakeModel, STATUS_CASES·makeStatusDataRoot(labels), FAKE_HTML·FAKE_JPEG·THREE_PINNED_URL 등. ok 기본값은 검증됨(three@0.170.0 요청 1개, spring~winter.jpg 4장), validation:null이면 검증 전.\n'검증 전'은 check:results 규칙 6에 걸린다 → 통과해야 하는 데이터는 makeStatusDataRoot(STATUS_LEGEND.filter(l => l !== '검증 전')).\n포맷 결정: 생성 실패 이유 = '기술적인 문제로 생성하지 못했어요. (시간 초과)'(괄호로 덧붙임). 걸린 시간은 초 단위 Math.round, 60초 이상은 'M분 S초'(60초 → '1분 0초'). 파일 크기는 항상 KB(쉼표·MB 없음), 비용은 toFixed(2)(쉼표 없음), api_failed도 비용은 '$0.00'. tokens = '입력 / 출력'. api_failed이고 사용량 0이면 토큰·그중 추론 모두 —.\n†(Codex CLI)·‡(Google) 표시는 값과 무관한 행 기준(outputTokensMark·reasoningTokensMark, 값이 —여도 붙음) — phase 5 비교표에서 —일 때 숨길지 정할 것. 판정 text는 '✓ 충족' 등 기호+문구 한 문자열, mark 필드로 스타일 구분.\ncheck:results 엄격 추가(문서에 없는 경우): results/ 아래 심볼릭 링크(junction 포함)·하위 폴더는 이슈, meta.json이 가리키지 않는 파일은 이슈, output.path·responseTextPath는 정확히 results/<slug>/index.html·response.txt, 스크린샷은 폴더 바로 아래, output.bytes도 파일 크기와 대조, 결과물 없는 기록의 judgment.json은 이슈. models.json이 깨지면 규칙 2·8은 건너뜀(규칙 1로 이미 실패).\n스크립트 출력: 이슈는 stderr에 '경로: 이유' 한 줄씩 + FAIL 요약, 통과는 stdout 'OK  check:results: N result folders in <root>'. OPB_DATA_ROOT 빈 문자열은 미설정으로 본다.\npipeline/test/core-import.test.ts에 @opb/core/testing 해석 테스트 추가(tsx·tsc NodeNext 모두 통과). COPY에 없는 새 문구는 쓰지 않았다('미고정'은 DATA 표).",
+      "completed_at": "2026-10-12T20:31:42+0900",
+      "attempts": 1
+    },
+    {
+      "step": 1,
+      "name": "playwright-validator",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test",
+        "npm run check:results"
+      ],
+      "started_at": "2026-10-12T20:31:42+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "566aac07-c64b-4a24-aaef-da10ffd6db9c",
+      "cost_usd": 4.4992,
+      "num_turns": 65,
+      "summary": "Playwright 검증기(validateResult: 로컬 서버+샌드박스 iframe 1280×800, loaded·콘솔/페이지 에러·외부 요청·JPEG 스크린샷 4장 → meta.json validation만 갱신), PlaywrightValidator로 VALIDATOR 교체, validate 명령(cli·ValidateService·루트 스크립트)과 실제 Chromium 픽스처 테스트(WebGL 포함) 추가",
+      "handoff": "API(pipeline/src/validation/): validate-result.ts validateResult(repoRoot, slug, {schedule, loadTimeoutMs, preparePage, now})→Validation, SCREENSHOT_SCHEDULE, CHROMIUM_ARGS, readValidationTarget(ok|not_ok|broken), validationPageHtml. Validator.validate는 이제 Promise<Validation>(batch는 무시). PlaywrightValidator(@Inject REPO_ROOT·OUTPUT, 시작·완료 한 줄 로그), PlaceholderValidator 삭제. validate.ts runValidate + validate.service.ts ValidateService(REPO_ROOT·VALIDATOR·OUTPUT). cli 'validate'(--force는 사용법 오류), 루트 스크립트 validate. batch.ts displayWidth를 export해 요약표에 재사용.\n⚠ WebGL 결과: launch args ['--enable-unsafe-swiftshader','--use-angle=swiftshader']. Windows·playwright 1.64.0·headless shell 156.0.8078.4에서 webgl2 · ANGLE(Vulkan SwiftShader) 확인(WebGL 픽스처 테스트, 스크린샷도 육안 확인). 이 PC는 플래그 없이도 됐지만 Playwright는 --enable-unsafe-swiftshader를 macOS에서만 기본으로 넣어 명시함. 리눅스 CI는 아직 미확인(deploy의 npm test가 확인하게 됨).\n결정: 스크린샷은 메모리에 받아 두고 검증이 끝까지 성공한 뒤에만 jpg·meta.json을 쓴다(도중 실패 시 파일 무변경). meta.json은 읽은 원본 JSON 객체에서 validation만 바꿔 Runner와 같은 형식(2칸 들여쓰기+\n)으로 쓴다(키 순서 유지). checkedAt=검증 완료 시각, pageErrors=err.message(타입 이름 없음).\nload 감지: 검증용 페이지 iframe의 onload 속성이 window 플래그를 세우고 waitForFunction(제한 loadTimeoutMs)으로 기다린다. page.goto는 domcontentloaded까지만(top load는 iframe load를 기다리므로). 서버는 '/'(검증용 페이지)·/results/<slug>/index.html(text/html; charset=utf-8)만, 나머지 404.\nvalidate 명령 결정(문서에 없음): --all에서 meta.json이 깨진 모델은 outcome을 알 수 없어 건너뜀이 아니라 실패(exit 1). 생성 전(meta.json 없음)은 --all이면 건너뜀, 직접 지정이면 실패. 요약은 운영자용 'loaded · 콘솔 에러 N · 페이지 에러 N · 외부 요청 N'(display.ts 에러 수 규칙을 다시 쓰지 않으려고 따로 표시).\n테스트로 확인한 사실: 샌드박스 iframe 안의 console·pageerror·request 이벤트가 page 리스너에 들어온다, 처리되지 않은 Promise 거부도 pageErrors, page.route가 iframe 요청도 가로챈다, FontFace 요청 resourceType은 'font'. 브라우저 테스트(test/validate-result.test.ts) 약 8초, pipeline 전체 npm test 약 12초.\n남은 것: 무한 루프 페이지는 스크린샷이 Playwright 기본 30초 제한에 걸려 throw(validation null로 남음). 문서 갱신 필요 — ARCHITECTURE 디렉토리 트리의 'phase 1은 자리표시' 문구, 검증기 절의 WebGL ⚠, Batch 규칙의 자리표시 문장. 레포 results/에 대해서는 검증을 실행하지 않았다.",
+      "completed_at": "2026-10-12T20:51:17+0900",
+      "attempts": 1
+    },
+    {
+      "step": 2,
+      "name": "site-setup",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test",
+        "npm run build",
+        "npm run check:results"
+      ],
+      "started_at": "2026-10-12T20:51:18+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "b573f414-68ba-438f-b3a1-bec2ace4f23b",
+      "cost_usd": 4.5145,
+      "num_turns": 69,
+      "summary": "site/ Astro 워크스페이스(@opb/site): 공통 레이아웃·토큰·헤더(결과 탭 하나), 결과 탭 상단(제목·설명·칩), /r/<slug>/ 바이트 그대로 사본(정적 endpoint), /view/<slug>/ 샌드박스 래퍼, 임시 데이터로 빌드한 dist 검사 테스트와 재사용 빌드 헬퍼",
+      "handoff": "site API: src/lib/data.ts loadSiteData()→{models: SiteModel[]}({entry: ResultEntry, display: ModelDisplay}, sortByRelease 순서), DATA_ROOT, RAW_FILES·rawFileSlugs·rawFileResponse. 빌드는 loadResults 1회 캐시(로그 \"[opb] data: N models from <root>\" 한 줄, 테스트가 1회임을 확인), dev는 요청마다 다시 읽음. paths.ts withBase·resultSrc·responseTextSrc·viewHref. copy.ts SITE_NAME·SITE_TAGLINE·SITE_DESCRIPTION·pageTitle·PROMPT_LABEL·RESULTS_TAB·resultsChips(n)·resultFrameTitle. tabs.ts TABS(결과 하나).\n레이아웃: layouts/SiteLayout.astro(title, current) = Head + SiteHeader + <main>(1200px, gap 24px). components/Head.astro(title: charset·viewport·title·description·og:description). styles/tokens.css에 색 전부 + --badge-<BadgeTone>-bg/-text(core STATUS_TONE 이름 그대로) + --font-sans/mono + --radius-card/box/control/pill, base.css(바탕·글꼴·:focus-visible 링). 칩은 <ul class=chips><li>.\n결과물 사본: 정적 endpoint src/pages/r/[slug]/index.html.ts·response.txt.ts. Astro가 endpoint 본문을 arrayBuffer로 그대로 써서 바이트 동일(BOM·CRLF·잘못된 UTF-8로 테스트). dev도 같은 주소(text/html|text/plain; charset=utf-8, 없는 slug 404)를 curl로 확인. site/public 복사는 쓰지 않음(.gitignore의 site/public/r/ 항목은 미사용). 경로는 meta.json 값이 아니라 results/<slug>/index.html·response.txt 고정.\n데이터 루트 기본값: 번들 뒤엔 import.meta.url이 바뀌어서 astro.config.mjs가 레포 루트를 vite.define __OPB_REPO_ROOT__(src/env.d.ts)로 넘기고 data.ts가 OPB_DATA_ROOT || 그 값을 고른다(빈 문자열=미설정). SITE_BASE는 /x/ 꼴로 정규화, 없으면 /.\n@opb/core TS 소스: Astro 7.3.8(Vite 8.3.4) build·dev와 astro check(Bundler 해석)에서 추가 설정 없이 해석됨. @astrojs/check 0.9.10 + TS 6.0.3 동작, astro check가 site/test의 .ts도 검사한다. site tsconfig = astro/tsconfigs/strict + types [node] + noUncheckedIndexedAccess.\n테스트 헬퍼(step 3 재사용): site/test/support/build.ts buildSite(dataRoot, {base=TEST_BASE \"/opb-test/\"})→BuiltSite{outDir, log, files(POSIX), has, read, readText}, 실패는 SiteBuildError(.log). 자식 프로세스 astro build --outDir <임시>, env ASTRO_TELEMETRY_DISABLED=1·NO_COLOR. sitePages(site)(r/ 제외), sha256. html.ts elements·element·attributes·text·metaContent·urls(파서 의존성 없음).\n빌드 동시성: (데이터 루트, base)마다 Promise 메모 + 프로세스 안 큐로 하나씩, 파일끼리는 site test 스크립트의 --test-concurrency=1로 순차. 빌드 1회 약 2초(첫 콜드 빌드 약 16초), site 테스트 전체 약 25초.\nCOPY 밖 결정: nav aria-label \"주요 메뉴\"는 시안(Main.dc.html)에서 가져옴. /view/에도 description meta를 넣었고 글꼴은 불러오지 않는다. 결과 탭 설명은 데스크톱 문구만(휴대폰 \"목록에서\"는 phase 5).\n남은 것: npm run build·astro check는 Astro 텔레메트리가 켜져 있다(테스트만 끔) → phase 3 워크플로에서 ASTRO_TELEMETRY_DISABLED=1 고려. 문서 갱신 필요: ARCHITECTURE \"사이트\"에 endpoint 방식·__OPB_REPO_ROOT__, 버전 참고(vite 8.3.4).",
+      "completed_at": "2026-10-12T21:12:49+0900",
+      "attempts": 1
+    },
+    {
+      "step": 3,
+      "name": "results-tab",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test",
+        "npm run build",
+        "npm run check:results"
+      ],
+      "started_at": "2026-10-12T21:12:49+0900",
+      "model": "claude-opus-5-5",
+      "cost_usd": 6.0655,
+      "num_turns": 78,
+      "attempts": 1,
+      "session_id": "243031db-9986-42f1-8f66-3e8b5256e545",
+      "summary": "결과 탭(/) 완성: 출시일 최신순 모델 목록(aria-pressed 버튼·상태 배지)과 범례, 결과물 iframe 하나의 실행 카드(다시 시작·새 창에서 열기), 결과물 없을 때 이유 문구와 응답 원문 fetch 카드, 요구사항 판정·생성 기록 카드, 첫 선택 ADR-025를 빌드 HTML에 넣음. dist 검사 12개 + Playwright 브라우저 테스트 8개 추가",
+      "handoff": "구조: src/lib/results-view.ts resultView(display)→ResultView{slug,displayName,runMeta,output{src,frameTitle,viewHref}|null,missing{reason,responseTextSrc|null}|null,requirements,note,record{status,requestCheck,tokens,cost,duration}}, initialSelection(displays), RECORD_KEYS, scriptJson('<'를 \\u003c로). 첫 선택 모델은 이 값으로 HTML을 그리고, 모델 전부의 ResultView는 <script type=application/json id=result-views>로 넣어 src/scripts/results-tab.ts(setupResultsTab)가 그대로 옮긴다(라벨·포맷 재계산 없음). components/StatusBadge.astro(data-tone=core BadgeTone, 11px). copy.ts에 MODEL_LIST·modelListMeta·runCardMeta·RUN_ACTIONS·REQUIREMENTS_CARD_TITLE·RECORD_CARD·RESPONSE_CARD_TITLE 추가.\nDOM 계약(테스트가 씀): [data-results-tab], button[data-slug][aria-pressed], [data-field=name|meta|actions|viewer|missing|reason|response|response-text|response-error|note|legend|requirements|record], dd[data-req=<key>][data-mark=pass|partial|fail|none], dd[data-record=<key>], [data-action=restart|open].\n동작 결정: 결과물 없는 모델을 고르면 iframe을 문서에서 떼어 낸다(about:blank 대신, 프레임이 남지 않음). 다시 붙일 때 src를 먼저 바꿔 한 번만 로드. 다시 시작 = 같은 src를 setAttribute로 다시 설정(Chromium에서 load 재발생 확인). 이미 고른 모델 재클릭은 아무것도 안 함. 원문 fetch는 요청 번호로 늦은 응답을 버리고 성공한 원문은 캐시. 모델 0개면 목록·실행 카드·JSON 없이 상단만.\nCOPY 밖 문구: 원문 불러오기 실패 '응답 원문을 불러오지 못했어요.'(copy.ts RESPONSE_LOAD_FAILED, HTML에 숨긴 <p>로 넣음). 결과 탭의 토큰 값에는 †를 붙이지 않음(각주가 비교표에만 있어서). '결과' 행 값은 배지가 아닌 상태 라벨 글자(시안대로). aria: aside는 h2 '모델'로, 실행 카드는 표시명 h2로 이름 붙임(새 문구 없음).\nCSS: base.css에 [hidden]{display:none!important} 추가. 선택된 목록 버튼은 2px 테두리만큼 padding을 1px 줄임. 폭 820px 스크린샷에서 두 열이 위아래로 쌓임(목록 max-width 340 유지) — 휴대폰 select는 phase 5.\n테스트: site/test/results-tab.test.ts(dist), results-tab-browser.test.ts(chromium.launch 기본 인자, 외부 요청 route abort, 결과물이 load마다 console에 runLog(slug)), support/static-server.ts serveDist(outDir, base), support/results-data.ts(TAB_CASES 12개·NO_OUTPUT 3개, 메모에 </script> 포함), html.ts hasAttr 추가. site 테스트 전체 약 21초. 변이 확인: 다시 시작·iframe 제거·늦은 원문 무시를 깨면 테스트가 실패함.\n남은 것: 문서 갱신(ARCHITECTURE '사이트'에 JSON 전달 방식·iframe 떼어 내기). npm run build는 여전히 텔레메트리 켜짐.",
+      "completed_at": "2026-10-13T01:19:23+0900"
+    }
+  ],
+  "created_at": "2026-10-12T17:06:34+0900",
+  "cost_usd": 19.6882,
+  "num_turns": 258,
+  "completed_at": "2026-10-13T01:19:23+0900"
+}

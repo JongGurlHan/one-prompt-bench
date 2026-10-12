@@ -3,7 +3,6 @@ import { PassThrough } from 'node:stream';
 import { test } from 'node:test';
 import { createTerminalConfirm, isYes } from '../src/system/confirm.js';
 import { createGitClient, type ExecFile } from '../src/system/git.js';
-import { PlaceholderValidator } from '../src/validation/validator.js';
 
 /* ───────── git (실제 git을 부르지 않고 실행 함수를 가짜로) ───────── */
 
@@ -73,15 +72,4 @@ test('터미널 확인: 입력이 끝나면(EOF) 거절', async () => {
   const answer = createTerminalConfirm(s.input, s.output)('지울까요?');
   s.input.end();
   assert.equal(await answer, false);
-});
-
-/* ───────── 검증기 자리표시 (phase 2가 Playwright 검증기로 바꾼다) ───────── */
-
-test('PlaceholderValidator: 아무것도 하지 않고 "검증기 없음 — validation은 null로 남는다"를 알린다', async () => {
-  const lines: string[] = [];
-  const validator = new PlaceholderValidator({ log: (l) => void lines.push(l), error: (l) => void lines.push(l) });
-  await validator.validate('gemini-3-8-flash');
-  assert.equal(lines.length, 1);
-  assert.match(lines[0]!, /gemini-3-8-flash/);
-  assert.match(lines[0]!, /검증기 없음 — validation은 null로 남는다/);
 });

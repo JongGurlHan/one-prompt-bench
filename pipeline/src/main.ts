@@ -5,6 +5,7 @@ import { AppModule } from './app.module.js';
 import { parseCommand, USAGE, type Command } from './cli.js';
 import { BatchService } from './generation/batch.service.js';
 import { SmokeService } from './generation/smoke.service.js';
+import { ValidateService } from './validation/validate.service.js';
 
 /* ────────────────────────────────────────────────────────────
  * 파이프라인 진입점. 명령 파싱 → Nest 컨텍스트(HTTP 서버 없음) → 명령 실행만 하는 얇은 층.
@@ -20,6 +21,8 @@ async function execute(app: INestApplicationContext, command: RunCommand): Promi
       return app.get(BatchService).gen(command);
     case 'smoke':
       return app.get(SmokeService).smoke(command);
+    case 'validate':
+      return app.get(ValidateService).validate(command);
     default: {
       const unhandled: never = command;
       throw new Error(`처리하지 않은 명령: ${JSON.stringify(unhandled)}`);

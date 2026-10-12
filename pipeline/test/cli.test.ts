@@ -103,3 +103,39 @@ test('USAGE에 smoke 명령과 저장 위치가 있다', () => {
   assert.match(USAGE, /smoke <slug>/);
   assert.match(USAGE, /results-smoke\//);
 });
+
+/* ───────── validate ───────── */
+
+test('validate <slug…> → 대상 slug 목록 (순서 유지, 중복 제거)', () => {
+  assert.deepEqual(parseCommand(['validate', 'gpt-6-sol', 'gemini-3-8-flash', 'gpt-6-sol']), {
+    kind: 'validate',
+    slugs: ['gpt-6-sol', 'gemini-3-8-flash'],
+    all: false,
+  });
+});
+
+test('validate --all → outcome ok인 모델 전부', () => {
+  assert.deepEqual(parseCommand(['validate', '--all']), { kind: 'validate', slugs: [], all: true });
+});
+
+test('validate에 slug도 --all도 없거나, 둘을 함께 주면 사용법 오류', () => {
+  for (const argv of [['validate'], ['validate', 'gpt-6-sol', '--all']]) {
+    const cmd = parseCommand(argv);
+    assert.equal(cmd.kind, 'usage_error', argv.join(' '));
+    assert.match(cmd.kind === 'usage_error' ? cmd.message : '', /validate/);
+  }
+});
+
+test('validate에 --force는 쓸 수 없다 (결과물을 지우지 않는다)', () => {
+  const cmd = parseCommand(['validate', '--all', '--force']);
+  assert.equal(cmd.kind, 'usage_error');
+  assert.match(cmd.kind === 'usage_error' ? cmd.message : '', /--force/);
+});
+
+test('validate --help → 실행하지 않고 도움말', () => {
+  assert.deepEqual(parseCommand(['validate', '--all', '--help']), { kind: 'help' });
+});
+
+test('USAGE에 validate 명령이 있다', () => {
+  assert.match(USAGE, /validate <slug…> \| --all/);
+});

@@ -454,12 +454,35 @@ class TestDetectUsageLimit:
     @pytest.mark.parametrize("result", [
         "Claude AI usage limit reached|1760000000",
         "You've hit your limit · resets 3pm (Asia/Seoul)",
+        "You've hit your session limit · resets 8pm (Asia/Seoul)",
+        "You've hit your weekly limit · resets Oct 14",
+        "You've hit your 5-hour limit · resets 7pm",
         "5-hour limit reached ∙ resets 7pm",
         "Weekly limit reached · resets Oct 14",
     ])
     def test_detects_limit_in_error_result(self, result):
         stdout = json.dumps({"is_error": True, "result": result})
         assert ex.detect_usage_limit(1, stdout, "") == result
+
+    def test_detects_real_session_limit_output(self):
+        # 2026-10-12 phase 2 step 0에서 실제로 받은 출력(필요한 필드만). 이전 정규식은 'session'이 끼어 놓쳤다
+        stdout = json.dumps({
+            "type": "result", "subtype": "success", "is_error": True, "num_turns": 9,
+            "terminal_reason": "api_error", "api_error_status": 429, "api_error": "usage_limit_reached",
+            "result": "You've hit your session limit · resets 8pm (Asia/Seoul)",
+        })
+        assert ex.detect_usage_limit(1, stdout, "") == "You've hit your session limit · resets 8pm (Asia/Seoul)"
+
+    def test_detects_structured_usage_limit_with_unknown_wording(self):
+        # 문구가 바뀌어도 CLI가 주는 구조화된 에러 종류로 잡는다
+        stdout = json.dumps({"is_error": True, "api_error": "usage_limit_reached", "result": "새로운 안내 문구"})
+        assert ex.detect_usage_limit(1, stdout, "") == "새로운 안내 문구"
+        stdout = json.dumps({"is_error": True, "api_error": "usage_limit_reached"})
+        assert ex.detect_usage_limit(1, stdout, "") == "usage_limit_reached"
+
+    def test_ignores_hit_your_rate_limit(self):
+        stdout = json.dumps({"is_error": True, "result": "You've hit your rate limit. Try again shortly."})
+        assert ex.detect_usage_limit(1, stdout, "") is None
 
     def test_detects_limit_in_stderr_without_json(self):
         assert "usage limit" in ex.detect_usage_limit(1, "", "Error: Claude AI usage limit reached")

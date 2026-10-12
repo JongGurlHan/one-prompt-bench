@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>validator fixture: external requests</title>
+</head>
+<body>
+<img alt="inline" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
+<script type="module">
+  // 순서가 정해지도록 하나씩 차례로 요청한다: three.js(script) → 텍스처(image) → 웹폰트(font)
+  // data:·blob: 요청은 기록하지 않는다
+  import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
+  console.log('fixture three revision ' + THREE.REVISION);
+
+  const img = new Image();
+  img.src = 'https://example.com/textures/bark.png';
+  await new Promise((resolve) => { img.onload = img.onerror = resolve; });
+
+  const font = new FontFace('FixtureFont', 'url(https://fonts.gstatic.com/s/fixture/v1/fixture.woff2)');
+  await font.load().catch(() => {});
+
+  const blobUrl = URL.createObjectURL(new Blob(['blob body'], { type: 'text/plain' }));
+  await fetch(blobUrl).then((r) => r.text());
+  console.log('fixture external: done');
+</script>
+</body>
+</html>

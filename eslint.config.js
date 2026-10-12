@@ -3,9 +3,10 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig(
-  globalIgnores(['**/node_modules/', '**/dist/', 'docs/', 'scripts/', 'phases/']),
+  globalIgnores(['**/node_modules/', '**/dist/', 'docs/', 'scripts/', 'phases/', 'site/.astro/']),
   {
-    files: ['packages/**/*.ts', 'pipeline/**/*.ts'],
+    // site의 .astro 파일은 린트하지 않는다 (타입은 astro check가 본다)
+    files: ['packages/**/*.ts', 'pipeline/**/*.ts', 'site/**/*.ts'],
     extends: [js.configs.recommended, tseslint.configs.recommended],
   },
   {
