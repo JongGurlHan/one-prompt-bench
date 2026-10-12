@@ -1,0 +1,50 @@
+---
+import type { GetStaticPaths, InferGetStaticPropsType } from 'astro';
+import { RESULT_IFRAME_SANDBOX } from '@opb/core';
+import Head from '../../components/Head.astro';
+import { pageTitle, resultFrameTitle } from '../../lib/copy.ts';
+import { loadSiteData } from '../../lib/data.ts';
+import { resultSrc } from '../../lib/paths.ts';
+import '../../styles/tokens.css';
+
+// "새 창에서 열기" 래퍼: 결과물을 직접 열지 않고 같은 샌드박스 iframe 하나로 화면을 채운다 (ADR-009)
+export const getStaticPaths = (async () => {
+  const { models } = await loadSiteData();
+  return models
+    .filter((m) => m.display.hasOutput)
+    .map(({ display }) => ({ params: { slug: display.slug }, props: { displayName: display.displayName } }));
+}) satisfies GetStaticPaths;
+
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+
+const { slug } = Astro.params;
+const { displayName } = Astro.props;
+---
+
+<html lang="ko">
+  <head>
+    <Head title={pageTitle(displayName)} />
+  </head>
+  <body>
+    <iframe sandbox={RESULT_IFRAME_SANDBOX} src={resultSrc(slug)} title={resultFrameTitle(displayName)}></iframe>
+  </body>
+</html>
+
+<style is:global>
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--viewer-bg);
+  }
+</style>
+
+<style>
+  iframe {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    border: 0;
+  }
+</style>

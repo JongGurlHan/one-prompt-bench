@@ -1,0 +1,58 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro';
+import { RESULTS_TAB, pageTitle, resultsChips } from '../lib/copy.ts';
+import { loadSiteData } from '../lib/data.ts';
+
+// 결과 탭(첫 화면). 모델 목록·실행 카드는 다음 step에서 이 아래에 더한다
+const { models } = await loadSiteData();
+---
+
+<SiteLayout title={pageTitle()} current="results">
+  <section class="intro">
+    <h1>{RESULTS_TAB.title}</h1>
+    <p>{RESULTS_TAB.description}</p>
+    <ul class="chips">
+      {resultsChips(models.length).map((chip) => <li>{chip}</li>)}
+    </ul>
+  </section>
+</SiteLayout>
+
+<style>
+  .intro {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+  }
+
+  p {
+    margin: 0;
+    max-width: 680px;
+    color: var(--text-body);
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 4px 0 0;
+    padding: 0;
+    list-style: none;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-strong);
+  }
+
+  .chips li {
+    padding: 4px 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-pill);
+  }
+</style>

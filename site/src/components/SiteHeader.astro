@@ -1,0 +1,95 @@
+---
+import { SITE_NAME, SITE_TAGLINE } from '../lib/copy.ts';
+import { withBase } from '../lib/paths.ts';
+import { TABS, type TabId } from '../lib/tabs.ts';
+
+interface Props {
+  current: TabId;
+}
+
+const { current } = Astro.props;
+---
+
+<header>
+  <div class="inner">
+    <div class="brand">
+      <span class="name">{SITE_NAME}</span>
+      <span class="tagline">{SITE_TAGLINE}</span>
+    </div>
+    <nav aria-label="주요 메뉴">
+      {
+        TABS.map((tab) => (
+          <a href={withBase(tab.path)} aria-current={tab.id === current ? 'page' : undefined}>
+            {tab.label}
+          </a>
+        ))
+      }
+    </nav>
+  </div>
+</header>
+
+<style>
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 18px 32px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .brand {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .name {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .tagline {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  nav a {
+    padding: 10px 16px;
+    border-radius: var(--radius-control);
+    color: var(--text-strong);
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  nav a:hover {
+    color: var(--accent-hover);
+  }
+
+  nav a[aria-current='page'] {
+    background: var(--nav-active-bg);
+    color: var(--nav-active-text);
+  }
+
+  @media (max-width: 767px) {
+    .inner {
+      padding: 14px 16px;
+    }
+  }
+</style>
