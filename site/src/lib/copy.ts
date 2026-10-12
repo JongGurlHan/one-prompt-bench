@@ -29,3 +29,34 @@ export const resultsChips = (modelCount: number) => [PROMPT_LABEL, fillCount('�
 
 /** 결과물 iframe의 title */
 export const resultFrameTitle = (displayName: string) => `${displayName} 결과물`;
+
+/** 결과 탭 모델 목록: 제목 · 정렬 안내 · 범례 상자 제목 */
+export const MODEL_LIST = { title: '모델', sortNote: '출시일 최신순', legendTitle: '상태 표시' } as const;
+
+/** 목록 항목 보조 줄: {회사} · {생성 도구} */
+export const modelListMeta = (company: string, generator: string) => `${company} · ${generator}`;
+
+/** 실행 카드 머리: {회사} · {생성 도구}로 생성 · {출시일} 출시 */
+export const runCardMeta = (company: string, generator: string, releasedAt: string) =>
+  `${company} · ${generator}로 생성 · ${releasedAt} 출시`;
+
+export const RUN_ACTIONS = { restart: '다시 시작', openInNewWindow: '새 창에서 열기' } as const;
+
+export const REQUIREMENTS_CARD_TITLE = '요구사항 판정';
+
+/** 카드 "생성 기록"의 행 (이 순서로 보인다) */
+export const RECORD_CARD = {
+  title: '생성 기록',
+  rows: {
+    status: '결과',
+    requestCheck: '조건 검사',
+    tokens: '토큰 (입력 / 출력)',
+    cost: '비용 (정가 기준)',
+    duration: '걸린 시간',
+  },
+} as const;
+
+export const RESPONSE_CARD_TITLE = '응답 원문';
+
+/** 응답 원문을 불러오지 못했을 때 — COPY에 없어서 step 3(results-tab)에서 정했다 */
+export const RESPONSE_LOAD_FAILED = '응답 원문을 불러오지 못했어요.';

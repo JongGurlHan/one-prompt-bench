@@ -1,10 +1,27 @@
 ---
+import { RESULT_IFRAME_SANDBOX, STATUS_LEGEND, STATUS_TONE } from '@opb/core';
+import StatusBadge from '../components/StatusBadge.astro';
 import SiteLayout from '../layouts/SiteLayout.astro';
-import { RESULTS_TAB, pageTitle, resultsChips } from '../lib/copy.ts';
+import {
+  MODEL_LIST,
+  RECORD_CARD,
+  REQUIREMENTS_CARD_TITLE,
+  RESPONSE_CARD_TITLE,
+  RESPONSE_LOAD_FAILED,
+  RESULTS_TAB,
+  RUN_ACTIONS,
+  modelListMeta,
+  pageTitle,
+  resultsChips,
+} from '../lib/copy.ts';
 import { loadSiteData } from '../lib/data.ts';
+import { RECORD_KEYS, initialSelection, resultView, scriptJson } from '../lib/results-view.ts';
 
-// 결과 탭(첫 화면). 모델 목록·실행 카드는 다음 step에서 이 아래에 더한다
+// 결과 탭(첫 화면, docs/UI_GUIDE.md "결과 탭"). 첫 선택 모델은 빌드 때 HTML로 그려서 스크립트 전에도 보인다 (ADR-025)
 const { models } = await loadSiteData();
+const views = models.map((m) => resultView(m.display));
+const selected = initialSelection(models.map((m) => m.display));
+const view = views.find((v) => v.slug === selected?.slug);
 ---
 
 <SiteLayout title={pageTitle()} current="results">
@@ -15,7 +32,113 @@ const { models } = await loadSiteData();
       {resultsChips(models.length).map((chip) => <li>{chip}</li>)}
     </ul>
   </section>
+
+  {
+    view && (
+      <div class="columns" data-results-tab>
+        <aside class="models" aria-labelledby="models-title">
+          <div class="list-head">
+            <h2 id="models-title">{MODEL_LIST.title}</h2>
+            <span>{MODEL_LIST.sortNote}</span>
+          </div>
+          <ul class="model-list">
+            {models.map(({ display: d }) => (
+              <li>
+                <button type="button" class="model" data-slug={d.slug} aria-pressed={d.slug === view.slug ? 'true' : 'false'}>
+                  <span class="model-main">
+                    <span class="model-name">{d.displayName}</span>
+                    <span class="model-meta">{modelListMeta(d.company, d.generator)}</span>
+                  </span>
+                  <span class="model-side">
+                    <span class="model-date">{d.releasedAt}</span>
+                    <StatusBadge badge={d.status} />
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div class="legend" data-field="legend">
+            <span class="legend-title">{MODEL_LIST.legendTitle}</span>
+            <ul>
+              {STATUS_LEGEND.map((label) => (
+                <li>
+                  <StatusBadge badge={{ label, tone: STATUS_TONE[label] }} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        </aside>
+
+        <div class="result">
+          <section class="card run" aria-labelledby="run-name">
+            <div class="run-head">
+              <div class="run-title">
+                <h2 id="run-name" data-field="name">{view.displayName}</h2>
+                <span data-field="meta">{view.runMeta}</span>
+              </div>
+              <div class="run-actions" data-field="actions" hidden={view.output === null}>
+                <button type="button" class="small-button" data-action="restart">{RUN_ACTIONS.restart}</button>
+                <a class="small-button" data-action="open" href={view.output?.viewHref} target="_blank" rel="noopener">
+                  {RUN_ACTIONS.openInNewWindow}
+                </a>
+              </div>
+            </div>
+            <div class="viewer" data-field="viewer">
+              {view.output && <iframe sandbox={RESULT_IFRAME_SANDBOX} src={view.output.src} title={view.output.frameTitle} />}
+              <div class="missing" data-field="missing" hidden={view.missing === null}>
+                <p data-field="reason">{view.missing?.reason}</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="card response" data-field="response" aria-labelledby="response-title" hidden={!view.missing?.responseTextSrc}>
+            <h3 id="response-title">{RESPONSE_CARD_TITLE}</h3>
+            <pre data-field="response-text" tabindex="0" />
+            <p class="response-error" data-field="response-error" hidden>{RESPONSE_LOAD_FAILED}</p>
+          </section>
+
+          <div class="cards">
+            <section class="card" aria-labelledby="requirements-title">
+              <h3 id="requirements-title">{REQUIREMENTS_CARD_TITLE}</h3>
+              <dl class="rows" data-field="requirements">
+                {view.requirements.map((r) => (
+                  <div class="row">
+                    <dt>{r.label}</dt>
+                    <dd class="mark" data-req={r.key} data-mark={r.mark ?? 'none'}>
+                      {r.text}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              <p class="note" data-field="note" hidden={view.note === null}>{view.note}</p>
+            </section>
+            <section class="card" aria-labelledby="record-title">
+              <h3 id="record-title">{RECORD_CARD.title}</h3>
+              <dl class="rows" data-field="record">
+                {RECORD_KEYS.map((key) => (
+                  <div class="row">
+                    <dt>{RECORD_CARD.rows[key]}</dt>
+                    <dd class="value" data-record={key}>
+                      {view.record[key]}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          </div>
+        </div>
+
+        <script is:inline type="application/json" id="result-views" set:html={scriptJson(views)} />
+      </div>
+    )
+  }
 </SiteLayout>
+
+<script>
+  import { setupResultsTab } from '../scripts/results-tab.ts';
+
+  setupResultsTab();
+</script>
 
 <style>
   .intro {
@@ -32,19 +155,23 @@ const { models } = await loadSiteData();
     letter-spacing: -0.02em;
   }
 
-  p {
+  .intro p {
     margin: 0;
     max-width: 680px;
     color: var(--text-body);
+  }
+
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 
   .chips {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin: 4px 0 0;
-    padding: 0;
-    list-style: none;
+    margin-top: 4px;
     font-family: var(--font-mono);
     font-size: 12px;
     color: var(--text-strong);
@@ -54,5 +181,331 @@ const { models } = await loadSiteData();
     padding: 4px 10px;
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-pill);
+  }
+
+  /* ───────── 두 열: 왼쪽 목록, 오른쪽 결과 (좁으면 위아래로 쌓인다) ───────── */
+
+  .columns {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 24px;
+  }
+
+  .models {
+    flex: 1 1 280px;
+    max-width: 340px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .result {
+    flex: 999 1 560px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ───────── 모델 목록 ───────── */
+
+  .list-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .list-head h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .list-head span {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .model-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .model {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 56px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-box);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .model:hover {
+    border-color: var(--border-strong);
+  }
+
+  /* 테두리가 2px로 두꺼워진 만큼 안쪽 여백을 줄여 내용이 움직이지 않게 한다 */
+  .model[aria-pressed='true'] {
+    padding: 9px 13px;
+    border: 2px solid var(--accent);
+    background: var(--surface-selected);
+  }
+
+  .model-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .model-name {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .model-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .model-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .model-date {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .legend {
+    margin-top: 8px;
+    padding: 12px;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-box);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .legend-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-strong);
+  }
+
+  .legend ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* ───────── 카드 ───────── */
+
+  .card {
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  /* 실행 카드: 머리 줄 + 실행 영역 */
+  .run {
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  .run-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    min-height: 61px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .run-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 10px;
+    min-width: 0;
+  }
+
+  .run-title h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .run-title span {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .run-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .small-button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+    color: var(--accent);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .small-button:hover {
+    color: var(--accent-hover);
+    border-color: var(--accent);
+  }
+
+  .viewer {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    background: var(--viewer-bg);
+  }
+
+  .viewer iframe {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  .missing {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+  }
+
+  .missing p {
+    margin: 0;
+    max-width: 480px;
+    color: var(--viewer-title);
+    font-size: 16px;
+    font-weight: 500;
+  }
+
+  /* 응답 원문 */
+  .response pre {
+    margin: 0;
+    max-height: 480px;
+    overflow: auto;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-strong);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .response-error {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-body);
+  }
+
+  /* 아래 카드 두 개: 요구사항 판정 · 생성 기록 */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
+
+  .rows {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    font-size: 14px;
+  }
+
+  dt {
+    color: var(--text);
+  }
+
+  dd {
+    margin: 0;
+    text-align: right;
+  }
+
+  .mark {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-strong);
+    white-space: nowrap;
+  }
+
+  /* 판정 전 · — */
+  .mark[data-mark='none'] {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-muted);
+  }
+
+  .value {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-strong);
+  }
+
+  .note {
+    margin: 4px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--divider);
+    font-size: 13px;
+    color: var(--text-body);
   }
 </style>

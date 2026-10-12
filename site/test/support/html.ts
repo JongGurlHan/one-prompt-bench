@@ -67,6 +67,10 @@ export function find(html: string, name: string, where?: (attrs: Map<string, str
 /** class 속성에 그 이름이 있는지 (findAll의 where용) */
 export const hasClass = (cls: string) => (attrs: Map<string, string>) => (attrs.get('class') ?? '').split(/\s+/).includes(cls);
 
+/** 속성 name이 있는지, value를 주면 값까지 같은지 (findAll의 where용) */
+export const hasAttr = (name: string, value?: string) => (attrs: Map<string, string>) =>
+  value === undefined ? attrs.has(name) : attrs.get(name) === value;
+
 /** 속성 문자열 → 이름(소문자)·값(엔티티 해제). 값 없는 속성은 '' */
 export function attributes(source: string): Map<string, string> {
   const attrs = new Map<string, string>();

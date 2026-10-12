@@ -14,7 +14,8 @@ export const NEWEST = fakeModel('model-newest', 'google', '2026-10-10', 'Model N
 export const FIRST_WITH_OUTPUT = 'model-ok';
 /** ✗ 미충족·△ 부분 충족이 섞인 판정 */
 export const FAIL_MARK = fakeModel('model-fail-mark', 'openai', '2026-09-25', 'Model Fail Mark');
-export const FAIL_MARK_NOTE = '나무는 있지만 겨울 모습이 없다';
+/** '<'가 든 메모: 페이지에 넣은 JSON이 </script>에서 끊기지 않고, 메모가 글자 그대로 나오는지 본다 */
+export const FAIL_MARK_NOTE = '나무는 있지만 겨울 모습이 없다 </script><b>끝</b>';
 
 /** 결과물이 load될 때마다 콘솔에 남는 줄 */
 export const runLog = (slug: string) => `opb-load:${slug}`;
@@ -66,7 +67,8 @@ const withFixtureFiles = (c: StatusCase): TabCase => {
   if (result === null) return { label, model, result };
   if (result.outcome === 'ok') return { label, model, result: { ...result, html: runHtml(model.slug) } };
   const responseText = RESPONSE_TEXT[model.slug];
-  return { label, model, result: responseText ? { ...result, responseText } : result };
+  if (result.outcome === 'api_failed' || !responseText) return { label, model, result };
+  return { label, model, result: { ...result, responseText } };
 };
 
 export const TAB_CASES: readonly TabCase[] = [

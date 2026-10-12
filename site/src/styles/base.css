@@ -32,3 +32,8 @@ a:hover {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* hidden 속성은 컴포넌트의 display 값보다 앞선다 (스크립트가 hidden으로 보이고 숨긴다) */
+[hidden] {
+  display: none !important;
+}
