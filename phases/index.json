@@ -7,7 +7,8 @@
     },
     {
       "dir": "02-validator-results-tab",
-      "status": "pending"
+      "status": "error",
+      "failed_at": "2026-10-12T17:07:15+0900"
     }
   ]
 }
