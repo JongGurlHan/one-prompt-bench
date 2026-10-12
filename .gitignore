@@ -1,0 +1,22 @@
+node_modules/
+.next/
+out/
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# env / secrets — 하네스는 git add -A 로 자동 커밋한다
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+
+# phase execution outputs
+phases/**/step*-output.json
+phases/**/step*-result.json
+phases/**/*.tmp
+
+# python / local
+__pycache__/
+.pytest_cache/
+.claude/settings.local.json
