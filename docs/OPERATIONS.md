@@ -21,7 +21,7 @@ Claude 세션(대화형·무인 모두)은 실제 모델 호출을 하지 않는
 
 ## smoke로 확인할 것 (⚠ 도구별 첫 생성 전에)
 
-`npm run smoke -- <slug>`는 짧은 요청 한 번으로 도구·인증·출력 파싱을 확인한다. 한도를 조금 쓴다. 결과는 `results-smoke/<slug>-<시각>/`에 남는다(커밋 안 됨). 도구 원본 출력(stdout)도 함께 저장되니, 확인한 뒤 Claude에게 "이 출력을 어댑터 테스트 fixture로 옮겨 줘"라고 시킨다.
+`npm run smoke -- <slug>`는 짧은 요청 한 번으로 도구·인증·출력 파싱을 확인한다. 한도를 조금 쓴다. 결과는 `results-smoke/<slug>-<시각>/`에 남는다(커밋 안 됨). meta.json·response.txt와 함께 도구 원본 출력(`raw-*` 파일, Gemini는 `raw-stream.jsonl`·`raw-error.json`)이 저장되니, 확인한 뒤 Claude에게 "이 출력을 어댑터 테스트 fixture로 옮기고 ⚠ 항목을 확정해 줘"라고 시킨다. 실패(`api_failed`)하면 종료 코드가 1이다.
 
 | 도구 | 확인할 것 |
 |---|---|

@@ -1,6 +1,6 @@
 # 데이터 형식과 표시 규칙
 
-데이터 모양과 불변식의 단일 출처는 `packages/core/src/schema.ts`(zod)다. 이 문서는 그 의도와 아직 코드에 반영되지 않은 변경, 사이트 표시 규칙을 적는다. 예시는 `packages/core/examples/`.
+데이터 모양과 불변식의 단일 출처는 `packages/core/src/schema.ts`(zod)다. 이 문서는 그 의도와 앞으로 할 스키마 변경, 사이트 표시 규칙을 적는다. 예시는 `packages/core/examples/`.
 
 ## 파일 배치
 
@@ -37,8 +37,8 @@ results/<slug>/
 
 ## meta.json (`GenerationRecordSchema`)
 
-- `modelSlug`, `modelId`(실제로 보낸 값 스냅샷), `prompt`(`id`·`version`·`sha256` — `{system, user}`의 해시), `params`(`reasoningEffort: "high"`, `maxOutputTokens`)
-- `runtime`: `gitCommit`(생성 전에 커밋이 한 번은 있어야 함), `nodeVersion`, `generator`(아래)
+- `modelSlug`, `modelId`(실제로 보낸 값 스냅샷), `prompt`(`id`·`version`·`sha256` — `{system, user}`의 해시), `params`(`reasoningEffort: "high"`, `maxOutputTokens` — 양의 정수, 상한을 지정할 수 없는 Codex CLI는 `null` = 도구 기본값)
+- `runtime`: `gitCommit`(생성 전에 커밋이 한 번은 있어야 함), `nodeVersion`, `generator: { tool: 'claude-code' | 'codex-cli' | 'gemini-api', version, invocation }`. `version`은 CLI 버전 또는 SDK 패키지 버전이고, `invocation`은 프롬프트·비밀값을 뺀 실제 호출(명령줄 또는 SDK 설정 JSON)이다. 시스템 프롬프트 내용은 자리표시로 둔다(조건 공개용).
 - `startedAt`, `finishedAt`, `attempts[]`(시도마다 응답 또는 에러, `latencyMs`, `firstTokenMs`, 사용량)
 - `outcome`: `ok` / `no_html` / `truncated` / `refused` / `api_failed`
 - `responseTextPath`, `output`(`path`·`bytes`·`sha256`·`extraction`)
@@ -46,17 +46,11 @@ results/<slug>/
 - `cost`: `inputUsd`·`outputUsd`·`totalUsd`, `pricingAsOf` — models.json 정가로 계산
 - `validation`: 생성 직후 null, 검증기가 채움 (`loaded`, `consoleErrors`, `pageErrors`, `externalRequests`, `screenshots`, `environment`, `checkedAt`)
 
-### 스키마 변경 예정 (아직 코드에 없음, 첫 phase에서 반영)
+### 스키마 변경 예정
 
-실제 데이터가 아직 없으므로 `schemaVersion`은 1을 유지한다.
+지금 예정된 변경은 없다. 스키마를 바꿔야 하면 구현 전에 이 절에 표(대상 · 지금 · 바꿀 모양 · 이유)로 적는다.
 
-| 대상 | 지금 | 바꿀 모양 | 이유 |
-|---|---|---|---|
-| `runtime.sdkPackage`·`sdkVersion` | SDK 이름·버전 | `runtime.generator: { tool: 'claude-code' \| 'codex-cli' \| 'gemini-api', version: string, invocation: string }` | CLI 방식으로 바뀜. `invocation`은 프롬프트·비밀값을 뺀 실제 호출(명령줄 또는 SDK 설정 JSON) — 조건 공개용 |
-| `params.maxOutputTokens` | 양의 정수 | 양의 정수 \| `null` | Codex CLI는 상한을 지정할 수 없음. null = 도구 기본값 |
-| `ProviderAdapter.sdk` | `{ package, version }` | `generator: { tool, version }` + 호출마다 `invocation` | 위와 같음 |
-| `PromptSpec.system` | null | `prompts/<id>-<version>.system.md` 내용 | 공통 최소 시스템 프롬프트 (ADR-005) |
-| `validation.screenshots[].path` | `.webp$` 정규식 (`schema.ts` 주석·메시지 포함) | `.jpg$` 정규식. `examples/meta.sample.json`의 스크린샷 경로 4개도 `.jpg`로 | 스크린샷은 Playwright JPEG (ADR-010) |
+phase 1에서 반영한 변경(SDK 방식 → CLI 방식): `runtime.sdkPackage`·`sdkVersion` → `runtime.generator`, `params.maxOutputTokens`에 null 허용, `PromptSpec.system` = system.md 내용, 스크린샷 경로 `.webp` → `.jpg`. 실제 데이터가 없던 때라 `schemaVersion`은 1을 유지했다.
 
 ### 정규화 규칙 (어댑터 책임)
 

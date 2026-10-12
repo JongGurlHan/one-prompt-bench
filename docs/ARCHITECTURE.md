@@ -22,15 +22,19 @@ npm workspaces 모노레포. 모든 TypeScript는 ESM(`"type": "module"`, NodeNe
 │   ├── src/extract-html.ts         응답에서 HTML 꺼내기
 │   ├── src/request-rules.ts        외부 요청 → 조건 검사 판정
 │   ├── src/sort.ts                 목록 정렬 규칙
+│   ├── src/prompt.ts               프롬프트 파일 읽기 (loadPrompt, CURRENT_PROMPT)
+│   ├── src/index.ts                공개 진입점 (`@opb/core`, 빌드 없이 TS 소스를 직접 내보냄)
 │   ├── src/results.ts              (신규) results/ 읽기·검증·조인 — 사이트와 check:results가 공유
 │   ├── src/display.ts              (신규) 상태 라벨·숫자 포맷 등 표시 규칙 (DATA.md "표시 규칙")
 │   ├── test/  examples/  scripts/check-samples.ts
 ├── pipeline/                   @opb/pipeline — NestJS 스탠드얼론 CLI
-│   ├── src/main.ts                 명령 파싱(node:util parseArgs) → createApplicationContext
-│   ├── src/adapters/               claude-code, codex, gemini 어댑터 + 자식 프로세스 실행 유틸
+│   ├── src/main.ts                 진입점 → cli.ts(parseArgs) → createApplicationContext. 토큰은 tokens.ts
+│   ├── src/config/                 레포 루트 + .env(dotenv.parse, process.env에 넣지 않음)
+│   ├── src/adapters/               도구별 어댑터(gemini/ …) + registry.ts(도구 → 생성 함수·도구별 preflight·기록 래퍼)
 │   ├── src/generation/             batch(일괄 실행), preflight(추가 결제 차단 점검), smoke
-│   ├── src/validation/             Playwright 검증기
-│   ├── src/judging/                판정 도우미
+│   ├── src/system/                 git·터미널 확인(y/N) 같은 I/O
+│   ├── src/validation/             Playwright 검증기 (phase 1은 `VALIDATOR` 토큰에 자리표시만)
+│   ├── src/judging/                (신규) 판정 도우미
 │   └── test/fixtures/              CLI 출력 샘플, 검증용 HTML
 ├── site/                       @opb/site — Astro 정적 사이트
 ├── docs/                       설계 문서 (devlog/는 phase별 개발 일지, design/은 시안 원본)
@@ -56,7 +60,7 @@ npm workspaces 모노레포. 모든 TypeScript는 ESM(`"type": "module"`, NodeNe
 | `npm run smoke -- <slug>` | 짧은 실호출로 도구·인증·출력 파싱 확인 → `results-smoke/` | **있음 — 사람만** |
 | `npm run gen -- <slug…> \| --all [--force]` | 생성 + 검증 → `results/` | **있음 — 사람만** |
 
-`gen`·`generate`·`smoke` 스크립트, 파이프라인 진입점 직접 실행(`tsx`·`node … main.ts gen|smoke`), `claude -p`·`codex exec`·Gemini API 직접 호출은 `.claude/hooks/block_dangerous.py`가 Claude 세션에서 막는다. 무인 세션은 권한 확인 없이 돌기 때문에 이 훅이 실질적인 방어선이다. 진입점 파일 이름을 바꾸면 훅 패턴과 `scripts/test_block_dangerous.py`도 함께 바꾼다. 사람은 터미널이나 `! <명령>`으로 실행한다.
+`gen`·`generate`·`smoke` 스크립트, 파이프라인 진입점 직접 실행(`tsx`·`node … main.ts gen|smoke`), `claude -p`·`codex exec`·Gemini API 직접 호출은 `.claude/hooks/block_dangerous.py`가 Claude 세션에서 막는다. 무인 세션은 권한 확인 없이 돌기 때문에 이 훅이 실질적인 방어선이다. 진입점 파일 이름을 바꾸면 훅 패턴과 `scripts/test_block_dangerous.py`도 함께 바꾼다. 루트 스크립트는 `tsx --tsconfig pipeline/tsconfig.json pipeline/src/main.ts <명령>` 형태다. tsx는 tsconfig를 현재 폴더에서 찾기 때문에, 루트에서 실행할 때 지정하지 않으면 `experimentalDecorators`가 꺼져 데코레이터가 실패한다. 사람은 터미널이나 `! <명령>`으로 실행한다.
 
 ## 생성 파이프라인
 
@@ -67,28 +71,32 @@ models.json ─▶ Batch ─▶ Runner(재시도·타임아웃·저장·비용) 
 ```
 
 ### 책임 분리 (기존 코드 유지)
-- **Runner** (`core/src/runner.ts`): 재시도·타임아웃·백오프·시간 측정·파일 저장·비용 계산. 재시도 정책 `DEFAULT_RUN_POLICY` = 최대 3회, 시도당 20분, 백오프 5초 → 최대 60초(`Retry-After` 우선). 출력 폴더가 비어 있지 않으면 거부.
+- **Runner** (`core/src/runner.ts`): 재시도·타임아웃·백오프·시간 측정·파일 저장·비용 계산. 재시도 정책 `DEFAULT_RUN_POLICY` = 최대 3회, 시도당 20분, 백오프 5초 → 최대 60초(`Retry-After` 우선). 출력 폴더가 비어 있지 않으면 거부. 첫 호출 전에 `describeInvocation`을 불러 `runtime.generator`를 만든다(여기서 실패하면 모델을 부르지 않는다).
+  - 알려진 한계: 타임아웃으로 끊긴 시도는 Runner가 abort 즉시 끝내서, 그 시도에서 이미 과금된 부분 사용량이 기록되지 않는다(어댑터는 담아서 던지지만 Runner가 먼저 끝난다). 다른 이유로 스트림 도중 끊긴 시도는 사용량이 남는다.
 - **Adapter**: 호출 1회 + 응답 정규화(`ProviderResponse`) + 에러 분류(`ClassifiedError`)만. 재시도 여부는 정하지 않는다. '기술적 실패'(재시도 대상)의 정의는 `RETRYABLE_FAILURES` 한 곳.
 - **Batch** (`pipeline/src/generation/`): 대상 선택, 순차 실행, 덮어쓰기 규칙, 생성 직후 검증 호출, 끝에 요약표 출력.
 
-### 기존 코드에서 바꿀 것 (`docs/DATA.md` "스키마 변경 예정")
-- `ProviderAdapter.sdk` → `generator { tool, version, invocation }`. meta.json `runtime`도 같이.
-- `GenerationRequest.maxOutputTokens`·`params.maxOutputTokens`를 `number | null`로 (Codex는 null).
-- `PromptSpec.system`에 `prompts/season-tree-v1.system.md` 내용을 넣는다 (지금은 null).
+### 어댑터 인터페이스 (`core/src/adapter.ts`, phase 1에서 CLI 방식으로 전환)
+- 필수 멤버: `provider`, `generator { tool, version }`, `supportsMaxOutputTokens`, `describeInvocation(req)`, `generate(req, signal)`, `classifyError(err)`. meta.json `runtime.generator`는 `{ ...generator, invocation }`이다.
+- 출력 상한은 `DEFAULT_MAX_OUTPUT_TOKENS`(65,536) 한 곳에 있고, `maxOutputTokensFor(adapter, limit?)`가 상한을 지원하지 않는 도구(Codex)에는 null을 돌려준다. batch는 기본값, smoke는 8,000을 넘긴다.
+- `PromptSpec`(`core/src/prompt.ts`)의 `system`은 항상 문자열이다(ADR-005).
 - 이전 설계의 Anthropic SDK 어댑터는 제거됐다. 새로 만들지 않는다.
 
 ### 프롬프트 읽기
 - `prompts/<id>-<version>.md`(user)와 `prompts/<id>-<version>.system.md`(system)를 UTF-8로 읽어 **내용 그대로**(끝 줄바꿈 포함, trim 없음) 보낸다. 로더는 core에 둔다.
-- 줄바꿈이 OS에 따라 바뀌지 않게 `.gitattributes`가 `prompts/**`를 LF로 고정한다(개발 PC는 `core.autocrlf=true`). 로더는 CRLF를 고치지 않고 거부한다. 조용히 고치면 보낸 내용과 sha256이 바뀐 사실이 숨기 때문이다.
+- 줄바꿈이 OS에 따라 바뀌지 않게 `.gitattributes`가 `prompts/**`를 LF로 고정한다(개발 PC는 `core.autocrlf=true`). 로더는 CRLF를 고치지 않고 거부한다. 조용히 고치면 보낸 내용과 sha256이 바뀐 사실이 숨기 때문이다. 같은 이유로 단독 CR, UTF-8 BOM, UTF-8이 아닌 파일, 파일 없음도 거부한다(에러에 파일 경로 포함).
 
 ### Batch 규칙
 - 모델은 순차 실행. 한 모델이 실패해도 다음 모델을 계속한다.
 - 건너뛰기: `meta.json`이 있고 `outcome`이 `api_failed`가 아니면 건너뛴다. `api_failed`(한도 초과 포함)이거나 `meta.json` 없이 파일만 남은 폴더(중단된 생성)는 비우고 다시 생성한다.
 - `--force`: 폴더를 비우고 새로 만든다. 예전 판정(judgment.json)도 함께 지워진다. 실행 전에 지울 폴더 목록을 보여 주고 확인받는다.
 - `usage_limit`(구독 한도)는 바로 재시도하지 않고 기록한 뒤 다음 모델로 넘어간다. 한도가 풀린 뒤 다시 실행하면 그 모델만 돈다.
-- outcome이 `ok`면 바로 검증기를 실행한다. 검증이 실패해도 batch는 계속하고 `validation`은 null로 남긴다(나중에 `npm run validate`).
+- outcome이 `ok`면 바로 검증기(`VALIDATOR` 토큰)를 실행한다. 검증이 실패해도 batch는 계속하고 `validation`은 null로 남긴다(나중에 `npm run validate`). phase 1의 `VALIDATOR`는 아무것도 하지 않는 자리표시(`pipeline/src/validation/validator.ts`)이고, phase 2가 Playwright 검증기로 바꾼다.
+- meta.json이 스키마를 통과하지 못하거나 `modelSlug`가 폴더 이름과 다르면 건드리지 않고 실패로 보고한 뒤 다음 모델로 간다(`--force`면 확인 목록에 넣고 비운다).
+- 순서: 대상 선택 → preflight → HEAD 커밋 → 프롬프트 1회 로드(깨진 프롬프트로 폴더를 비우지 않게) → 폴더 상태 판정 → `--force` 확인 → 순차 실행 → 요약표.
+- 종료 코드: preflight 실패·사용법 오류·`--force` 거절·깨진 meta.json·모델 처리 중 예외·검증기 오류면 1. 모델 outcome이 `api_failed`(한도 초과 포함)인 것은 기록이 정상으로 남은 것이라 0.
 - **preflight** (실제 호출 전 자동 점검, 하나라도 실패하면 아무것도 호출하지 않고 종료):
-  - 환경변수에 `ANTHROPIC_API_KEY`·`OPENAI_API_KEY`가 없다.
+  - 환경변수에 `ANTHROPIC_API_KEY`·`OPENAI_API_KEY`가 없다(빈 문자열로 있어도 실패).
   - 대상 모델의 생성 도구마다 어댑터가 등록돼 있다. 어댑터가 아직 없는 도구가 섞이면 아무것도 호출하지 않는다. 도구별 인증 점검(아래 두 항목)은 그 도구의 어댑터와 함께 만든다.
   - Anthropic 대상이 있으면 `claude auth status` 결과의 인증 방식이 claude.ai 구독이다.
   - OpenAI 대상이 있으면 `codex login status`가 ChatGPT 로그인이다. ⚠ 출력 형식은 smoke 때 확인.
@@ -125,14 +133,20 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 
 **Gemini API** (`@google/genai` SDK, `.env`의 GEMINI_API_KEY)
 - `.env`는 `dotenv.parse`로 읽어 설정 객체로만 쓰고 `process.env`에는 넣지 않는다. Claude·Codex 자식 프로세스로 키가 넘어가지 않게 하려는 것이다.
-- `systemInstruction` = system.md, thinking level `high`, `maxOutputTokens: 65536`(thinking 포함 상한), 긴 출력이라 스트리밍.
-- outputTokens = 본문 + thought 토큰(정규화), reasoningTokens = thought 토큰.
-- 무료 티어의 짧은 요청 한도(429) → `rate_limited`(재시도), 일일 할당량 소진 → `usage_limit`(재시도 안 함). ⚠ 정확한 필드·에러 이름은 설치한 SDK 타입과 smoke로 확인.
+- 구현: `pipeline/src/adapters/gemini/`(SDK 2.28.0 타입 기준). `models.generateContentStream`, `config = { systemInstruction: system.md, thinkingConfig: { thinkingLevel: HIGH }, maxOutputTokens: 65536(thinking 포함 상한), abortSignal }`.
+- 클라이언트는 `vertexai: false`(환경변수로 백엔드가 바뀌지 않게), `retryOptions.attempts: 1`(SDK 재시도 끔 — 재시도는 Runner 책임)로 만든다. 키가 비어 있으면 SDK가 환경변수 키로 대신 쓰지 않게 만들기 전에 멈춘다.
+- 본문은 `thought: true`가 아닌 텍스트 part를 이어 붙인 것이다. inputTokens = `promptTokenCount`(SDK 주석상 캐시분 포함) + `toolUsePromptTokenCount`, outputTokens = `candidatesTokenCount` + `thoughtsTokenCount`, reasoningTokens = `thoughtsTokenCount`(없으면 null).
+- stopReason: `STOP` → end, `MAX_TOKENS`·`CONTINUATION`(요청당 토큰 한도로 미완성) → max_tokens, 안전·정책 계열(`SAFETY`·`RECITATION`·`BLOCKLIST`·`PROHIBITED_CONTENT`·`SPII`·`IMAGE_*`)과 `promptFeedback.blockReason` → refusal, 그 밖 → other.
+- 에러: 429 → `rate_limited`(재시도), 단 QuotaFailure의 quotaId에 `PerDay`가 있으면 일일 할당량 소진 → `usage_limit`(재시도 안 함). 401·403·키 무효 표시 → `auth`, 400 → `bad_request`, 5xx → `server_error`, 그 밖 4xx → `unknown`, 연결 오류 → `network`, abort → `timeout`. RetryInfo `retryDelay`("37s")가 있으면 `retryAfterMs`로 쓴다. 에러 메시지에서 API 키 모양(`key=…`, `AIza…`)은 가린다.
+- ⚠ smoke로 확인(위 값은 SDK 타입 기준의 추측): thinkingLevel HIGH가 3.8 Flash에 적용되는가, usage 필드 이름과 캐시 포함 여부, 실제 finishReason 값, 일일 할당량·키 무효를 구분하는 표시, retryDelay 형식, 스트림 도중 에러 메시지 형식. fixture(`pipeline/test/fixtures/gemini/`)는 지금 합성본이다.
 - 2027-01-01부터 정가가 2배가 된다. 비용은 `models.json`의 `pricing.asOf` 시점 가격으로 계산한다.
 
 **smoke** (`npm run smoke -- <slug>`): "Hello" HTML 한 장을 요청하는 짧은 프롬프트, 출력 상한 8,000. `results-smoke/<slug>-<timestamp>/`에 meta.json과 함께 **도구의 원본 stdout을 그대로 저장**한다. 사람이 확인한 뒤 어댑터 테스트 fixture로 복사하는 용도다(⚠ 항목을 실제 출력으로 확정).
-- 재시도 없이 1회 호출한다. preflight는 git clean 검사만 빼고 똑같이 한다.
-- 원본 출력은 core 어댑터 인터페이스를 바꾸지 않고 저장한다. 어댑터에 주입하는 프로세스 실행 함수·SDK 클라이언트를 기록용 래퍼로 감싼다(CLI는 stdout·stderr, Gemini는 스트림 청크 JSON Lines와 에러 원문).
+- 프롬프트는 `id: smoke`, `version: v1`이다. system은 실제 `season-tree-v1.system.md`(지시문 교체가 적용되는지 보려고), user는 짧은 Hello 요청이다.
+- 재시도 없이 1회 호출하고, 시도당 타임아웃은 5분이다. preflight는 git clean 검사만 빼고 똑같이 한다(HEAD는 읽으므로 커밋이 한 번은 있어야 한다). 폴더 시각은 실행 PC의 로컬 시각 `YYYYMMDD-HHmmss`다.
+- 원본 출력은 core 어댑터 인터페이스를 바꾸지 않고 저장한다. 레지스트리 항목의 `createRecorder`가 어댑터에 주입하는 프로세스 실행 함수·SDK 클라이언트를 기록용 래퍼로 감싸고, Runner가 끝난 뒤 `raw-*` 파일로 쓴다. Gemini는 `raw-stream.jsonl`(청크 한 줄씩)과 `raw-error.json`(`{status, body, …}`)이다. 두 파일은 fixture 형식(`stream-*.jsonl`, `error-*.json`)과 같아서 그대로 복사할 수 있다. CLI 어댑터(phase 3·4)는 `raw-stdout.txt`·`raw-stderr.txt` 같은 이름으로 낸다.
+- 종료 코드: outcome이 `api_failed`이면 1이다(점검 명령이라서 — batch는 0). 끝에 사용량·rawStopReason·resolvedModelId를 출력하고, 입력 토큰이 2,000을 넘으면 경고한다.
+- 알려진 한계: 타임아웃이면 SDK의 abort 에러가 기록되기 전에 파일을 써서 `raw-error.json`이 빠질 수 있다(그때까지 받은 청크는 남는다). 같은 초에 다시 실행하면 폴더가 비어 있지 않아 모델을 부르기 전에 거부된다.
 
 ## 검증기 (Playwright, `pipeline/src/validation/`)
 
@@ -185,7 +199,7 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 - **생성자 주입은 `@Inject(TOKEN)`을 명시한다.** tsx(esbuild)는 `emitDecoratorMetadata`를 지원하지 않아서, 타입 기반 주입은 테스트·실행에서 조용히 undefined가 된다. `experimentalDecorators: true`, `import 'reflect-metadata'`.
 - 도메인 로직은 core의 순수 함수로 두고, Nest provider는 그것을 감싸 I/O(프로세스·파일·브라우저)를 주입하는 얇은 층으로 둔다.
 
-## 버전 참고 (기획 때 설치해 동작 확인한 값)
+## 버전 참고 (phase 1에서 설치한 값)
 
-zod ^4.6.5 (`z.iso.datetime`, `z.url()` 사용), tsx ^4.23.15, typescript ^7.0.2, @types/node ^26.6.4, dotenv ^18.0.6. Node ≥ 22 (개발 PC는 24.14).
-TypeScript 7(네이티브 컴파일러)이 ESLint(typescript-eslint)·astro check와 맞지 않으면 6.x로 내리고 ADR에 기록한다.
+typescript ^6.0.3(ADR-023 — 7은 typescript-eslint 미지원), tsx ^4.23.15, zod ^4.6.5(`z.iso.datetime`, `z.url()` 사용), @types/node ^26.6.4, ESLint ^10.12 + typescript-eslint ^8.71.1, NestJS ^12.1.2(@nestjs/common·core, reflect-metadata ^0.2.2, rxjs ^7.8.2), @google/genai ^2.28.0, dotenv ^18.0.7. Node ≥ 22 (개발 PC는 24.14).
+TS 6은 `types` 기본값이 `[]`라 `tsconfig.base.json`에 `types: ["node"]`를 둔다. phase 2의 astro check도 TS 6과 맞는지 확인한다.
