@@ -4,10 +4,65 @@
   "model": "claude-opus-5-5",
   "timeout_sec": 3600,
   "steps": [
-    { "step": 0, "name": "workspace-setup", "status": "pending", "ac": ["npm run lint", "npm run typecheck", "npm test"] },
-    { "step": 1, "name": "core-cli-schema", "status": "pending", "ac": ["npm run lint", "npm run typecheck", "npm test"] },
-    { "step": 2, "name": "gemini-adapter", "status": "pending", "ac": ["npm run lint", "npm run typecheck", "npm test"] },
-    { "step": 3, "name": "batch-gen", "status": "pending", "ac": ["npm run lint", "npm run typecheck", "npm test"] },
-    { "step": 4, "name": "smoke-command", "status": "pending", "ac": ["npm run lint", "npm run typecheck", "npm test"] }
-  ]
+    {
+      "step": 0,
+      "name": "workspace-setup",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ],
+      "started_at": "2026-10-12T14:41:07+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "07c99ad7-cadd-4e74-acdc-c8097b290cee",
+      "cost_usd": 2.312,
+      "num_turns": 48,
+      "summary": "npm workspaces(packages/core·pipeline) 연결, tsconfig.base·ESLint flat config·.gitattributes·package-lock 생성. core 17개 테스트+check-samples가 소스 변경 없이 통과(진입점 src/index.ts만 추가), pipeline에 NestJS 스탠드얼론 뼈대(main·cli·tokens·app.module)와 @Inject(CLOCK) DI·@opb/core import 테스트 6개",
+      "handoff": "1) TypeScript 7 → 6.0.3으로 내림(ADR 반영 필요): typescript-eslint 8.71.1 peer가 'typescript >=4.8.4 <6.1.0'이라 npm ERESOLVE, --legacy-peer-deps로 강행하면 파서가 'Error: typescript-eslint does not support TS 7.0.'을 던진다(공지된 대안: TS 6 API를 나란히 설치). tsconfig.base에 types:[\"node\"] 명시(TS 6은 types 기본값이 []).\n2) tsx는 tsconfig를 cwd에서 찾는다. 루트에서 'tsx pipeline/src/main.ts'는 'Parameter decorators only work when experimental decorators are enabled'로 실패한다. step 3·4의 루트 gen·smoke 스크립트는 'tsx --tsconfig pipeline/tsconfig.json pipeline/src/main.ts gen' 형태로 쓴다(--help로 동작 확인, 훅도 이 형태를 막음 확인).\n3) @opb/core: exports '.' → ./src/index.ts(모든 모듈 export * barrel). step 1이 새 모듈(프롬프트 로더 등)을 만들면 index.ts에 한 줄 추가. typescript·tsx·@types/node·eslint는 루트 devDependencies.\n4) pipeline/src/tokens.ts: CLOCK(Symbol), Clock = core RunnerDeps. app.module.ts: CLOCK(시스템 시계) + GenerationRunner(src/generation/generation-runner.ts, run(adapter, input, policy=DEFAULT_RUN_POLICY) → runGeneration에 주입한 시계 전달, readonly clock). batch(step 3)가 써도 되고 바꿔도 된다.\n5) cli.ts: Command = {kind:'help'} | {kind:'usage_error', message}. -h/--help는 명령 뒤에 붙어도 help로 처리(훅의 '--help는 실행 아님' 규칙과 맞춤). main.ts의 execute()는 never 검사만 있는 자리 — gen·smoke case와 Command 멤버를 여기 추가.\n6) ESLint 10.12 + typescript-eslint recommended, files는 packages/**·pipeline/** TS. check-samples.ts만 no-explicit-any off(일부러 스키마를 깨는 코드). phase 2 site는 files 패턴을 추가.\n7) 버전: NestJS 12.1.2(ESM 패키지), reflect-metadata 0.2.2, rxjs 7.8.2, zod 4.6.6, tsx 4.23.15, @types/node 26.6.5.",
+      "completed_at": "2026-10-12T14:51:16+0900",
+      "attempts": 1
+    },
+    {
+      "step": 1,
+      "name": "core-cli-schema",
+      "status": "pending",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ]
+    },
+    {
+      "step": 2,
+      "name": "gemini-adapter",
+      "status": "pending",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "batch-gen",
+      "status": "pending",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ]
+    },
+    {
+      "step": 4,
+      "name": "smoke-command",
+      "status": "pending",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ]
+    }
+  ],
+  "created_at": "2026-10-12T14:41:07+0900"
 }
