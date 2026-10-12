@@ -14,7 +14,7 @@ results/<slug>/
   spring.jpg summer.jpg autumn.jpg winter.jpg   계절별 스크린샷 (시점은 ARCHITECTURE "검증기")
 ```
 
-`results/`의 파일은 사람도 Claude 세션도 손으로 고치지 않는다. 바꾸려면 `npm run gen -- <slug> --force`로 다시 만들고, 판정은 `npm run judge`로 다시 쓴다. `check:results`가 index.html의 sha256을 meta.json과 대조해 손으로 고친 것을 잡는다.
+`results/`의 파일은 사람도 Claude 세션도 손으로 고치지 않는다. 바꾸려면 `npm run gen -- <slug> --force`로 다시 만들고, 판정은 `npm run judge`로 다시 쓴다. `check:results`가 index.html의 sha256을 meta.json과 대조해 손으로 고친 것을 잡는다. `.gitattributes`의 `results/** -text`로 git이 결과물의 줄바꿈을 바꾸지 않으므로, sha256 대조는 체크아웃한 OS와 관계없이 맞는다.
 
 ## models.json (`ModelRegistrySchema`)
 

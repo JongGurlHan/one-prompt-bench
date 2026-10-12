@@ -77,6 +77,10 @@ models.json ─▶ Batch ─▶ Runner(재시도·타임아웃·저장·비용) 
 - `PromptSpec.system`에 `prompts/season-tree-v1.system.md` 내용을 넣는다 (지금은 null).
 - 이전 설계의 Anthropic SDK 어댑터는 제거됐다. 새로 만들지 않는다.
 
+### 프롬프트 읽기
+- `prompts/<id>-<version>.md`(user)와 `prompts/<id>-<version>.system.md`(system)를 UTF-8로 읽어 **내용 그대로**(끝 줄바꿈 포함, trim 없음) 보낸다. 로더는 core에 둔다.
+- 줄바꿈이 OS에 따라 바뀌지 않게 `.gitattributes`가 `prompts/**`를 LF로 고정한다(개발 PC는 `core.autocrlf=true`). 로더는 CRLF를 고치지 않고 거부한다. 조용히 고치면 보낸 내용과 sha256이 바뀐 사실이 숨기 때문이다.
+
 ### Batch 규칙
 - 모델은 순차 실행. 한 모델이 실패해도 다음 모델을 계속한다.
 - 건너뛰기: `meta.json`이 있고 `outcome`이 `api_failed`가 아니면 건너뛴다. `api_failed`(한도 초과 포함)이거나 `meta.json` 없이 파일만 남은 폴더(중단된 생성)는 비우고 다시 생성한다.
@@ -85,6 +89,7 @@ models.json ─▶ Batch ─▶ Runner(재시도·타임아웃·저장·비용) 
 - outcome이 `ok`면 바로 검증기를 실행한다. 검증이 실패해도 batch는 계속하고 `validation`은 null로 남긴다(나중에 `npm run validate`).
 - **preflight** (실제 호출 전 자동 점검, 하나라도 실패하면 아무것도 호출하지 않고 종료):
   - 환경변수에 `ANTHROPIC_API_KEY`·`OPENAI_API_KEY`가 없다.
+  - 대상 모델의 생성 도구마다 어댑터가 등록돼 있다. 어댑터가 아직 없는 도구가 섞이면 아무것도 호출하지 않는다. 도구별 인증 점검(아래 두 항목)은 그 도구의 어댑터와 함께 만든다.
   - Anthropic 대상이 있으면 `claude auth status` 결과의 인증 방식이 claude.ai 구독이다.
   - OpenAI 대상이 있으면 `codex login status`가 ChatGPT 로그인이다. ⚠ 출력 형식은 smoke 때 확인.
   - Google 대상이 있으면 `.env`에 `GEMINI_API_KEY`가 있다 (값은 출력하지 않는다).
@@ -119,12 +124,15 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 - ⚠ smoke로 확인: `model_reasoning_effort`·`model_instructions_file` 키가 적용되는가. `output_tokens`가 추론분을 포함하는가(포함이 아니면 더해서 정규화). ChatGPT 한도 초과 메시지 형식.
 
 **Gemini API** (`@google/genai` SDK, `.env`의 GEMINI_API_KEY)
+- `.env`는 `dotenv.parse`로 읽어 설정 객체로만 쓰고 `process.env`에는 넣지 않는다. Claude·Codex 자식 프로세스로 키가 넘어가지 않게 하려는 것이다.
 - `systemInstruction` = system.md, thinking level `high`, `maxOutputTokens: 65536`(thinking 포함 상한), 긴 출력이라 스트리밍.
 - outputTokens = 본문 + thought 토큰(정규화), reasoningTokens = thought 토큰.
 - 무료 티어의 짧은 요청 한도(429) → `rate_limited`(재시도), 일일 할당량 소진 → `usage_limit`(재시도 안 함). ⚠ 정확한 필드·에러 이름은 설치한 SDK 타입과 smoke로 확인.
 - 2027-01-01부터 정가가 2배가 된다. 비용은 `models.json`의 `pricing.asOf` 시점 가격으로 계산한다.
 
 **smoke** (`npm run smoke -- <slug>`): "Hello" HTML 한 장을 요청하는 짧은 프롬프트, 출력 상한 8,000. `results-smoke/<slug>-<timestamp>/`에 meta.json과 함께 **도구의 원본 stdout을 그대로 저장**한다. 사람이 확인한 뒤 어댑터 테스트 fixture로 복사하는 용도다(⚠ 항목을 실제 출력으로 확정).
+- 재시도 없이 1회 호출한다. preflight는 git clean 검사만 빼고 똑같이 한다.
+- 원본 출력은 core 어댑터 인터페이스를 바꾸지 않고 저장한다. 어댑터에 주입하는 프로세스 실행 함수·SDK 클라이언트를 기록용 래퍼로 감싼다(CLI는 stdout·stderr, Gemini는 스트림 청크 JSON Lines와 에러 원문).
 
 ## 검증기 (Playwright, `pipeline/src/validation/`)
 

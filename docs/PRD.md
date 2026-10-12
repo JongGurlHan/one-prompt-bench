@@ -60,10 +60,10 @@ main에 push하면 GitHub Actions가 검사(lint·typecheck·test·results 검�
 
 | 순서 | phase에서 만들 것 (무인 세션) | 사람이 할 일 |
 |---|---|---|
-| 1 | 모노레포·core 연결, NestJS 뼈대, Gemini 어댑터, 일괄 실행(batch)·smoke 명령 | 추가 결제 차단 체크리스트, `.env`에 GEMINI_API_KEY, Gemini smoke → 1개 생성 |
-| 2 | Playwright 검증기(생성 직후 자동 실행 포함), check:results, Astro 결과 탭 | Gemini 결과물 검증 실행, 결과 탭 로컬 확인 |
+| 1 | 모노레포·core 연결, NestJS 뼈대, Gemini 어댑터, 일괄 실행(batch)·smoke 명령 | 추가 결제 차단 체크리스트, `.env`에 GEMINI_API_KEY, Gemini smoke(원본 출력 → 어댑터 fixture) |
+| 2 | Playwright 검증기(생성 직후 자동 실행 포함), check:results, Astro 결과 탭 | Gemini 1개 생성(자동 검증 포함), 결과 탭 로컬 확인 |
 | 3 | GitHub Actions 배포 워크플로, Claude Code 어댑터 | 공개 레포 생성·Pages 설정·push(첫 배포), Claude smoke |
 | 4 | Codex CLI 어댑터 | Codex smoke, 8개 일괄 생성과 검증 |
 | 5 | 판정 도우미, 비교표·프롬프트·소개 탭, 휴대폰 화면, README | 8개 판정, devlog·회고 검토 |
 
-phase가 끝난 뒤의 절차(merge·devlog·사람이 할 일)는 `docs/OPERATIONS.md` "하네스로 개발하기".
+첫 실제 생성은 검증기가 생긴 2번 뒤에 한다(ADR-022). phase가 끝난 뒤의 절차(merge·devlog·사람이 할 일)는 `docs/OPERATIONS.md` "하네스로 개발하기".
