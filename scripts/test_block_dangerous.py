@@ -88,6 +88,73 @@ def test_allows_safe(cmd):
     assert run_hook(cmd).returncode == 0, cmd
 
 
+@pytest.mark.parametrize("cmd", [
+    # 실제 모델 호출 — 구독 한도·요금을 쓴다. 사람이 직접 실행한다 (docs/OPERATIONS.md)
+    "npm run gen -- claude-opus-5-5",
+    "npm run gen -- --all --force",
+    "npm run generate",
+    "npm run smoke -- gemini-3-8-flash",
+    "npm -w pipeline run gen -- gpt-6-sol",
+    "npm run --workspace pipeline smoke",
+    "cd pipeline && npm run smoke",
+    "codex exec -m gpt-6-sol --json -",
+    "codex -c model_reasoning_effort=high exec 'hi'",
+    "claude -p 'hello'",
+    "echo hi | claude --print --model claude-haiku-5-5",
+    "curl -s https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
+    "FOO=1 npm run gen -- gpt-6-sol",
+    "ls && (codex exec -)",
+    "echo $(claude -p hi)",
+])
+def test_blocks_live_generation(cmd):
+    r = run_hook(cmd)
+    assert r.returncode == 2, cmd
+    assert "BLOCKED" in r.stderr and "! " in r.stderr  # 사람이 직접 실행하는 방법을 안내한다
+
+
+@pytest.mark.parametrize("cmd", [
+    "cat .env",
+    "cat ./.env",
+    "head -5 pipeline/.env",
+    "grep GEMINI .env",
+    "cat .env.local",
+    "echo $GEMINI_API_KEY",
+    'echo "${GEMINI_API_KEY}"',
+    "printenv GEMINI_API_KEY",
+])
+def test_blocks_secret_reads(cmd):
+    r = run_hook(cmd)
+    assert r.returncode == 2, cmd
+    assert "BLOCKED" in r.stderr
+
+
+@pytest.mark.parametrize("cmd", [
+    "npm run gen:types",
+    "npm run validate -- --all",
+    "npm run judge -- claude-opus-5-5",
+    "npm test -w pipeline",
+    "npm run test -- --test-name-pattern smoke",
+    "codex --version",
+    "codex exec --help",
+    "claude --version",
+    "claude --help",
+    "claude auth status",
+    "cat .env.example",
+    "cp .env.example .env",
+    "ls -la .env",
+    "grep -rn GEMINI_API_KEY pipeline/src",
+    "git diff -- .gitignore",
+    # 명령이 아니라 글 속에 나온 경우 (회귀: heredoc·커밋 메시지 안의 단어로 차단됐다)
+    'git commit -m "docs: codex exec 사용법과 claude -p 금지 정리"',
+    'echo "npm run gen 은 사람이 실행"',
+    "python - <<'EOF'\ns = '- [x] hook: 실호출(gen/smoke/claude -p/codex exec/Gemini API) 차단'\nEOF",
+    "grep -n 'generativelanguage.googleapis.com' docs/ARCHITECTURE.md",
+    "git commit -m 'chore: .env 읽기를 cat 으로 하지 않게'",
+])
+def test_allows_project_safe(cmd):
+    assert run_hook(cmd).returncode == 0, cmd
+
+
 def test_ignores_non_bash_tool():
     assert run_hook("rm -rf /", tool_name="Write").returncode == 0
 

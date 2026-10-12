@@ -6,11 +6,13 @@
 
 ### A. 탐색
 
-`/docs/` 하위 문서(PRD, ARCHITECTURE, ADR 등)를 읽고 프로젝트의 기획·아키텍처·설계 의도를 파악한다. 필요시 Explore 에이전트를 병렬로 사용한다.
+`PROGRESS.md`(현재 상황)와 `/docs/` 하위 문서(PRD, ARCHITECTURE, ADR, DATA, UI_GUIDE, COPY, OPERATIONS)를 읽고 프로젝트의 기획·아키텍처·설계 의도를 파악한다. 이미 끝난 phase가 있으면 `phases/*/index.json`의 summary·handoff와 `git log`로 진행 상황을 확인한다. 필요시 Explore 에이전트를 병렬로 사용한다.
+
+설계 근거는 `docs/`와 레포의 코드뿐이다. 그 밖의 기획 자료(삭제된 `temporary/` 등)를 찾거나 참조하지 않는다.
 
 ### B. 논의
 
-구현을 위해 구체화하거나 기술적으로 결정해야 할 사항이 있으면 사용자에게 제시하고 논의한다.
+구현을 위해 구체화하거나 기술적으로 결정해야 할 사항이 있으면 사용자에게 제시하고 논의한다. 결정되면 `docs/ADR.md`(와 해당 문서)에 기록한 뒤 step을 설계한다. step 파일에만 남은 결정은 다음 phase에서 사라진다.
 
 ### C. Step 설계
 
@@ -24,7 +26,15 @@
 4. **시그니처 수준 지시** — 함수/클래스의 인터페이스만 제시하고 내부 구현은 에이전트 재량에 맡긴다. 시그니처는 설계 의도이지 계약이 아니다 — 에이전트가 실제로 맞지 않는다고 판단하면 조정하고 handoff에 이유를 남긴다. 반대로 바뀌면 안 되는 불변 조건(공개 API, 멱등성, 보안, 데이터 무결성 등)은 명시한다.
 5. **AC는 실행 가능한 커맨드** — "~가 동작해야 한다" 같은 추상적 서술이 아닌 `npm run build`, `npm test` 같은 실제 커맨드를 index.json의 `ac`에 넣는다. execute.py가 세션 종료 후 직접 실행해 완료를 판정하므로, 오프라인에서 결정적으로 통과/실패하는 커맨드여야 한다.
 6. **주의사항은 구체적으로** — "조심해라" 대신 "X를 하지 마라. 이유: Y" 형식으로 적는다.
-7. **네이밍** — step name은 kebab-case slug로, 해당 step의 핵심 모듈/작업을 한두 단어로 표현한다 (예: `project-setup`, `api-layer`, `auth-flow`).
+7. **네이밍** — step name은 kebab-case slug로, 해당 step의 핵심 모듈/작업을 한두 단어로 표현한다 (예: `workspace-setup`, `gemini-adapter`, `results-tab`).
+
+이 프로젝트 전용 원칙:
+
+8. **phase = 일차** — `docs/PRD.md` 일정표의 일차 하나가 phase 하나다. 디렉토리는 `dayN-<slug>`(예: `day1-pipeline-core`). 표의 "사람이 할 일"(생성·smoke·배포 설정·판정)은 step에 넣지 않는다. 무인 세션은 할 수 없다. 대신 phase 계획을 보여줄 때 "phase 뒤에 사람이 할 일"로 함께 안내한다.
+9. **실호출 금지 AC** — AC와 step 작업에 `npm run gen`·`smoke`·`validate`(실제 results 대상)·`judge`를 넣지 않는다. 어댑터는 CLI 출력 fixture로, 검증기는 로컬 HTML과 `page.route`로 테스트한다. 기본 AC 묶음은 `npm run lint`, `npm run typecheck`, `npm test`이고, 사이트를 건드리는 step은 `npm run build`, results를 읽는 코드를 건드리는 step은 `npm run check:results`를 더한다. 1일차 step 0(워크스페이스 연결) 전에는 npm 명령이 없으니, 그 step의 AC는 step이 만드는 명령으로 정한다.
+10. **문서 섹션을 가리킨다** — 어댑터 step은 ARCHITECTURE "도구별 호출 사양"과 DATA "정규화 규칙"을, 화면 step은 UI_GUIDE의 해당 탭 절과 COPY의 해당 탭 절을, 데이터 step은 DATA "스키마 변경 예정"·"표시 규칙"을 "관련 파일"에 적는다.
+11. **⚠ 항목은 열어 둔다** — 실제 도구 출력으로 확인해야 하는 사양(⚠)은 추측으로 확정하지 않는다. 파싱 코드는 필드가 없을 때 null·unknown으로 안전하게 떨어지게 하고, 확인이 필요한 점을 handoff에 남기라고 step에 적는다.
+12. **외부 설치** — Playwright 브라우저(`npx playwright install chromium`) 같은 내려받기는 그것이 처음 필요한 step의 작업에 넣는다. AC에 넣지 않는다.
 
 ### D. 파일 생성
 
@@ -38,7 +48,7 @@
 {
   "phases": [
     {
-      "dir": "0-mvp",
+      "dir": "day1-pipeline-core",
       "status": "pending"
     }
   ]
@@ -53,13 +63,13 @@
 
 ```json
 {
-  "project": "<프로젝트명>",
-  "phase": "<task-name>",
+  "project": "One Prompt Bench",
+  "phase": "day1-pipeline-core",
   "model": "claude-opus-5-5",
   "timeout_sec": 3600,
   "steps": [
-    { "step": 0, "name": "project-setup", "status": "pending", "ac": ["npm run build", "npm test"] },
-    { "step": 1, "name": "market-feed", "status": "pending", "ac": ["npm run build", "npm test"] }
+    { "step": 0, "name": "workspace-setup", "status": "pending", "ac": ["npm run lint", "npm run typecheck", "npm test"] },
+    { "step": 1, "name": "gemini-adapter", "status": "pending", "ac": ["npm run lint", "npm run typecheck", "npm test"] }
   ]
 }
 ```
@@ -74,7 +84,7 @@
 - `steps[].ac`: 완료 판정 커맨드 문자열의 배열(`["npm test"]` ✓, `"npm test"` ✗). 순서대로 실행하며 하나라도 실패하면 미완료. **필수** — 미완료 step에 `ac`가 없거나 빈 커맨드가 있으면 execute.py가 시작 전에 설정 오류로 중단한다.
 - execute.py는 시작 전에 위 규칙과 미완료 step의 `step{N}.md` 존재를 모두 검증한다. 검증은 `feat-{phase}` 브랜치로 전환한 뒤 그 브랜치의 index.json으로 한다.
 - `steps[].skip_ac` (예외): 검증할 커맨드가 정말 없는 step(문서만 수정 등)은 `"skip_ac": "사유"`를 명시한다. 이때도 세션이 정상 종료(exit 0, 타임아웃 아님)해야 완료로 인정한다.
-- `model` (선택): `claude --model` 값. 생략하면 CLI 기본값. `--model` 인자가 우선한다.
+- `model` (선택): `claude --model` 값. 생략하면 CLI 기본값. `--model` 인자가 우선한다. 이 프로젝트는 `claude-opus-5-5`로 한다 (ADR-020).
 - `timeout_sec` (선택): 세션 1회와 AC 커맨드 1개의 제한 시간. 기본 3600.
 - `mcp` (선택): 기본 `false` — 세션에 MCP 서버를 로드하지 않는다(`--strict-mcp-config`). 무인 세션에 대화용 커넥터(claude.ai Drive 등)는 불필요한 도구 정의만 늘리기 때문이다. step이 MCP 도구를 써야 하면 `true`.
 - `max_cost_usd`, `step_max_cost_usd` (선택): phase 전체·step 하나의 누적 비용 상한(USD). step을 시작하기 전과 재시도하기 전에 확인해, 상한에 닿았으면 더 시도하지 않고 error로 멈춘다. 이미 completed가 된 step은 되돌리지 않는다. 생략하면 상한이 없다.
@@ -87,7 +97,7 @@ index.json은 **execute.py만 수정한다.** Claude 세션은 `step{N}-result.j
 |------|------|-------------|
 | → `completed` | 세션이 completed 보고 **그리고** AC 전부 통과 | `summary`, `handoff`, `completed_at`, `attempts` |
 | → `error` | 최대 3회 시도 후에도 미완료, 비용 상한 도달, 또는 세션이 브랜치를 바꿈 | `error_message`, `failed_at`, `attempts` |
-| → `blocked` | 세션이 blocked 보고 (API 키, 외부 인증 등) | `blocked_reason`, `blocked_at`, `attempts` |
+| → `blocked` | 세션이 blocked 보고 (API 키, 외부 인증 등), 또는 결과 보고 없이 Claude 구독 사용 한도 메시지로 종료 | `blocked_reason`, `blocked_at`, `attempts` |
 
 `summary`(한 줄)와 `handoff`(결정 사항·바뀐 인터페이스·남은 이슈, 10줄 이내)는 다음 step 프롬프트에 누적 전달된다.
 
@@ -148,9 +158,18 @@ execute.py가 자동으로 처리하는 것:
 에러 복구:
 
 - **error**: `error_message`와 `step{N}-attempt*-output.json`으로 원인을 확인하고, 필요하면 step 파일이나 코드를 고친 뒤 `--reset-failed`로 재실행한다.
-- **blocked**: `blocked_reason`의 사유(API 키 등)를 해결한 뒤 `--reset-failed`로 재실행한다.
+- **blocked**: `blocked_reason`의 사유(API 키 등)를 해결한 뒤 `--reset-failed`로 재실행한다. 사유가 "Claude 사용 한도 도달"이면 메시지의 리셋 시각 이후에 재실행한다. 개발과 Claude 모델 생성이 같은 Pro 한도를 쓴다는 점을 고려한다(`docs/OPERATIONS.md`).
 - `--reset-failed`는 `session_id`도 지운다. 사람이 고친 뒤에는 이전 세션의 맥락을 이어받지 않고 새 세션으로 시작한다.
 
 AC 셸: 세션이 Bash 도구로 확인한 결과와 같아야 하므로 bash로 실행한다. Windows에서는 Git Bash를 git 설치 위치에서 찾고, `CLAUDE_CODE_GIT_BASH_PATH`로 지정할 수 있다(경로가 없으면 무시하고 설치 위치에서 찾는다). 찾지 못하면 cmd.exe로 실행하고 시작 시 경고한다. 그 외 OS에서는 PATH의 bash를 쓰고, 없으면 `/bin/sh`로 실행한다.
 
 Windows: 출력·파일은 UTF-8로 처리되고, npm 전역 설치의 `claude.cmd` 대신 실제 `claude.exe`를 자동으로 찾는다. 다른 실행 파일을 쓰려면 `HARNESS_CLAUDE_BIN` 환경변수로 지정한다.
+
+### F. phase가 끝난 뒤
+
+1. `feat-{phase}` 브랜치의 결과(각 step의 summary·handoff, `npm test`)를 사용자와 함께 확인한다. 문제가 있으면 다음 phase의 step으로 고치거나 사용자에게 묻는다.
+2. 사용자가 main에 merge한다(`git merge --no-ff`, squash 금지 — `docs/OPERATIONS.md` "생성").
+3. `docs/PRD.md` 일정표의 "사람이 할 일"을 안내한다. 실제 모델 호출은 사용자가 `! <명령>`으로 직접 실행한다.
+4. `/devlog N`으로 그 일차의 개발 일지 초안을 만든다.
+5. handoff에 남은 결정·⚠ 확인 결과 중 다음 phase도 알아야 할 것은 `docs/`(ADR·ARCHITECTURE·DATA)에 옮겨 적는다. phase 사이에는 index.json의 handoff가 전달되지 않기 때문이다.
+6. `/handoff`로 `PROGRESS.md`를 갱신한다.

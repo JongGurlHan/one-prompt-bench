@@ -1,0 +1,28 @@
+[
+  {
+    "slug": "example-model-a",
+    "provider": "anthropic",
+    "modelId": "example-model-a",
+    "displayName": "Example Model A",
+    "releasedAt": "2026-09-20",
+    "pricing": {
+      "inputPer1M": 5,
+      "outputPer1M": 25,
+      "asOf": "2026-10-09",
+      "sourceUrl": "https://example.com/pricing"
+    }
+  },
+  {
+    "slug": "example-model-b",
+    "provider": "google",
+    "modelId": "example-model-b",
+    "displayName": "Example Model B",
+    "releasedAt": "2026-09-05",
+    "pricing": {
+      "inputPer1M": 2,
+      "outputPer1M": 12,
+      "asOf": "2026-10-09",
+      "sourceUrl": "https://example.com/pricing"
+    }
+  }
+]

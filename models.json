@@ -1,0 +1,106 @@
+[
+  {
+    "slug": "claude-haiku-5-5",
+    "provider": "anthropic",
+    "modelId": "claude-haiku-5-5",
+    "displayName": "Claude Haiku 5.5",
+    "releasedAt": "2026-10-07",
+    "pricing": {
+      "inputPer1M": 0.1,
+      "outputPer1M": 0.5,
+      "asOf": "2026-10-10",
+      "sourceUrl": "https://platform.claude.com/docs/en/models/overview"
+    }
+  },
+  {
+    "slug": "gpt-6-1-sol",
+    "provider": "openai",
+    "modelId": "gpt-6.1-sol",
+    "displayName": "GPT-6.1 Sol",
+    "releasedAt": "2026-09-29",
+    "pricing": {
+      "inputPer1M": 2,
+      "outputPer1M": 10,
+      "asOf": "2026-10-10",
+      "sourceUrl": "https://developers.openai.com/api/docs/models/gpt-6.1-sol"
+    }
+  },
+  {
+    "slug": "claude-sonnet-5-5",
+    "provider": "anthropic",
+    "modelId": "claude-sonnet-5-5",
+    "displayName": "Claude Sonnet 5.5",
+    "releasedAt": "2026-09-28",
+    "pricing": {
+      "inputPer1M": 2,
+      "outputPer1M": 10,
+      "asOf": "2026-10-10",
+      "sourceUrl": "https://platform.claude.com/docs/en/models/overview"
+    }
+  },
+  {
+    "slug": "claude-opus-5-5",
+    "provider": "anthropic",
+    "modelId": "claude-opus-5-5",
+    "displayName": "Claude Opus 5.5",
+    "releasedAt": "2026-09-22",
+    "pricing": {
+      "inputPer1M": 4,
+      "outputPer1M": 20,
+      "asOf": "2026-10-10",
+      "sourceUrl": "https://platform.claude.com/docs/en/models/overview"
+    }
+  },
+  {
+    "slug": "gpt-6-luna",
+    "provider": "openai",
+    "modelId": "gpt-6-luna",
+    "displayName": "GPT-6 Luna",
+    "releasedAt": "2026-09-22",
+    "pricing": {
+      "inputPer1M": 0.1,
+      "outputPer1M": 0.5,
+      "asOf": "2026-10-10",
+      "sourceUrl": "https://developers.openai.com/api/docs/models/gpt-6-luna"
+    }
+  },
+  {
+    "slug": "gpt-6-sol",
+    "provider": "openai",
+    "modelId": "gpt-6-sol",
+    "displayName": "GPT-6 Sol",
+    "releasedAt": "2026-09-22",
+    "pricing": {
+      "inputPer1M": 2,
+      "outputPer1M": 10,
+      "asOf": "2026-10-10",
+      "sourceUrl": "https://developers.openai.com/api/docs/models/gpt-6-sol"
+    }
+  },
+  {
+    "slug": "gpt-6-astra",
+    "provider": "openai",
+    "modelId": "gpt-6-astra",
+    "displayName": "GPT-6 Astra",
+    "releasedAt": "2026-09-03",
+    "pricing": {
+      "inputPer1M": 10,
+      "outputPer1M": 50,
+      "asOf": "2026-10-10",
+      "sourceUrl": "https://developers.openai.com/api/docs/models/gpt-6-astra"
+    }
+  },
+  {
+    "slug": "gemini-3-8-flash",
+    "provider": "google",
+    "modelId": "gemini-3.8-flash",
+    "displayName": "Gemini 3.8 Flash",
+    "releasedAt": "2026-09-02",
+    "pricing": {
+      "inputPer1M": 0.75,
+      "outputPer1M": 3.75,
+      "asOf": "2026-10-10",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing"
+    }
+  }
+]

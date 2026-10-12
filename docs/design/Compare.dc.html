@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>비교표 탭</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#F5F6F3}
+a{color:#2F5D46}a:hover{color:#1F4232}
+table{border-collapse:collapse;width:100%;min-width:760px}
+th,td{padding:12px 14px;text-align:left;border-bottom:1px solid #E6E8E3;font-size:14px;vertical-align:middle}
+th{font-size:12px;font-weight:600;color:#4A4F57;background:#FAFBF9;white-space:nowrap}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F5F6F3; color: #16181D; font-family: 'IBM Plex Sans KR', sans-serif; font-size: 15px; line-height: 1.6">
+  <header style="background: #FFFFFF; border-bottom: 1px solid #DADDD6">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 18px 32px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px">
+      <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap">
+        <span style="font-size: 20px; font-weight: 600; letter-spacing: -0.01em">One Prompt Bench</span>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #5A606B">하나의 프롬프트, 모델마다 다른 나무</span>
+      </div>
+      <nav aria-label="주요 메뉴" style="display: flex; gap: 4px; flex-wrap: wrap">
+        <a href="Intro.dc.html" style="padding: 10px 16px; border-radius: 8px; color: #3B4048; text-decoration: none; font-weight: 500">소개</a>
+        <a href="Main.dc.html" style="padding: 10px 16px; border-radius: 8px; color: #3B4048; text-decoration: none; font-weight: 500">결과</a>
+        <a href="#" aria-current="page" style="padding: 10px 16px; border-radius: 8px; background: #16181D; color: #FFFFFF; text-decoration: none; font-weight: 500">비교표</a>
+        <a href="Prompt.dc.html" style="padding: 10px 16px; border-radius: 8px; color: #3B4048; text-decoration: none; font-weight: 500">프롬프트</a>
+      </nav>
+    </div>
+  </header>
+
+  <main style="max-width: 1200px; margin: 0 auto; padding: 32px; display: flex; flex-direction: column; gap: 32px; box-sizing: border-box">
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.02em">비교표</h1>
+      <p style="margin: 0; color: #4A4F57; max-width: 720px">모델마다 어떻게 만들어졌고, 얼마나 들었고, 프롬프트를 얼마나 지켰는지 나란히 봐요. 모델은 출시일 최신순이에요.</p>
+    </section>
+
+    <section aria-labelledby="t1" style="display: flex; flex-direction: column; gap: 12px">
+      <h2 id="t1" style="margin: 0; font-size: 18px; font-weight: 600">수록 모델</h2>
+      <div style="overflow-x: auto; background: #FFFFFF; border: 1px solid #DADDD6; border-radius: 14px">
+        <table>
+          <thead>
+            <tr><th scope="col">모델</th><th scope="col">회사</th><th scope="col">출시일</th><th scope="col">생성 도구</th><th scope="col">결과</th><th scope="col">파일 크기</th><th scope="col">three.js 버전</th></tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+              <tr>
+                <td style="font-weight: 600; white-space: nowrap">{{r.name}}</td>
+                <td>{{r.company}}</td>
+                <td style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">{{r.date}}</td>
+                <td>{{r.tool}}</td>
+                <td><span style="font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #ECEDEA; color: #4A4F57; white-space: nowrap">생성 전</span></td>
+                <td style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">—</td>
+                <td style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">—</td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="t2" style="display: flex; flex-direction: column; gap: 12px">
+      <h2 id="t2" style="margin: 0; font-size: 18px; font-weight: 600">생성 기록</h2>
+      <p style="margin: 0; padding: 12px 16px; background: #E9EFEA; border-radius: 10px; color: #23432F; font-size: 14px">비용은 API 정가로 계산한 값이에요. 실제로는 구독과 무료 티어로 생성해서 청구된 금액은 없어요.</p>
+      <div style="overflow-x: auto; background: #FFFFFF; border: 1px solid #DADDD6; border-radius: 14px">
+        <table>
+          <thead>
+            <tr><th scope="col">모델</th><th scope="col">입력 토큰</th><th scope="col">출력 토큰</th><th scope="col">그중 추론</th><th scope="col">비용 (정가 기준)</th><th scope="col">걸린 시간</th><th scope="col">재시도</th></tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+              <tr>
+                <td style="font-weight: 600; white-space: nowrap">{{r.name}}</td>
+                <td style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">—</td>
+                <td style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">— <sup style="color: #6B4A0B">{{r.outMark}}</sup></td>
+                <td style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">— <sup style="color: #6B4A0B">{{r.effortMark}}</sup></td>
+                <td style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">—</td>
+                <td style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">—</td>
+                <td style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">—</td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #4A4F57">
+        <span>† Codex CLI는 출력 상한을 지정할 수 없어 모델 기본값으로 생성했어요. 다른 모델의 출력 상한은 65,536 토큰이에요.</span>
+        <span>‡ Gemini 3.8 Flash는 추론 강도가 low·medium·high 세 단계라 high가 최고 단계예요. 다른 모델은 high 위에 단계가 더 있어요.</span>
+      </div>
+    </section>
+
+    <section aria-labelledby="t3" style="display: flex; flex-direction: column; gap: 12px">
+      <h2 id="t3" style="margin: 0; font-size: 18px; font-weight: 600">요구사항과 검증</h2>
+      <div style="overflow-x: auto; background: #FFFFFF; border: 1px solid #DADDD6; border-radius: 14px">
+        <table>
+          <thead>
+            <tr><th scope="col">모델</th><th scope="col">장면</th><th scope="col">계절 순환</th><th scope="col">계절 모습</th><th scope="col">계절 이름</th><th scope="col">조건 검사</th><th scope="col">에러 수</th></tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+              <tr>
+                <td style="font-weight: 600; white-space: nowrap">{{r.name}}</td>
+                <td style="color: #5A606B">—</td>
+                <td style="color: #5A606B">—</td>
+                <td style="color: #5A606B">—</td>
+                <td style="color: #5A606B">—</td>
+                <td style="color: #5A606B">—</td>
+                <td style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #5A606B">—</td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: #4A4F57">
+        <span>✓ 충족 · △ 부분 충족 · ✗ 미충족 (사람이 판정)</span>
+        <span>조건 검사: 정상 · 지시 미준수 · 위반</span>
+        <a href="Prompt.dc.html">판정 기준 보기</a>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var list = [
+      ['Claude Haiku 5.5', 'Anthropic', '2026-10-07', 'Claude Code'],
+      ['GPT-6.1 Sol', 'OpenAI', '2026-09-29', 'Codex CLI'],
+      ['Claude Sonnet 5.5', 'Anthropic', '2026-09-28', 'Claude Code'],
+      ['Claude Opus 5.5', 'Anthropic', '2026-09-22', 'Claude Code'],
+      ['GPT-6 Luna', 'OpenAI', '2026-09-22', 'Codex CLI'],
+      ['GPT-6 Sol', 'OpenAI', '2026-09-22', 'Codex CLI'],
+      ['GPT-6 Astra', 'OpenAI', '2026-09-03', 'Codex CLI'],
+      ['Gemini 3.8 Flash', 'Google', '2026-09-02', 'Gemini API']
+    ];
+    return {
+      rows: list.map(function (m) {
+        return {
+          name: m[0], company: m[1], date: m[2], tool: m[3],
+          outMark: m[3] === 'Codex CLI' ? '†' : '',
+          effortMark: m[1] === 'Google' ? '‡' : ''
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

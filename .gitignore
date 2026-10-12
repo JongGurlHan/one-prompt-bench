@@ -1,8 +1,15 @@
 node_modules/
-.next/
-out/
-next-env.d.ts
-tsconfig.tsbuildinfo
+dist/
+*.tsbuildinfo
+
+# site (Astro)
+site/.astro/
+site/public/r/
+
+# pipeline
+results-smoke/
+test-results/
+playwright-report/
 
 # env / secrets — 하네스는 git add -A 로 자동 커밋한다
 .env

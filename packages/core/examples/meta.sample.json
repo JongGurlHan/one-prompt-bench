@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "modelSlug": "example-model-a",
+  "modelId": "example-model-a",
+  "prompt": {
+    "id": "season-tree",
+    "version": "v1",
+    "sha256": "4f4d106306945d4087ca7169505b41caf6c9ab77c1d27ec8b30b39ad5d6ccc62"
+  },
+  "params": {
+    "reasoningEffort": "high",
+    "maxOutputTokens": 65536
+  },
+  "runtime": {
+    "gitCommit": "a1b2c3d",
+    "sdkPackage": "@anthropic-ai/sdk",
+    "sdkVersion": "0.0.0",
+    "nodeVersion": "22.0.0"
+  },
+  "startedAt": "2026-10-09T10:12:03+09:00",
+  "finishedAt": "2026-10-09T10:15:44+09:00",
+  "attempts": [
+    {
+      "n": 1,
+      "startedAt": "2026-10-09T10:12:03+09:00",
+      "latencyMs": 1800,
+      "firstTokenMs": null,
+      "result": {
+        "type": "error",
+        "kind": "rate_limited",
+        "httpStatus": 429,
+        "message": "rate limit exceeded",
+        "usage": null
+      }
+    },
+    {
+      "n": 2,
+      "startedAt": "2026-10-09T10:12:10+09:00",
+      "latencyMs": 214000,
+      "firstTokenMs": 96000,
+      "result": {
+        "type": "response",
+        "stopReason": "end",
+        "rawStopReason": "end_turn",
+        "resolvedModelId": "example-model-a-20260920",
+        "requestId": "req_example",
+        "usage": {
+          "inputTokens": 1200,
+          "outputTokens": 18500,
+          "reasoningTokens": 9200
+        }
+      }
+    }
+  ],
+  "outcome": "ok",
+  "responseTextPath": "results/example-model-a/response.txt",
+  "output": {
+    "path": "results/example-model-a/index.html",
+    "bytes": 41230,
+    "sha256": "0eb547304658805aad788d320f10bf1f292797b5e6d745a3bf617584da017051",
+    "extraction": "fenced_block"
+  },
+  "usageTotal": {
+    "inputTokens": 1200,
+    "outputTokens": 18500,
+    "reasoningTokens": 9200
+  },
+  "cost": {
+    "inputUsd": 0.006,
+    "outputUsd": 0.4625,
+    "totalUsd": 0.4685,
+    "pricingAsOf": "2026-10-09"
+  },
+  "validation": {
+    "checkedAt": "2026-10-09T10:20:00+09:00",
+    "environment": {
+      "browser": "chromium",
+      "browserVersion": "0.0.0"
+    },
+    "loaded": true,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "externalRequests": [
+      {
+        "url": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "resourceType": "script"
+      }
+    ],
+    "screenshots": [
+      {
+        "label": "spring",
+        "atMs": 5000,
+        "path": "results/example-model-a/spring.webp"
+      },
+      {
+        "label": "summer",
+        "atMs": 15000,
+        "path": "results/example-model-a/summer.webp"
+      },
+      {
+        "label": "autumn",
+        "atMs": 25000,
+        "path": "results/example-model-a/autumn.webp"
+      },
+      {
+        "label": "winter",
+        "atMs": 35000,
+        "path": "results/example-model-a/winter.webp"
+      }
+    ]
+  }
+}

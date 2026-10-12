@@ -20,6 +20,7 @@ import contextlib
 import fnmatch
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -39,6 +40,8 @@ FEEDBACK_TAIL = 3000
 SECRET_GLOBS = (".env", ".env.*", ".envrc", "*.pem", "*.key", "*.p12", "*.pfx", "id_rsa*", "id_ecdsa*", "id_ed25519*")
 SECRET_ALLOW = (".env.example", ".env.sample", ".env.template")
 STEP_STATUSES = ("pending", "completed", "error", "blocked")
+# 구독(Pro) 사용 한도 메시지. 짧은 요청 한도(429 rate limit)는 곧 풀리므로 넣지 않는다 — 일반 재시도에 맡긴다
+USAGE_LIMIT_RE = re.compile(r"usage limit|hit your limit|(?<!rate )limit reached", re.IGNORECASE)
 
 
 @contextlib.contextmanager
@@ -143,6 +146,27 @@ def parse_result(data) -> tuple:
     return result, ""
 
 
+def detect_usage_limit(exit_code: int, stdout: str, stderr: str) -> Optional[str]:
+    """claude -p 세션이 구독 사용 한도로 멈췄으면 그 메시지를 돌려준다.
+    한도는 몇 시간 뒤에야 풀린다. 재시도하면 시도 횟수만 소진하고 error 로 끝나므로 blocked 로 멈춰야 한다.
+    정상 결과(is_error 거짓)의 텍스트는 보지 않는다 — 세션 요약에 같은 단어가 나올 수 있다."""
+    data = None
+    with contextlib.suppress(ValueError):
+        data = json.loads(stdout)
+    if isinstance(data, dict):
+        if not data.get("is_error"):
+            return None
+        texts = [data.get("result")]
+    elif exit_code == 0:
+        return None
+    else:
+        texts = []
+    for text in texts + stderr.splitlines():
+        if isinstance(text, str) and USAGE_LIMIT_RE.search(text):
+            return text.strip()
+    return None
+
+
 def _tail(text: str, n: int = FEEDBACK_TAIL) -> str:
     return text if len(text) <= n else "…(앞부분 생략)\n" + text[-n:]
 
@@ -187,6 +211,7 @@ class InvokeResult:
     stderr: str
     cost_usd: float = 0.0  # 타임아웃으로 죽은 세션은 결과 JSON이 없어 0으로 남는다
     num_turns: int = 0
+    usage_limit: Optional[str] = None  # 구독 사용 한도로 멈췄으면 CLI 메시지
 
 
 class StepExecutor:
@@ -589,6 +614,7 @@ class StepExecutor:
 
         if exit_code != 0:
             print(f"\n  WARN: Claude 비정상 종료 (code {exit_code}{', timeout' if timed_out else ''})")
+        usage_limit = detect_usage_limit(exit_code, stdout, stderr)
 
         self._write_json(self._next_log_path(step_num), {
             "step": step_num, "attempt": attempt, "at": self._stamp(), "model": self._model,
@@ -597,7 +623,8 @@ class StepExecutor:
         })
         return InvokeResult(exit_code, timed_out, stderr,
                             cost_usd=float(usage.get("total_cost_usd") or 0.0),
-                            num_turns=int(usage.get("num_turns") or 0))
+                            num_turns=int(usage.get("num_turns") or 0),
+                            usage_limit=usage_limit)
 
     # --- 검증 ---
 
@@ -624,6 +651,10 @@ class StepExecutor:
         try:
             raw = self._read_json(result_file)
         except (FileNotFoundError, ValueError):
+            if inv.usage_limit:
+                return "blocked", (f"Claude 사용 한도 도달: {inv.usage_limit}\n"
+                                   f"한도가 풀린 뒤 `python scripts/execute.py {self._phase_dir_name} "
+                                   f"--reset-failed`로 다시 실행하세요."), None
             if inv.timed_out:
                 return "retry", f"세션이 타임아웃({self._timeout}s)으로 종료됐다. 남은 작업을 이어서 마무리하라.", None
             return "retry", (f"`{result_file.name}`이 없거나 올바른 JSON이 아니다 (claude exit {inv.exit_code}).\n"

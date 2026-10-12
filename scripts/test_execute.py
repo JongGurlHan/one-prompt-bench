@@ -437,6 +437,47 @@ class TestInvokeClaude:
         _, mock_run = self._run(executor)
         assert "--strict-mcp-config" not in mock_run.call_args[0][0]
 
+    def test_reports_usage_limit(self, executor):
+        stdout = '{"is_error": true, "result": "Claude AI usage limit reached|1760000000"}'
+        with patch.object(ex, "run_killing_tree", return_value=(1, stdout, "", False)):
+            res = executor._invoke_claude(2, "P", attempt=1, session_id="s")
+        assert "usage limit" in res.usage_limit
+
+    def test_no_usage_limit_on_normal_run(self, executor):
+        res, _ = self._run(executor)
+        assert res.usage_limit is None
+
+
+class TestDetectUsageLimit:
+    """구독(Pro) 사용 한도 도달 감지. 한도는 몇 시간 뒤에야 풀리므로 재시도 대신 blocked 로 멈춰야 한다."""
+
+    @pytest.mark.parametrize("result", [
+        "Claude AI usage limit reached|1760000000",
+        "You've hit your limit · resets 3pm (Asia/Seoul)",
+        "5-hour limit reached ∙ resets 7pm",
+        "Weekly limit reached · resets Oct 14",
+    ])
+    def test_detects_limit_in_error_result(self, result):
+        stdout = json.dumps({"is_error": True, "result": result})
+        assert ex.detect_usage_limit(1, stdout, "") == result
+
+    def test_detects_limit_in_stderr_without_json(self):
+        assert "usage limit" in ex.detect_usage_limit(1, "", "Error: Claude AI usage limit reached")
+
+    def test_ignores_successful_session_mentioning_limit(self):
+        # 이 프로젝트는 usage_limit 실패 종류를 구현한다. 정상 종료한 세션의 요약에 단어가 나와도 한도가 아니다
+        stdout = json.dumps({"is_error": False, "result": "usage limit reached 분류를 구현했다"})
+        assert ex.detect_usage_limit(0, stdout, "") is None
+
+    def test_ignores_other_errors(self):
+        stdout = json.dumps({"is_error": True, "result": "API Error: 500 Internal server error"})
+        assert ex.detect_usage_limit(1, stdout, "") is None
+
+    def test_ignores_transient_rate_limit(self):
+        # 짧은 요청 한도(429)는 곧 풀리므로 일반 재시도에 맡긴다
+        stdout = json.dumps({"is_error": True, "result": "API Error: 429 rate limit exceeded"})
+        assert ex.detect_usage_limit(1, stdout, "") is None
+
 
 # ---------------------------------------------------------------------------
 # 검증
@@ -646,6 +687,18 @@ class TestVerify:
         status, fb, _ = executor._verify(self._step(executor), self._inv())
         assert status == "blocked" and "API 키" in fb
 
+    def test_usage_limit_without_result_is_blocked(self, executor):
+        inv = self._inv(exit_code=1, usage_limit="Claude AI usage limit reached|1760000000")
+        status, fb, _ = executor._verify(self._step(executor), inv)
+        assert status == "blocked" and "사용 한도" in fb and "--reset-failed" in fb and "1760000000" in fb
+
+    def test_result_file_wins_over_usage_limit(self, executor):
+        # 세션이 보고를 마친 뒤 한도에 걸렸다면 보고를 따른다
+        self._write_result(executor, {"status": "completed", "summary": "s"})
+        with patch.object(executor, "_run_ac", return_value=(True, "")):
+            status, _, _ = executor._verify(self._step(executor), self._inv(exit_code=1, usage_limit="limit"))
+        assert status == "completed"
+
     def test_model_error_is_gave_up(self, executor):
         self._write_result(executor, {"status": "error", "reason": "원인 불명"})
         status, fb, _ = executor._verify(self._step(executor), self._inv())
@@ -713,10 +766,20 @@ class TestExecuteSingleStep:
             if run.get("result") is not None:
                 write_json(executor._result_file(step_num), run["result"])
             return ex.InvokeResult(exit_code=run.get("exit", 0), timed_out=run.get("timeout", False), stderr="",
-                                   cost_usd=run.get("cost", 0.0), num_turns=run.get("turns", 0))
+                                   cost_usd=run.get("cost", 0.0), num_turns=run.get("turns", 0),
+                                   usage_limit=run.get("usage_limit"))
 
         executor._invoke_claude = fake
         return calls
+
+    def test_usage_limit_blocks_without_retry(self, executor, top_index):
+        calls = self._fake_invoke(executor, [{"exit": 1, "usage_limit": "You've hit your limit · resets 3pm"}])
+        with pytest.raises(SystemExit) as e:
+            executor._execute_single_step(self._step(executor))
+        assert e.value.code == 2 and len(calls) == 1
+        s = read_json(executor._index_file)["steps"][2]
+        assert s["status"] == "blocked" and "resets 3pm" in s["blocked_reason"]
+        assert read_json(top_index)["phases"][0]["status"] == "blocked"
 
     def test_accumulates_cost_and_turns_across_attempts(self, executor):
         self._fake_invoke(executor, [dict(self.OK, cost=0.25, turns=9), dict(self.OK, cost=0.125, turns=3)])

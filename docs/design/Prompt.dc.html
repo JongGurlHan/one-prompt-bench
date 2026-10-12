@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>프롬프트 탭</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#F5F6F3}
+a{color:#2F5D46}a:hover{color:#1F4232}
+table{border-collapse:collapse;width:100%;min-width:760px}
+th,td{padding:12px 14px;text-align:left;border-bottom:1px solid #E6E8E3;font-size:14px;vertical-align:top}
+th{font-size:12px;font-weight:600;color:#4A4F57;background:#FAFBF9;white-space:nowrap}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F5F6F3; color: #16181D; font-family: 'IBM Plex Sans KR', sans-serif; font-size: 15px; line-height: 1.6">
+  <header style="background: #FFFFFF; border-bottom: 1px solid #DADDD6">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 18px 32px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px">
+      <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap">
+        <span style="font-size: 20px; font-weight: 600; letter-spacing: -0.01em">One Prompt Bench</span>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #5A606B">하나의 프롬프트, 모델마다 다른 나무</span>
+      </div>
+      <nav aria-label="주요 메뉴" style="display: flex; gap: 4px; flex-wrap: wrap">
+        <a href="Intro.dc.html" style="padding: 10px 16px; border-radius: 8px; color: #3B4048; text-decoration: none; font-weight: 500">소개</a>
+        <a href="Main.dc.html" style="padding: 10px 16px; border-radius: 8px; color: #3B4048; text-decoration: none; font-weight: 500">결과</a>
+        <a href="Compare.dc.html" style="padding: 10px 16px; border-radius: 8px; color: #3B4048; text-decoration: none; font-weight: 500">비교표</a>
+        <a href="#" aria-current="page" style="padding: 10px 16px; border-radius: 8px; background: #16181D; color: #FFFFFF; text-decoration: none; font-weight: 500">프롬프트</a>
+      </nav>
+    </div>
+  </header>
+
+  <main style="max-width: 1200px; margin: 0 auto; padding: 32px; display: flex; flex-direction: column; gap: 32px; box-sizing: border-box">
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.02em">프롬프트</h1>
+      <p style="margin: 0; color: #4A4F57; max-width: 720px">모든 모델에 아래 문장을 한 글자도 바꾸지 않고 그대로 보냈어요. 레퍼런스 이미지는 없어요.</p>
+    </section>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+      <section aria-label="프롬프트 원문" style="flex: 999 1 560px; min-width: 0; background: #FFFFFF; border: 1px solid #DADDD6; border-radius: 14px; overflow: hidden">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #E6E8E3; flex-wrap: wrap">
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #3B4048">season-tree-v1</span>
+          <button type="button" style="font: inherit; font-size: 13px; font-weight: 500; padding: 8px 12px; min-height: 36px; border: 1px solid #CFD3CC; border-radius: 8px; background: #FFFFFF; color: #2F5D46; cursor: pointer">복사</button>
+        </div>
+        <div style="padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; font-size: 15px; line-height: 1.75">
+          <p style="margin: 0">브라우저만으로 실행되는, 사계절이 바뀌는 3D 나무 애니메이션을 만들어주세요.</p>
+          <ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px">
+            <li>장면: 언덕 위에 나무 한 그루가 서 있고, 하늘과 땅도 계절에 맞게 함께 바뀐다.</li>
+            <li>계절: 페이지를 열면 봄, 여름, 가을, 겨울이 자동으로 이어지고 계속 반복된다. 계절마다 10초씩, 한 바퀴는 40초다.</li>
+            <li>모습: 봄에는 꽃, 여름에는 무성한 초록 잎, 가을에는 단풍과 떨어지는 낙엽, 겨울에는 앙상한 가지와 내리는 눈이 보인다. 계절은 갑자기 바뀌지 않고 자연스럽게 넘어간다.</li>
+            <li>표시: 화면 구석에 지금 계절의 이름을 보여준다.</li>
+          </ul>
+          <p style="margin: 0">3D 화면은 three.js로 그려도 되지만(버전을 고정한 주소로 불러올 것), 다른 외부 라이브러리와 이미지 파일은 쓰지 마세요.</p>
+          <p style="margin: 0">하나의 HTML 파일로 만들어 ```html 코드 블록 하나에 담아주세요. 실제 브랜드나 상표는 쓰지 마세요.</p>
+        </div>
+      </section>
+
+      <aside aria-label="생성 조건" style="flex: 1 1 280px; display: flex; flex-direction: column; gap: 12px; background: #FFFFFF; border: 1px solid #DADDD6; border-radius: 14px; padding: 20px">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 600">생성 조건</h2>
+        <sc-for list="{{conditions}}" as="c" hint-placeholder-count="5">
+          <div style="display: flex; flex-direction: column; gap: 2px; padding-bottom: 10px; border-bottom: 1px solid #EEF0EC">
+            <span style="font-size: 12px; color: #5A606B">{{c.label}}</span>
+            <span style="font-size: 14px">{{c.value}}</span>
+          </div>
+        </sc-for>
+      </aside>
+    </div>
+
+    <section aria-labelledby="judge" style="display: flex; flex-direction: column; gap: 12px">
+      <h2 id="judge" style="margin: 0; font-size: 18px; font-weight: 600">판정 기준</h2>
+      <p style="margin: 0; color: #4A4F57; max-width: 760px">결과물을 한 바퀴 넘게 지켜보고, 5·15·25·35초에 찍은 스크린샷 4장을 함께 봐요. "계절마다 10초"는 스크린샷이 각각 맞는 계절인지로 판단해요.</p>
+      <div style="overflow-x: auto; background: #FFFFFF; border: 1px solid #DADDD6; border-radius: 14px">
+        <table>
+          <thead>
+            <tr><th scope="col">요구사항</th><th scope="col">✓ 충족</th><th scope="col">△ 부분 충족</th><th scope="col">✗ 미충족</th></tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{criteria}}" as="k" hint-placeholder-count="4">
+              <tr>
+                <td style="font-weight: 600; white-space: nowrap">{{k.name}}</td>
+                <td>{{k.pass}}</td>
+                <td>{{k.partial}}</td>
+                <td>{{k.fail}}</td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1240}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      conditions: [
+        { label: '횟수', value: '모델마다 1회, 사람이 고치지 않음' },
+        { label: '추론 강도', value: 'high (회사마다 단계 구성이 달라요, 비교표 각주 참고)' },
+        { label: '출력 상한', value: '65,536 토큰 (도구별 차이는 비교표 각주 참고)' },
+        { label: '생성 도구', value: 'Claude Code · Codex CLI · Gemini API' },
+        { label: '재시도', value: '기술적 실패일 때만' }
+      ],
+      criteria: [
+        { name: '장면', pass: '3D로 만든 언덕 위 나무, 하늘과 땅도 계절에 따라 바뀜', partial: '나무는 있지만 하늘·땅이 안 바뀌거나, 2D로 만듦', fail: '나무가 없거나 화면이 안 나옴' },
+        { name: '계절 순환', pass: '스크린샷 4장이 차례로 봄·여름·가을·겨울이고, 한 바퀴 뒤 다시 봄이 옴', partial: '순서는 맞지만 시점이 어긋나거나, 한 바퀴 뒤 반복되지 않음', fail: '계절이 저절로 바뀌지 않음' },
+        { name: '계절 모습', pass: '네 계절의 특징(꽃, 무성한 잎, 단풍과 낙엽, 앙상한 가지와 눈)이 모두 있고, 전환이 부드러움', partial: '특징이 일부 빠지거나, 계절이 뚝 끊기듯 바뀜', fail: '계절 구분이 거의 안 됨' },
+        { name: '계절 이름', pass: '지금 계절에 맞게 표시', partial: '표시는 되지만 틀리거나 늦게 바뀜', fail: '표시 없음' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

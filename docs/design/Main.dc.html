@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>결과 탭 A: 목록과 크게 보기</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#F5F6F3}
+a{color:#2F5D46}a:hover{color:#1F4232}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F5F6F3; color: #16181D; font-family: 'IBM Plex Sans KR', sans-serif; font-size: 15px; line-height: 1.6">
+  <header style="background: #FFFFFF; border-bottom: 1px solid #DADDD6">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 18px 32px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px">
+      <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap">
+        <span style="font-size: 20px; font-weight: 600; letter-spacing: -0.01em">One Prompt Bench</span>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #5A606B">하나의 프롬프트, 모델마다 다른 나무</span>
+      </div>
+      <nav aria-label="주요 메뉴" style="display: flex; gap: 4px; flex-wrap: wrap">
+        <a href="#" style="padding: 10px 16px; border-radius: 8px; color: #3B4048; text-decoration: none; font-weight: 500">소개</a>
+        <a href="#" aria-current="page" style="padding: 10px 16px; border-radius: 8px; background: #16181D; color: #FFFFFF; text-decoration: none; font-weight: 500">결과</a>
+        <a href="#" style="padding: 10px 16px; border-radius: 8px; color: #3B4048; text-decoration: none; font-weight: 500">비교표</a>
+        <a href="#" style="padding: 10px 16px; border-radius: 8px; color: #3B4048; text-decoration: none; font-weight: 500">프롬프트</a>
+      </nav>
+    </div>
+  </header>
+
+  <main style="max-width: 1200px; margin: 0 auto; padding: 32px; display: flex; flex-direction: column; gap: 24px; box-sizing: border-box">
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.02em">사계절이 바뀌는 3D 나무</h1>
+      <p style="margin: 0; color: #4A4F57; max-width: 680px">같은 프롬프트로 여러 모델이 한 번씩 만든 결과물이에요. 왼쪽에서 모델을 고르면 그 결과물 하나만 실행돼요.</p>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #3B4048">
+        <span style="padding: 4px 10px; border: 1px solid #CFD3CC; border-radius: 999px">season-tree-v1</span>
+        <span style="padding: 4px 10px; border: 1px solid #CFD3CC; border-radius: 999px">모델 8개</span>
+        <span style="padding: 4px 10px; border: 1px solid #CFD3CC; border-radius: 999px">모델당 1회 생성</span>
+      </div>
+    </section>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+      <aside aria-label="모델 목록" style="flex: 1 1 280px; max-width: 340px; display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline">
+          <h2 style="margin: 0; font-size: 15px; font-weight: 600">모델</h2>
+          <span style="font-size: 12px; color: #5A606B">출시일 최신순</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <sc-for list="{{models}}" as="m" hint-placeholder-count="8">
+            <button type="button" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 10px 14px; border-radius: 10px; cursor: pointer; font: inherit; color: #16181D; background: {{m.bg}}; border: {{m.border}}">
+              <span style="display: flex; flex-direction: column; gap: 2px; text-align: left; min-width: 0">
+                <span style="font-weight: 600; font-size: 15px">{{m.name}}</span>
+                <span style="font-size: 12px; color: #5A606B">{{m.meta}}</span>
+              </span>
+              <span style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0">
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5A606B">{{m.date}}</span>
+                <span style="font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #ECEDEA; color: #4A4F57">생성 전</span>
+              </span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="margin-top: 8px; padding: 12px; border: 1px dashed #CFD3CC; border-radius: 10px; display: flex; flex-direction: column; gap: 8px">
+          <span style="font-size: 12px; font-weight: 600; color: #3B4048">상태 표시</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px">
+            <span style="padding: 2px 8px; border-radius: 999px; background: #DCEBDF; color: #1F5132">정상</span>
+            <span style="padding: 2px 8px; border-radius: 999px; background: #F6E7C8; color: #6B4A0B">지시 미준수</span>
+            <span style="padding: 2px 8px; border-radius: 999px; background: #F5D9D5; color: #7A2318">위반</span>
+            <span style="padding: 2px 8px; border-radius: 999px; background: #E5E1F2; color: #43357A">잘림</span>
+            <span style="padding: 2px 8px; border-radius: 999px; background: #E5E1F2; color: #43357A">HTML 없음</span>
+            <span style="padding: 2px 8px; border-radius: 999px; background: #DCE6F2; color: #1F3F66">한도 초과</span>
+            <span style="padding: 2px 8px; border-radius: 999px; background: #ECEDEA; color: #4A4F57">생성 전</span>
+          </div>
+        </div>
+      </aside>
+
+      <section aria-label="선택한 결과물" style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+        <div style="background: #FFFFFF; border: 1px solid #DADDD6; border-radius: 14px; overflow: hidden">
+          <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #E6E8E3">
+            <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap">
+              <span style="font-weight: 600">Claude Haiku 5.5</span>
+              <span style="font-size: 12px; color: #5A606B">Anthropic · Claude Code로 생성 · 2026-10-07 출시</span>
+            </div>
+            <a href="#" style="font-size: 13px; font-weight: 500; padding: 8px 12px; border: 1px solid #CFD3CC; border-radius: 8px; text-decoration: none; color: #2F5D46">새 창에서 열기</a>
+          </div>
+          <div style="aspect-ratio: 16 / 10; background: #1C1F24; color: #C9CDD3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 24px">
+            <span style="font-size: 16px; font-weight: 500; color: #E8EAED">결과물 실행 영역</span>
+            <span style="font-size: 13px">고른 모델의 HTML 하나만 이 안에서 실행해요</span>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px">
+          <div style="background: #FFFFFF; border: 1px solid #DADDD6; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+            <h3 style="margin: 0; font-size: 14px; font-weight: 600">요구사항 판정</h3>
+            <sc-for list="{{requirements}}" as="r" hint-placeholder-count="4">
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px">
+                <span>{{r}}</span>
+                <span style="font-size: 12px; color: #5A606B">판정 전</span>
+              </div>
+            </sc-for>
+            <p style="margin: 4px 0 0; padding-top: 10px; border-top: 1px solid #E6E8E3; font-size: 13px; color: #4A4F57">[판정 메모 한 줄]</p>
+          </div>
+          <div style="background: #FFFFFF; border: 1px solid #DADDD6; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+            <h3 style="margin: 0; font-size: 14px; font-weight: 600">생성 기록</h3>
+            <sc-for list="{{records}}" as="row" hint-placeholder-count="4">
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px">
+                <span>{{row.label}}</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #3B4048">{{row.value}}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":980}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var list = [
+      ['Claude Haiku 5.5', 'Anthropic · Claude Code', '2026-10-07'],
+      ['GPT-6.1 Sol', 'OpenAI · Codex CLI', '2026-09-29'],
+      ['Claude Sonnet 5.5', 'Anthropic · Claude Code', '2026-09-28'],
+      ['Claude Opus 5.5', 'Anthropic · Claude Code', '2026-09-22'],
+      ['GPT-6 Luna', 'OpenAI · Codex CLI', '2026-09-22'],
+      ['GPT-6 Sol', 'OpenAI · Codex CLI', '2026-09-22'],
+      ['GPT-6 Astra', 'OpenAI · Codex CLI', '2026-09-03'],
+      ['Gemini 3.8 Flash', 'Google · Gemini API', '2026-09-02']
+    ];
+    return {
+      models: list.map(function (m, i) {
+        var picked = i === 0;
+        return {
+          name: m[0], meta: m[1], date: m[2],
+          bg: picked ? '#E7F0EA' : '#FFFFFF',
+          border: picked ? '2px solid #2F5D46' : '1px solid #DADDD6'
+        };
+      }),
+      requirements: ['장면', '계절 순환', '계절 모습', '계절 이름'],
+      records: [
+        { label: '결과', value: '생성 전' },
+        { label: '조건 검사', value: '—' },
+        { label: '토큰 (입력 / 출력)', value: '—' },
+        { label: '비용 (정가 기준)', value: '—' },
+        { label: '걸린 시간', value: '—' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

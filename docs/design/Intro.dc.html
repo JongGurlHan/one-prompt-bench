@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>소개 탭</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#F5F6F3}
+a{color:#2F5D46}a:hover{color:#1F4232}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F5F6F3; color: #16181D; font-family: 'IBM Plex Sans KR', sans-serif; font-size: 15px; line-height: 1.6">
+  <header style="background: #FFFFFF; border-bottom: 1px solid #DADDD6">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 18px 32px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px">
+      <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap">
+        <span style="font-size: 20px; font-weight: 600; letter-spacing: -0.01em">One Prompt Bench</span>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #5A606B">하나의 프롬프트, 모델마다 다른 나무</span>
+      </div>
+      <nav aria-label="주요 메뉴" style="display: flex; gap: 4px; flex-wrap: wrap">
+        <a href="#" aria-current="page" style="padding: 10px 16px; border-radius: 8px; background: #16181D; color: #FFFFFF; text-decoration: none; font-weight: 500">소개</a>
+        <a href="Main.dc.html" style="padding: 10px 16px; border-radius: 8px; color: #3B4048; text-decoration: none; font-weight: 500">결과</a>
+        <a href="Compare.dc.html" style="padding: 10px 16px; border-radius: 8px; color: #3B4048; text-decoration: none; font-weight: 500">비교표</a>
+        <a href="Prompt.dc.html" style="padding: 10px 16px; border-radius: 8px; color: #3B4048; text-decoration: none; font-weight: 500">프롬프트</a>
+      </nav>
+    </div>
+  </header>
+
+  <main style="max-width: 1200px; margin: 0 auto; padding: 56px 32px 48px; display: flex; flex-direction: column; gap: 48px; box-sizing: border-box">
+    <section style="display: flex; flex-direction: column; gap: 16px; max-width: 760px">
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #2F5D46">AI 모델 결과물 비교</span>
+      <h1 style="margin: 0; font-size: 44px; line-height: 1.25; font-weight: 600; letter-spacing: -0.025em">하나의 프롬프트, 모델마다 다른 나무</h1>
+      <p style="margin: 0; font-size: 17px; color: #3B4048">같은 프롬프트를 여러 AI 모델에 한 번씩 보내, 브라우저에서 바로 실행되는 3D 나무를 받았어요. 새 모델이 나오면 같은 프롬프트로 한 그루씩 더해요.</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px">
+        <a href="Main.dc.html" style="padding: 12px 20px; border-radius: 10px; background: #2F5D46; color: #FFFFFF; text-decoration: none; font-weight: 500">결과 보러 가기</a>
+        <a href="Compare.dc.html" style="padding: 12px 20px; border-radius: 10px; border: 1px solid #CFD3CC; background: #FFFFFF; color: #16181D; text-decoration: none; font-weight: 500">비교표 보기</a>
+        <a href="Prompt.dc.html" style="padding: 12px 20px; border-radius: 10px; border: 1px solid #CFD3CC; background: #FFFFFF; color: #16181D; text-decoration: none; font-weight: 500">프롬프트 전문</a>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #3B4048">
+        <span style="padding: 4px 10px; border: 1px solid #CFD3CC; border-radius: 999px">모델 8개</span>
+        <span style="padding: 4px 10px; border: 1px solid #CFD3CC; border-radius: 999px">season-tree-v1</span>
+        <span style="padding: 4px 10px; border: 1px solid #CFD3CC; border-radius: 999px">모델당 1회 생성</span>
+      </div>
+    </section>
+
+    <section aria-label="이 사이트에 대해" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px">
+      <div style="background: #FFFFFF; border: 1px solid #DADDD6; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 8px">
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #2F5D46">What</span>
+        <h2 style="margin: 0; font-size: 18px; font-weight: 600">같은 과제, 다른 모델</h2>
+        <p style="margin: 0; color: #3B4048">2026년 9월 이후 출시된 OpenAI·Anthropic·Google 모델에 똑같은 프롬프트를 보냈어요. 지금까지 8개 모델이 참여했고, 새 모델도 같은 조건으로 추가해요.</p>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #DADDD6; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 8px">
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #2F5D46">How</span>
+        <h2 style="margin: 0; font-size: 18px; font-weight: 600">같은 조건, 자동 기록</h2>
+        <p style="margin: 0; color: #3B4048">모델마다 한 번, 추론 강도 high로 만들었고 사람이 손대지 않았어요. 생성과 검증은 프로그램이 자동으로 하고, 토큰과 시간과 에러를 기록해요.</p>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #DADDD6; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 8px">
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #2F5D46">Caution</span>
+        <h2 style="margin: 0; font-size: 18px; font-weight: 600">순위가 아니라 기록</h2>
+        <p style="margin: 0; color: #3B4048">모델마다 한 번씩만 생성해서 운이 섞여 있어요. 생성 도구마다 조건이 조금씩 다른 부분은 비교표 각주에 적었어요.</p>
+      </div>
+    </section>
+
+    <section aria-label="수록 기준" style="display: flex; flex-wrap: wrap; gap: 24px; padding-top: 32px; border-top: 1px solid #DADDD6">
+      <div style="flex: 1 1 280px; display: flex; flex-direction: column; gap: 8px">
+        <h2 style="margin: 0; font-size: 18px; font-weight: 600">수록 기준</h2>
+        <p style="margin: 0; color: #3B4048">2026년 9월 1일 이후 출시된 OpenAI·Anthropic·Google 모델이 대상이에요. 새로 추가되는 모델도 이 기준을 따라요.</p>
+      </div>
+      <div style="flex: 2 1 480px; display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 13px; font-weight: 600; color: #3B4048">대상에서 뺀 모델</span>
+        <div style="display: flex; justify-content: space-between; gap: 16px; padding: 12px 16px; background: #FFFFFF; border: 1px solid #DADDD6; border-radius: 10px; flex-wrap: wrap">
+          <span style="font-weight: 500">Claude Mythos 5.1</span>
+          <span style="color: #4A4F57">처음부터 대상에서 제외</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; gap: 16px; padding: 12px 16px; background: #FFFFFF; border: 1px solid #DADDD6; border-radius: 10px; flex-wrap: wrap">
+          <span style="font-weight: 500">Claude Fable 5.1</span>
+          <span style="color: #4A4F57">사용 중인 구독 플랜에서 추가 결제가 필요해 제외</span>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1120}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
