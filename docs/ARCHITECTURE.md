@@ -138,7 +138,12 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 - 본문은 `thought: true`가 아닌 텍스트 part를 이어 붙인 것이다. inputTokens = `promptTokenCount`(SDK 주석상 캐시분 포함) + `toolUsePromptTokenCount`, outputTokens = `candidatesTokenCount` + `thoughtsTokenCount`, reasoningTokens = `thoughtsTokenCount`(없으면 null).
 - stopReason: `STOP` → end, `MAX_TOKENS`·`CONTINUATION`(요청당 토큰 한도로 미완성) → max_tokens, 안전·정책 계열(`SAFETY`·`RECITATION`·`BLOCKLIST`·`PROHIBITED_CONTENT`·`SPII`·`IMAGE_*`)과 `promptFeedback.blockReason` → refusal, 그 밖 → other.
 - 에러: 429 → `rate_limited`(재시도), 단 QuotaFailure의 quotaId에 `PerDay`가 있으면 일일 할당량 소진 → `usage_limit`(재시도 안 함). 401·403·키 무효 표시 → `auth`, 400 → `bad_request`, 5xx → `server_error`, 그 밖 4xx → `unknown`, 연결 오류 → `network`, abort → `timeout`. RetryInfo `retryDelay`("37s")가 있으면 `retryAfterMs`로 쓴다. 에러 메시지에서 API 키 모양(`key=…`, `AIza…`)은 가린다.
-- ⚠ smoke로 확인(위 값은 SDK 타입 기준의 추측): thinkingLevel HIGH가 3.8 Flash에 적용되는가, usage 필드 이름과 캐시 포함 여부, 실제 finishReason 값, 일일 할당량·키 무효를 구분하는 표시, retryDelay 형식, 스트림 도중 에러 메시지 형식. fixture(`pipeline/test/fixtures/gemini/`)는 지금 합성본이다.
+- smoke로 확인한 것(2026-10-12, gemini-3.8-flash, SDK 2.28.0, 원본은 fixture `stream-smoke-ok.jsonl`):
+  - 무료 티어 키로 인증된다. `thinkingLevel: HIGH` 요청이 거부되지 않는다(Hello 요청에 thought 561토큰).
+  - `usageMetadata`는 청크마다 누적값으로 온다. `promptTokenCount + candidatesTokenCount + thoughtsTokenCount = totalTokenCount`(35 + 20 + 561 = 616)라서, 위의 출력 정규화가 맞다. 응답에 `serviceTier` 필드가 있다.
+  - 마지막 청크에 `finishReason: STOP`과, 빈 text에 `thoughtSignature`만 있는 part가 온다. thought 본문 part는 오지 않는다.
+  - 입력은 35토큰이다(도구 기본 지시문이 섞이지 않음). systemInstruction이 실제로 적용됐는지는 이 토큰 수로 미루어 본 것이다(추정).
+- ⚠ 아직 실제 출력으로 확인하지 못한 것(합성 fixture 그대로): STOP 외 finishReason, 캐시 토큰이 있을 때의 usage, 429의 짧은 한도와 일일 할당량을 구분하는 표시, 키 무효 표시, retryDelay 형식, 스트림 도중 에러 메시지 형식. 에러는 smoke로 일부러 만들 수 없다. 실제로 만나면 smoke의 `raw-error.json`이나 meta.json의 에러 message를 fixture로 옮긴다.
 - 2027-01-01부터 정가가 2배가 된다. 비용은 `models.json`의 `pricing.asOf` 시점 가격으로 계산한다.
 
 **smoke** (`npm run smoke -- <slug>`): "Hello" HTML 한 장을 요청하는 짧은 프롬프트, 출력 상한 8,000. `results-smoke/<slug>-<timestamp>/`에 meta.json과 함께 **도구의 원본 stdout을 그대로 저장**한다. 사람이 확인한 뒤 어댑터 테스트 fixture로 복사하는 용도다(⚠ 항목을 실제 출력으로 확정).
