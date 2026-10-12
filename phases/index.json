@@ -14,7 +14,8 @@
     },
     {
       "dir": "03-deploy-claude-adapter",
-      "status": "pending"
+      "status": "blocked",
+      "blocked_at": "2026-10-13T02:24:49+0900"
     }
   ]
 }
