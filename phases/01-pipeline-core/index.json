@@ -64,12 +64,21 @@
     {
       "step": 3,
       "name": "batch-gen",
-      "status": "pending",
+      "status": "completed",
       "ac": [
         "npm run lint",
         "npm run typecheck",
         "npm test"
-      ]
+      ],
+      "started_at": "2026-10-12T15:12:05+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "7f56d28e-5f14-4b23-884d-0dd4ae273cbd",
+      "cost_usd": 4.8351,
+      "num_turns": 55,
+      "summary": "gen 명령 완성: config(.env를 dotenv.parse로 읽고 process.env는 안 바꿈)·ADAPTERS 레지스트리(gemini-api만, wrapClient)·preflight(API 키 변수/미등록 도구/GEMINI 키/커밋 안 된 변경, 순수 판정+수집)·batch(대상 선택, 폴더 상태 판정, --force y/N 확인, 순차 실행, 검증기 자리표시, 요약표, exit code)·BatchService·cli gen·루트 gen 스크립트. pipeline 테스트 119개(신규 76개, 가짜 어댑터·임시 레포·가짜 git), core 26개, lint·typecheck 통과",
+      "handoff": "1) 인터페이스: config/config.ts AppConfig{repoRoot,dotenv}·loadConfig·defaultRepoRoot·redactSecrets. adapters/registry.ts AdapterEntry<Client>{preflight?(), create(config,{wrapClient?})}, AdapterRegistry는 도구별 타입('gemini-api'?: AdapterEntry<GeminiClient>, claude-code·codex-cli는 AdapterEntry<unknown> 자리 — phase 3·4가 Client 타입을 좁혀 등록). createAdapterRegistry·registeredTools.\n2) preflight.ts: evaluatePreflight(facts) 순수, runPreflight(models,{env,config,adapters,git},{checkGit}) — smoke는 checkGit:false. 대상 도구의 등록 항목 preflight() 결과를 붙이고 throw는 실패 항목. formatPreflight·preflightPassed.\n3) batch.ts: runBatch(opts, BatchDeps{config,env,adapters,git,confirm,validator,run,out,nodeVersion}), 순수: selectTargets·planResultDir·forceConfirmMessage·formatSummary·batchExitCode·resultDirPath. generation/models.ts loadModels(smoke도 재사용 가능). system/git.ts GitClient{status,head}, system/confirm.ts createTerminalConfirm(readline/promises, EOF·Ctrl+C=거절).\n4) Nest 토큰 REPO_ROOT·ADAPTERS·GIT·CONFIRM·VALIDATOR·OUTPUT 추가. 컨텍스트 생성은 .env를 읽지 않는다(BatchService.gen이 실행 때 loadConfig) — app.module 테스트가 레포 .env를 읽지 않게. smoke 서비스도 같은 방식 권장. VALIDATOR=PlaceholderValidator(phase 2가 교체).\n5) 문서에 없어서 정한 것: exit 1 = --force 거절, 깨진 meta.json, 모델 처리 중 예외, 검증기 throw(npm run validate 필요). api_failed(usage_limit 포함)는 0. modelSlug가 폴더 이름과 다른 meta.json도 broken. --force는 깨진 meta.json 폴더도 비운다(확인 목록에 표시).\n6) 순서: 대상 → preflight → HEAD(스키마의 커밋 해시 규칙 검사) → 프롬프트 1회 로드 → 폴더 상태 → --force 확인 → 순차 실행. 프롬프트는 모델마다가 아니라 루프 전에 한 번 읽는다(깨진 프롬프트로 폴더를 비우지 않게).\n7) ANTHROPIC_API_KEY·OPENAI_API_KEY는 빈 문자열이어도 있으면 실패. batch가 출력하는 에러 메시지는 .env 값(8자 이상)을 ***로 가린다.\n8) 요약표는 운영자 로그라 display.ts 규칙(phase 2 신규) 대신 원래 단위(초 소수 1자리, $ 소수 4자리), 한글 2칸 폭으로 정렬. phase 2가 display.ts를 만들면 바꿀지 검토.\n9) dotenv 18.0.7을 pipeline dependencies에 추가. 루트 \"gen\": \"tsx --tsconfig pipeline/tsconfig.json pipeline/src/main.ts gen\" — smoke도 같은 형태로. 테스트 헬퍼: pipeline/test/batch-fakes.ts(makeRepo·fakeWorld(scripts,tools)·fakeGit·harness·seedResult·snapshot).",
+      "completed_at": "2026-10-12T15:28:14+0900",
+      "attempts": 1
     },
     {
       "step": 4,
