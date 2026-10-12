@@ -7,20 +7,44 @@
     {
       "step": 0,
       "name": "public-deploy",
-      "status": "pending",
-      "ac": ["npm run lint", "npm run typecheck", "npm test", "npm run build", "npm run check:results"]
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test",
+        "npm run build",
+        "npm run check:results"
+      ],
+      "started_at": "2026-10-13T01:58:55+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "50da8b78-c3ed-4c3a-897c-9545f1377bcc",
+      "cost_usd": 2.0929,
+      "num_turns": 47,
+      "summary": "결과 탭 '생성 기록'에 '에러 수' 행(core displayModel.errorCount 그대로, dist·브라우저 테스트)과 .github/workflows/deploy.yml(main push·수동 실행, 검사 전부 통과 뒤 Pages 배포)을 더하고, 워크플로를 yaml 파서로 검사하는 site/test/deploy-workflow.test.ts를 만들었다",
+      "handoff": "- RECORD_CARD.rows·ResultView.record에 errorCount 키를 더했다(순서: status·requestCheck·errorCount·tokens·cost·duration). DOM은 dd[data-record=errorCount]. 클라이언트 results-tab.ts는 record를 키로 옮기므로 바꾸지 않았다.\n- 결과 탭 테스트 데이터: model-fail-mark에 콘솔 에러 2 + 페이지 에러 1을 넣었다(정상 배지 + 에러 수 3). 모델별 기대값은 results-data.ts EXPECTED_ERROR_COUNT.\n- site devDependencies에 yaml ^2.9.1(이미 astro가 쓰는 버전, lock은 한 줄만 바뀜). docs/ARCHITECTURE '버전 참고'에는 아직 안 적었다 — F 절차에서 옮긴다.\n- astro.config.mjs의 normalizeBase를 export하고 site/test/astro-config.test.ts로 '/one-prompt-bench'·''·undefined를 확인했다(로직은 그대로). 손으로도 SITE_BASE=/one-prompt-bench 빌드에서 링크가 /one-prompt-bench/로 시작함을 확인. Git Bash에서 SITE_BASE=/x를 넘기면 MSYS가 'C:/Program Files/Git/x'로 바꾸니 수동 확인 때는 MSYS2_ENV_CONV_EXCL='*'를 쓴다(CI 리눅스는 무관).\n- 워크플로 주석에도 gen·smoke·validate·judge·claude·codex·API_KEY 같은 단어를 쓰면 테스트가 실패한다(파일 전체 문자열 검사). step id는 configure-pages=pages, deploy-pages=deployment. job·step에 if·continue-on-error·permissions를 두면 실패한다.\n- 실제 실행(push, Pages Source=GitHub Actions)은 사람이 한다. 리눅스 CI에서 처음 도는 테스트(WebGL 픽스처, POSIX 프로세스 종료)는 아직 미확인.",
+      "completed_at": "2026-10-13T02:09:29+0900",
+      "attempts": 1
     },
     {
       "step": 1,
       "name": "cli-process",
       "status": "pending",
-      "ac": ["npm run lint", "npm run typecheck", "npm test"]
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ]
     },
     {
       "step": 2,
       "name": "claude-code-adapter",
       "status": "pending",
-      "ac": ["npm run lint", "npm run typecheck", "npm test"]
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ]
     }
-  ]
+  ],
+  "created_at": "2026-10-13T01:58:55+0900"
 }
