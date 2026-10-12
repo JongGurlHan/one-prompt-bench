@@ -7,9 +7,10 @@
     },
     {
       "dir": "02-validator-results-tab",
-      "status": "blocked",
+      "status": "completed",
       "failed_at": "2026-10-12T17:07:15+0900",
-      "blocked_at": "2026-10-12T21:18:46+0900"
+      "blocked_at": "2026-10-12T21:18:46+0900",
+      "completed_at": "2026-10-13T01:19:23+0900"
     }
   ]
 }
