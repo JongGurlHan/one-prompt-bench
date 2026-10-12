@@ -28,12 +28,21 @@
     {
       "step": 1,
       "name": "cli-process",
-      "status": "pending",
+      "status": "completed",
       "ac": [
         "npm run lint",
         "npm run typecheck",
         "npm test"
-      ]
+      ],
+      "started_at": "2026-10-13T02:09:29+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "f4f7fcc1-adc0-4f8a-9444-eab899d96730",
+      "cost_usd": 2.1584,
+      "num_turns": 28,
+      "summary": "pipeline/src/system/cli.ts에 도구 중립 CLI 실행 모듈(runCli·cliEnv·findOnPath·withTempDir, CliAbortError·CliOutputLimitError)을 만들고, node 가짜 CLI(test/fixtures/cli/fake-cli.mjs)를 실제로 띄우는 cli-process.test.ts와 cli-env.test.ts로 stdin/stdout UTF-8·인자 배열·EPIPE·ENOENT·abort 트리 종료(자식·손자 ESRCH)·환경 정리를 확인했다",
+      "handoff": "- 시그니처는 step 문서 그대로. 더한 것: CliRequest.maxOutputBytes?(기본 MAX_OUTPUT_BYTES=64MiB, stdout·stderr 각각, 넘으면 트리 종료 후 CliOutputLimitError), abort 에러는 CliAbortError(name 'AbortError', cause=signal.reason), KILL_GRACE_MS=3000(트리 종료 뒤 파이프가 안 닫혀도 이 시간 뒤 reject — 매달림 방지).\n- FORBIDDEN_ENV_KEYS를 system/cli.ts로 옮겼다. preflight.ts는 거기서 import(재수출 안 함). system이 generation을 import하지 않게 하려는 방향.\n- cliEnv: 이름 비교는 모든 플랫폼에서 대소문자 무시(platform 인자 없음). set은 대소문자만 다른 기존 키를 대신하고, set에 API 키 변수가 있으면 throw. ANTHROPIC_AUTH_TOKEN·ANTHROPIC_BASE_URL 등 다른 과금 경로 변수는 스펙대로 지우지 않는다(필요하면 사람이 결정).\n- findOnPath: 현재 디렉토리는 보지 않음. Windows 반환 경로의 확장자는 PATHEXT 표기(예: claude.CMD)라 step 2의 .cmd shim 판별은 대소문자 무시로 비교할 것. 이름에 경로 구분자가 든 경우는 따로 처리하지 않는다.\n- withTempDir: os.tmpdir()에 mkdtemp, finally에서 rm(재시도 5회). 지우기 실패는 삼킨다(받은 생성 결과를 잃지 않게).\n- Windows의 libuv는 env에 없으면 PATH·SYSTEMROOT·TEMP·USERPROFILE 등 11개를 부모 환경에서 채운다(비밀값 아님). 그래서 'env만 준다'는 Windows에서 그 목록을 뺀 기준이다(테스트도 그렇게 검사).\n- 알려진 한계: POSIX는 detached(새 세션)라 터미널 Ctrl+C(SIGINT)가 CLI에 가지 않는다 — 파이프라인이 SIGINT에서 abort하지 않으면 고아로 남을 수 있다(사람 PC는 Windows라 같은 콘솔로 함께 받음). 정상 종료 후 트리 밖 손자가 파이프를 쥐면 close가 안 와서 Runner 타임아웃(abort)까지 기다린다.\n- POSIX 분기(프로세스 그룹 SIGKILL, findOnPath 실행 권한 테스트)는 Windows에서만 돌려 봤고 리눅스 CI에서 처음 돈다.",
+      "completed_at": "2026-10-13T02:20:14+0900",
+      "attempts": 1
     },
     {
       "step": 2,
