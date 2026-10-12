@@ -24,9 +24,11 @@ npm workspaces 모노레포. 모든 TypeScript는 ESM(`"type": "module"`, NodeNe
 │   ├── src/sort.ts                 목록 정렬 규칙
 │   ├── src/prompt.ts               프롬프트 파일 읽기 (loadPrompt, CURRENT_PROMPT)
 │   ├── src/index.ts                공개 진입점 (`@opb/core`, 빌드 없이 TS 소스를 직접 내보냄)
-│   ├── src/results.ts              (신규) results/ 읽기·검증·조인 — 사이트와 check:results가 공유
-│   ├── src/display.ts              (신규) 상태 라벨·숫자 포맷 등 표시 규칙 (DATA.md "표시 규칙")
-│   ├── scripts/check-results.ts    (신규) `npm run check:results` — Nest 없이 core만 쓴다
+│   ├── src/results.ts              results/ 읽기·검증·조인 (loadResults·checkResults) — 사이트와 check:results가 공유
+│   ├── src/display.ts              상태 라벨·숫자 포맷 등 표시 규칙 (DATA.md "표시 규칙", displayModel)
+│   ├── src/sandbox.ts              RESULT_IFRAME_SANDBOX (사이트·검증기가 같이 쓰는 iframe sandbox 값)
+│   ├── scripts/check-results.ts    `npm run check:results` — Nest 없이 core만 쓴다
+│   ├── test/support/testing.ts     `@opb/core/testing` — 테스트용 가짜 데이터 루트 빌더 (pipeline·site 테스트도 씀)
 │   ├── test/  examples/  scripts/check-samples.ts
 ├── pipeline/                   @opb/pipeline — NestJS 스탠드얼론 CLI
 │   ├── src/main.ts                 진입점 → cli.ts(parseArgs) → createApplicationContext. 토큰은 tokens.ts
@@ -34,10 +36,15 @@ npm workspaces 모노레포. 모든 TypeScript는 ESM(`"type": "module"`, NodeNe
 │   ├── src/adapters/               도구별 어댑터(gemini/ …) + registry.ts(도구 → 생성 함수·도구별 preflight·기록 래퍼)
 │   ├── src/generation/             batch(일괄 실행), preflight(추가 결제 차단 점검), smoke
 │   ├── src/system/                 git·터미널 확인(y/N) 같은 I/O
-│   ├── src/validation/             Playwright 검증기 (phase 1은 `VALIDATOR` 토큰에 자리표시만)
+│   ├── src/validation/             Playwright 검증기(validate-result.ts, `VALIDATOR` 토큰 = PlaywrightValidator)와 validate 명령
 │   ├── src/judging/                (신규) 판정 도우미
 │   └── test/fixtures/              CLI 출력 샘플, 검증용 HTML
 ├── site/                       @opb/site — Astro 정적 사이트
+│   ├── src/lib/                    data.ts(데이터 읽기) · paths.ts(BASE_URL 기준 주소) · copy.ts(COPY 문구) · tabs.ts · results-view.ts
+│   ├── src/pages/                  index.astro(결과 탭) · view/[slug].astro(새 창 래퍼) · r/[slug]/*.ts(결과물 사본 endpoint)
+│   ├── src/scripts/                클라이언트 동작 (results-tab.ts)
+│   ├── src/layouts/ components/ styles/   공통 레이아웃 · 배지 · 토큰(tokens.css)·바탕(base.css)
+│   └── test/support/               빌드 헬퍼(build.ts) · 정적 서버 · HTML 검사 · 결과 탭 데이터
 ├── docs/                       설계 문서 (design/은 시안 원본)
 ├── phases/                     하네스 phase 계획·상태
 ├── scripts/                    하네스 (Python: execute.py, 테스트)
@@ -92,7 +99,7 @@ models.json ─▶ Batch ─▶ Runner(재시도·타임아웃·저장·비용) 
 - 건너뛰기: `meta.json`이 있고 `outcome`이 `api_failed`가 아니면 건너뛴다. `api_failed`(한도 초과 포함)이거나 `meta.json` 없이 파일만 남은 폴더(중단된 생성)는 비우고 다시 생성한다.
 - `--force`: 폴더를 비우고 새로 만든다. 예전 판정(judgment.json)도 함께 지워진다. 실행 전에 지울 폴더 목록을 보여 주고 확인받는다.
 - `usage_limit`(구독 한도)는 바로 재시도하지 않고 기록한 뒤 다음 모델로 넘어간다. 한도가 풀린 뒤 다시 실행하면 그 모델만 돈다.
-- outcome이 `ok`면 바로 검증기(`VALIDATOR` 토큰)를 실행한다. 검증이 실패해도 batch는 계속하고 `validation`은 null로 남긴다(나중에 `npm run validate`). phase 1의 `VALIDATOR`는 아무것도 하지 않는 자리표시(`pipeline/src/validation/validator.ts`)이고, phase 2가 Playwright 검증기로 바꾼다.
+- outcome이 `ok`면 바로 검증기(`VALIDATOR` 토큰 = `PlaywrightValidator`)를 실행한다. 검증이 실패해도 batch는 계속하고 `validation`은 null로 남긴다(나중에 `npm run validate`).
 - meta.json이 스키마를 통과하지 못하거나 `modelSlug`가 폴더 이름과 다르면 건드리지 않고 실패로 보고한 뒤 다음 모델로 간다(`--force`면 확인 목록에 넣고 비운다).
 - 순서: 대상 선택 → preflight → HEAD 커밋 → 프롬프트 1회 로드(깨진 프롬프트로 폴더를 비우지 않게) → 폴더 상태 판정 → `--force` 확인 → 순차 실행 → 요약표.
 - 종료 코드: preflight 실패·사용법 오류·`--force` 거절·깨진 meta.json·모델 처리 중 예외·검증기 오류면 1. 모델 outcome이 `api_failed`(한도 초과 포함)인 것은 기록이 정상으로 남은 것이라 0.
@@ -161,10 +168,18 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 - 기록: `loaded`(iframe load 이벤트, 30초 제한), `consoleErrors`(console error), `pageErrors`(처리되지 않은 예외), `externalRequests`(로컬 서버가 아닌 http(s) 요청의 url·resourceType, 요청 순서대로. data:·blob:은 넣지 않는다). iframe 안의 이벤트까지 잡히는지 테스트로 확인한다.
 - 스크린샷: iframe load를 0초로 5·15·25·35초에 iframe 영역만 찍는다(spring/summer/autumn/winter). Playwright의 JPEG(`type: 'jpeg'`, quality 80)로 `results/<slug>/<label>.jpg`에 바로 저장한다. 변환 라이브러리는 쓰지 않는다. 기록하는 `atMs`는 계획한 시점(5000·15000·…)이다.
 - load가 30초 안에 오지 않으면 `loaded: false`로 기록하고, 그 시점을 0초로 스크린샷 4장은 그대로 찍는다(방문자가 보는 화면을 남긴다).
-- headless Chromium에서 WebGL이 동작해야 한다(SwiftShader 플래그 등). ⚠ 첫 구현 때 WebGL 픽스처로 확인(three.js 본체는 테스트에서 네트워크로 받을 수 없다).
+- headless Chromium WebGL: launch 인자 `CHROMIUM_ARGS` = `--enable-unsafe-swiftshader --use-angle=swiftshader`. Playwright 1.64는 `--enable-unsafe-swiftshader`를 macOS에서만 기본으로 넣어서 명시한다. Windows(playwright 1.64.0, headless shell 156.0.8078.4)에서 WebGL 픽스처로 webgl2 · ANGLE(Vulkan SwiftShader)를 확인했다(2026-10-12). ⚠ 리눅스(CI)는 아직 확인하지 않았다 — phase 3 배포 워크플로의 `npm test`가 처음 확인한다.
+- load 감지: 검증용 페이지의 iframe `onload` 속성이 window 플래그를 세우고, `waitForFunction`(제한 30초)으로 기다린다. `page.goto`는 `domcontentloaded`까지만 기다린다(top의 load는 iframe load를 기다리기 때문). 서버는 `/`(검증용 페이지)와 `/results/<slug>/index.html`만 내주고 나머지는 404다.
 - 검증 결과는 `meta.json`의 `validation`만 갱신한다. 다른 필드·judgment.json·결과물은 건드리지 않고, 저장 전에 스키마로 검사한다. 재검증하면 스크린샷을 덮어쓴다.
+  - 스크린샷은 메모리에 받아 두고, 검증이 끝까지 성공한 뒤에만 jpg와 meta.json을 쓴다(도중에 실패하면 파일이 바뀌지 않는다).
+  - meta.json은 읽은 원본 객체에서 `validation`만 바꿔 Runner와 같은 형식(2칸 들여쓰기 + 끝 줄바꿈, 키 순서 유지)으로 쓴다. `checkedAt`은 검증이 끝난 시각, `pageErrors`는 에러의 message(타입 이름 없음)다.
+- 알려진 한계: 메인 스레드를 막는 결과물(무한 루프)은 스크린샷이 Playwright 기본 제한(30초)에 걸려 검증이 실패하고 `validation`이 null로 남는다 → "검증 전" → check:results가 배포를 막는다. 실제로 만나면 처리 방법을 정한다.
 - Nest 컨텍스트를 만들 때는 브라우저를 띄우지 않는다. 검증할 때 띄우고 끝나면 닫는다.
-- `npm run validate -- <slug…> | --all`: `--all`은 outcome이 ok인 모델 전부이고 나머지는 건너뜀으로 출력한다. slug를 직접 줬는데 ok가 아니면 실패로 보고하고 다음 모델을 계속한 뒤 exit 1이다. 모르는 slug면 아무것도 하지 않고 exit 1. 모델을 부르지 않으므로 preflight는 없다.
+- `npm run validate -- <slug…> | --all`(`validate.ts`·`validate.service.ts`): 모델을 부르지 않으므로 preflight는 없다.
+  - `--all`은 outcome이 ok인 모델 전부이고, 나머지와 "생성 전"(meta.json 없음)은 건너뜀으로 출력한다.
+  - slug를 직접 줬는데 ok가 아니거나 meta.json이 없으면 실패로 보고하고 다음 모델을 계속한 뒤 exit 1이다. 모르는 slug면 아무것도 하지 않고 exit 1.
+  - meta.json이 깨진 모델은 `--all`이어도 실패(exit 1)다. outcome을 알 수 없어 사람이 확인해야 한다.
+  - 요약은 운영자용 `loaded · 콘솔 에러 N · 페이지 에러 N · 외부 요청 N`이다(사이트의 "에러 수" 규칙과 따로 보여 준다).
 - 테스트: `test/fixtures/`의 로컬 HTML로 실행하고, 외부 URL은 `page.route`로 가로채 가짜 응답을 준다. 테스트에서 실제 네트워크를 쓰지 않는다. 스크린샷 시점·load 제한 시간은 주입해서 짧게 돌린다.
 
 ## 판정 도우미 (`npm run judge -- <slug>`)
@@ -178,11 +193,18 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 ## 사이트 (Astro, `site/`)
 
 - 정적 출력(`output: 'static'`). 페이지: `/`(결과 탭, 첫 화면), `/compare/`, `/prompt/`, `/intro/`, `/view/<slug>/`(새 창용 전체 화면 래퍼). 헤더에는 페이지가 있는 탭만 둔다(ADR-024 — phase 2~4는 결과 탭 하나).
-- **데이터는 빌드 때만 읽는다**: `core/src/results.ts`로 `models.json`·`results/`·`prompts/`를 읽고 검증·조인해서, 표시 값은 `core/src/display.ts`로 만든다. 데이터 위치는 기본이 레포 루트이고, 테스트에서는 환경변수 `OPB_DATA_ROOT`로 OS 임시 디렉토리에 만든 데이터를 가리킨다. 빌드가 검사하는 범위는 DATA.md "사이트 빌드의 데이터 검사".
-- 빌드 때 `results/<slug>/index.html`과 `response.txt`를 `dist/r/<slug>/`로 바이트 그대로 낸다. `npm run dev`에서도 같은 주소로 열린다. 스크린샷(jpg)·meta.json·judgment.json은 내지 않는다.
+- **데이터는 빌드 때만 읽는다**: `core/src/results.ts`로 `models.json`·`results/`·`prompts/`를 읽고 검증·조인해서, 표시 값은 `core/src/display.ts`로 만든다. 빌드 때 검사하는 범위는 DATA.md "사이트 빌드의 데이터 검사".
+  - 데이터 위치는 `site/src/lib/data.ts` 한 곳에서 정한다: `OPB_DATA_ROOT`(빈 문자열은 미설정) 또는 레포 루트. 테스트는 OS 임시 디렉토리에 만든 데이터를 가리킨다. 번들 뒤에는 `import.meta.url`이 바뀌므로, 레포 루트는 `astro.config.mjs`가 `vite.define`의 `__OPB_REPO_ROOT__`로 넘긴다.
+  - 빌드는 `loadResults`를 한 번만 부르고(로그 `[opb] data: N models from <root>`), dev는 요청마다 다시 읽는다.
+- 빌드 때 `results/<slug>/index.html`과 `response.txt`를 `dist/r/<slug>/`로 바이트 그대로 낸다. 스크린샷(jpg)·meta.json·judgment.json은 내지 않는다.
+  - 방법: 정적 endpoint `src/pages/r/[slug]/index.html.ts`·`response.txt.ts`. Astro가 endpoint 본문을 그대로 쓰므로 BOM·CRLF·잘못된 UTF-8도 바뀌지 않는다(테스트로 확인). `npm run dev`에서도 같은 주소로 열린다. `site/public/`에 복사하지 않는다.
+  - 원본 경로는 meta.json 값이 아니라 `results/<slug>/index.html`·`response.txt`로 고정이다(check:results가 meta.json의 경로가 이 값인지 검사한다).
 - **결과물 실행은 항상 `<iframe sandbox="allow-scripts">` 안에서만.** `allow-same-origin`을 절대 넣지 않는다. GitHub Pages는 사용자 계정의 모든 Pages 사이트가 한 출처(`<user>.github.io`)를 쓰기 때문이다. "새 창에서 열기"는 `/view/<slug>/`(같은 샌드박스 iframe을 화면 가득)로 연다. 결과물 파일을 직접 링크하지 않는다.
-- 한 번에 결과물 하나만 실행한다. 모델을 바꾸면 iframe의 src를 바꾸고, "다시 시작"은 같은 src를 다시 불러온다.
-- 결과물이 없는 모델은 이유를 보여 주고, 응답 원문(response.txt)은 그 모델을 고를 때 `fetch`로 불러온다(첫 화면 용량을 줄이기 위해).
+- 결과 탭의 모델 전환 (`src/lib/results-view.ts`, `src/scripts/results-tab.ts`):
+  - 첫 선택 모델(ADR-025)은 빌드 때 HTML로 그린다. 모델 전부의 표시 값(`ResultView`)은 `<script type="application/json" id="result-views">`로 넣고(`<`는 `<`로 이스케이프), 클라이언트는 그 값을 그대로 옮긴다. 라벨·포맷을 클라이언트에서 다시 계산하지 않는다.
+  - 결과물 iframe은 페이지에 하나다. 결과물이 없는 모델을 고르면 iframe을 문서에서 떼어 내서 앞의 결과물이 멈추게 하고, 결과물이 있는 모델을 고르면 src를 먼저 바꾼 뒤 다시 붙인다(한 번만 로드). "다시 시작"은 같은 src를 다시 설정한다. 이미 고른 모델을 다시 누르면 아무것도 하지 않는다.
+  - 결과물이 없는 모델은 이유를 보여 주고, 응답 원문(response.txt)은 그 모델을 고를 때 `fetch`로 불러온다(첫 화면 용량을 줄이기 위해). 늦게 온 앞 모델의 원문은 버리고, 받은 원문은 캐시한다.
+- site 테스트가 쓰는 DOM 계약(바꾸면 테스트도 함께 바꾼다): `[data-results-tab]`, `button[data-slug][aria-pressed]`, `[data-field=…]`, `dd[data-req=<key>][data-mark]`, `dd[data-record=<key>]`, `[data-action=restart|open]`.
 - 클라이언트 동작(모델 전환, 다시 시작, 복사 버튼, 휴대폰 드롭다운)은 Astro `<script>`의 순수 TypeScript로 만든다. UI 프레임워크(React 등)는 쓰지 않는다.
 - 스타일: Astro 컴포넌트 scoped CSS + `:root` CSS 변수(토큰은 UI_GUIDE.md). Tailwind는 쓰지 않는다.
 - GitHub Pages 프로젝트 경로: `astro.config`의 `site`·`base`를 환경변수(`SITE_URL`, `SITE_BASE`)에서 읽는다. 워크플로가 레포 이름으로 채운다. 모든 내부 링크·에셋은 `import.meta.env.BASE_URL` 기준으로 만든다.
@@ -191,6 +213,7 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 
 - 트리거: main push + `workflow_dispatch`(수동 실행 버튼). 동시 실행은 `concurrency: pages`로 하나만.
 - 순서: `npm ci` → `npx playwright install --with-deps chromium` → `npm run lint` → `npm run typecheck` → `npm test` → `npm run check:results` → `npm run build`(SITE_BASE=`/<레포 이름>/`) → `actions/upload-pages-artifact` → `actions/deploy-pages`. **하나라도 실패하면 배포하지 않는다.**
+- 워크플로 환경에 `ASTRO_TELEMETRY_DISABLED=1`을 둔다. `astro check`·`astro build`는 기본으로 사용 통계를 보낸다(site 테스트의 빌드 헬퍼는 이미 끈다).
 - CI는 실제 모델을 부르지 않는다 (gen·smoke는 워크플로에 없다).
 - 한도 참고: Pages 사이트 1GB, 대역폭 월 100GB(권장), 배포 10분. 공개 레포의 Actions는 무료.
 
@@ -200,7 +223,10 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 - **실제 CLI·API를 부르는 테스트를 만들지 않는다.** 어댑터는 자식 프로세스 실행 함수나 SDK 클라이언트를 주입받는다. 테스트는 CLI 원본 출력 fixture(`pipeline/test/fixtures/`)를 먹여 파싱·분류를 검증한다.
 - 시간은 주입한다(`RunnerDeps.now/sleep`). 테스트에서 실제로 기다리지 않는다.
 - 파일을 쓰는 테스트는 OS 임시 디렉토리(`mkdtemp`)에서 한다. 레포의 `results/`를 읽거나 쓰지 않는다.
-- 사이트: `OPB_DATA_ROOT`를 픽스처로 두고 빌드한 뒤, `dist/` HTML을 검사한다(샌드박스 속성, `{N}` 치환, 각주, 상태 라벨 등).
+- 테스트 데이터는 `@opb/core/testing`(`makeDataRoot`·`writeResult`·`STATUS_CASES` 등)으로 OS 임시 디렉토리에 만든다. "검증 전"은 check:results 규칙 6에 걸리므로, 통과해야 하는 데이터에는 넣지 않는다.
+- 검증기: 실제 Chromium으로 `pipeline/test/fixtures/validation/`의 로컬 HTML을 연다(WebGL 픽스처 포함). 외부 요청은 `page.route`로 가로챈다.
+- 사이트: `OPB_DATA_ROOT`를 픽스처로 두고 빌드한 뒤, `dist/` HTML을 검사한다(샌드박스 속성, `{N}` 치환, 각주, 상태 라벨 등). 브라우저 테스트는 dist를 임시 정적 서버(base 경로 포함)로 띄우고 클릭·키보드로 확인한다.
+  - 빌드 헬퍼 `site/test/support/build.ts`의 `buildSite(dataRoot, {base})`가 `astro build --outDir <임시>`를 자식 프로세스로 돌린다. 같은 (데이터 루트, base)는 한 번만 빌드해 공유하고, 프로세스 안에서는 큐로 하나씩, 테스트 파일끼리는 `--test-concurrency=1`로 순차 실행한다(`.astro`·Vite 캐시 충돌 방지).
 - 하네스(Python): `python -m pytest scripts`.
 
 ## NestJS 사용 규칙
@@ -209,9 +235,11 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 - **생성자 주입은 `@Inject(TOKEN)`을 명시한다.** tsx(esbuild)는 `emitDecoratorMetadata`를 지원하지 않아서, 타입 기반 주입은 테스트·실행에서 조용히 undefined가 된다. `experimentalDecorators: true`, `import 'reflect-metadata'`.
 - 도메인 로직은 core의 순수 함수로 두고, Nest provider는 그것을 감싸 I/O(프로세스·파일·브라우저)를 주입하는 얇은 층으로 둔다.
 
-## 버전 참고 (phase 1에서 설치한 값)
+## 버전 참고 (설치한 값)
 
 typescript ^6.0.3(ADR-023 — 7은 typescript-eslint 미지원), tsx ^4.23.15, zod ^4.6.5(`z.iso.datetime`, `z.url()` 사용), @types/node ^26.6.4, ESLint ^10.12 + typescript-eslint ^8.71.1, NestJS ^12.1.2(@nestjs/common·core, reflect-metadata ^0.2.2, rxjs ^7.8.2), @google/genai ^2.28.0, dotenv ^18.0.7. Node ≥ 22 (개발 PC는 24.14).
-TS 6은 `types` 기본값이 `[]`라 `tsconfig.base.json`에 `types: ["node"]`를 둔다. phase 2의 astro check도 TS 6과 맞는지 확인한다.
+TS 6은 `types` 기본값이 `[]`라 `tsconfig.base.json`에 `types: ["node"]`를 둔다.
 
-phase 2 계획 때(2026-10-12) 확인한 최신값: astro 7.3.8(Node ≥ 22.12 요구 → 루트 `engines`도 맞춘다), @astrojs/check 0.9.10(typescript peer `^5.0.0 || ^6.0.0`), playwright 1.64.0(라이브러리만 쓰고 `@playwright/test` 러너는 쓰지 않는다).
+phase 2에서 설치한 값: astro ^7.3.8(Vite 8.3.4, Node ≥ 22.12 요구 → 루트 `engines`도 `>=22.12`), @astrojs/check ^0.9.10, playwright ^1.64.0(라이브러리만 쓰고 `@playwright/test` 러너는 쓰지 않는다. 브라우저는 `npx playwright install chromium`).
+- @astrojs/check 0.9.10은 TS 6.0.3과 동작한다. astro check는 `site/test`의 `.ts`도 검사한다. site tsconfig = `astro/tsconfigs/strict` + `types: ["node"]` + `noUncheckedIndexedAccess`.
+- `@opb/core`가 TS 소스를 직접 내보내도 Astro build·dev와 astro check(Bundler 해석)에서 추가 설정 없이 해석된다. `@opb/core/testing`은 tsx와 tsc(NodeNext) 모두에서 해석된다.

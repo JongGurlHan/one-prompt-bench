@@ -85,7 +85,15 @@ phase 1에서 반영한 변경(SDK 방식 → CLI 방식): `runtime.sdkPackage`�
 8. meta.json의 `runtime.generator.tool`이 models.json `provider`의 생성 도구(`GENERATOR_BY_PROVIDER`)와 같다.
 9. meta.json이 가리키는 경로(`responseTextPath`, `output.path`, 스크린샷)는 모두 `results/<slug>/` 안이다.
 
-8·9는 phase 2 계획 때 더했다(8은 `check-samples.ts`에 있던 대조). 문서에 없는 경우를 만나면 엄격한 쪽(실패)으로 정한다.
+8·9는 phase 2 계획 때 더했다(8은 `check-samples.ts`에 있던 대조). 문서에 없는 경우를 만나면 엄격한 쪽(실패)으로 정한다. phase 2 구현에서 엄격하게 정한 것:
+- `results/` 아래의 심볼릭 링크(Windows junction 포함)와 결과 폴더 안의 하위 폴더는 실패다.
+- 결과 폴더에 meta.json이 가리키지 않는 파일이 있으면 실패다(`judgment.json` 제외).
+- `output.path`·`responseTextPath`는 정확히 `results/<slug>/index.html`·`results/<slug>/response.txt`이고, 스크린샷은 폴더 바로 아래에 있어야 한다.
+- `output.bytes`도 실제 파일 크기와 대조한다.
+- 결과물이 없는 기록(outcome이 ok가 아님)에 judgment.json이 있으면 실패다.
+- models.json이 깨지면 규칙 2·8은 건너뛴다(규칙 1로 이미 실패).
+
+출력: 어긴 것은 stderr에 `경로: 이유` 한 줄씩 쓰고 끝에 FAIL 요약을 쓴다(exit 1). 통과하면 stdout에 `OK  check:results: N result folders in <root>`를 쓴다. `OPB_DATA_ROOT`가 빈 문자열이면 설정하지 않은 것으로 본다.
 
 ### 사이트 빌드의 데이터 검사
 
@@ -117,7 +125,7 @@ phase 1에서 반영한 변경(SDK 방식 → CLI 방식): `runtime.sdkPackage`�
 
 ### 결과물이 없을 때 보여줄 이유 (결과 탭)
 
-라벨별 이유 문구와 응답 원문 표시 여부는 `docs/COPY.md` "결과 탭"의 "결과물이 없을 때"에 있다.
+라벨별 이유 문구와 응답 원문 표시 여부는 `docs/COPY.md` "결과 탭"의 "결과물이 없을 때"에 있다. "생성 실패"는 마지막 시도의 에러 종류 표시를 문구 뒤에 괄호로 붙인다: `기술적인 문제로 생성하지 못했어요. (시간 초과)`. 마지막 시도가 에러가 아니면 붙이지 않는다.
 
 ### 값 계산·포맷
 
@@ -126,14 +134,14 @@ phase 1에서 반영한 변경(SDK 방식 → CLI 방식): `runtime.sdkPackage`�
 | 조건 검사 | `judgeRequests(validation.externalRequests).verdict` (저장하지 않고 매번 계산) | 정상 / 지시 미준수 / 위반, validation 없으면 — |
 | three.js 버전 | `kind`가 three인 요청의 URL에서 `three@x.y.z` → `x.y.z`, cdnjs `r170` → `r170`. 여러 버전이면 쉼표로 | three_unpinned만 있으면 "미고정", three 요청 없음 → — |
 | 에러 수 | `consoleErrors.length + pageErrors.length` | 정수, validation 없으면 — |
-| 파일 크기 | `output.bytes` | `40.3 KB` (1024 기준, 소수 1자리), 없으면 — |
-| 입력·출력 토큰 | `usageTotal` | 천 단위 쉼표, api_failed이고 사용량 0이면 — |
-| 그중 추론 | `usageTotal.reasoningTokens` | null이면 — |
-| 비용 | `cost.totalUsd` | `$0.47` (소수 2자리), 0보다 크고 0.01 미만이면 `<$0.01` |
-| 걸린 시간 | **마지막 시도**의 `latencyMs` (재시도·백오프 제외, 도구 시작 시간 포함) | `3분 34초` / `48초`, api_failed면 — |
+| 파일 크기 | `output.bytes` | `40.3 KB` (1024 기준, 소수 1자리, 쉼표 없음, 크기와 관계없이 항상 KB), 없으면 — |
+| 입력·출력 토큰 | `usageTotal` | 천 단위 쉼표, api_failed이고 입력·출력이 모두 0이면 — (응답이 온 기록은 0도 숫자). 결과 탭은 `입력 / 출력` 한 칸 |
+| 그중 추론 | `usageTotal.reasoningTokens` | null이면 — (입력·출력이 —이면 함께 —) |
+| 비용 | `cost.totalUsd` | `$0.47` (소수 2자리, 쉼표 없음), 0보다 크고 0.01 미만이면 `<$0.01`. api_failed도 기록된 값을 보인다(`$0.00`), 생성 전 → — |
+| 걸린 시간 | **마지막 시도**의 `latencyMs` (재시도·백오프 제외, 도구 시작 시간 포함) | 초 단위로 반올림, 60초 미만 `48초`, 이상 `3분 34초`(60초 → `1분 0초`). api_failed면 — |
 | 재시도 | `attempts.length - 1` | 정수 |
 | 요구사항 판정 | judgment.json | ✓ 충족 / △ 부분 충족 / ✗ 미충족, 판정 없음 → 판정 전, 결과물 없음 → — |
-| 출력 토큰 † | 생성 도구가 Codex CLI인 행 | 값 옆에 † |
-| 그중 추론 ‡ | 회사가 Google인 행 | 값 옆에 ‡ |
+| 출력 토큰 † | 생성 도구가 Codex CLI인 행 | 값 옆에 † (지금은 값이 —여도 붙는다 — phase 5 비교표에서 숨길지 정한다). 결과 탭의 토큰 값에는 붙이지 않는다(각주가 비교표에만 있음) |
+| 그중 추론 ‡ | 회사가 Google인 행 | 값 옆에 ‡ (†와 같음) |
 | 모델 수 `{N}` | models.json의 모델 수 | 문구의 `{N}` 치환 |
 | 정렬 | `sortByRelease`: 출시일 최신순, 같은 날은 표시명 알파벳순(숫자는 크기순) | 모든 목록·표 공통 |

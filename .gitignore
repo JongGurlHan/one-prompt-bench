@@ -4,7 +4,6 @@ dist/
 
 # site (Astro)
 site/.astro/
-site/public/r/
 
 # pipeline
 results-smoke/
