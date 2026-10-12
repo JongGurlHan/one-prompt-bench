@@ -68,7 +68,7 @@
     {
       "step": 3,
       "name": "results-tab",
-      "status": "pending",
+      "status": "completed",
       "ac": [
         "npm run lint",
         "npm run typecheck",
@@ -78,9 +78,13 @@
       ],
       "started_at": "2026-10-12T21:12:49+0900",
       "model": "claude-opus-5-5",
-      "cost_usd": 1.9954,
-      "num_turns": 21,
-      "attempts": 1
+      "cost_usd": 6.0655,
+      "num_turns": 78,
+      "attempts": 1,
+      "session_id": "243031db-9986-42f1-8f66-3e8b5256e545",
+      "summary": "결과 탭(/) 완성: 출시일 최신순 모델 목록(aria-pressed 버튼·상태 배지)과 범례, 결과물 iframe 하나의 실행 카드(다시 시작·새 창에서 열기), 결과물 없을 때 이유 문구와 응답 원문 fetch 카드, 요구사항 판정·생성 기록 카드, 첫 선택 ADR-025를 빌드 HTML에 넣음. dist 검사 12개 + Playwright 브라우저 테스트 8개 추가",
+      "handoff": "구조: src/lib/results-view.ts resultView(display)→ResultView{slug,displayName,runMeta,output{src,frameTitle,viewHref}|null,missing{reason,responseTextSrc|null}|null,requirements,note,record{status,requestCheck,tokens,cost,duration}}, initialSelection(displays), RECORD_KEYS, scriptJson('<'를 \\u003c로). 첫 선택 모델은 이 값으로 HTML을 그리고, 모델 전부의 ResultView는 <script type=application/json id=result-views>로 넣어 src/scripts/results-tab.ts(setupResultsTab)가 그대로 옮긴다(라벨·포맷 재계산 없음). components/StatusBadge.astro(data-tone=core BadgeTone, 11px). copy.ts에 MODEL_LIST·modelListMeta·runCardMeta·RUN_ACTIONS·REQUIREMENTS_CARD_TITLE·RECORD_CARD·RESPONSE_CARD_TITLE 추가.\nDOM 계약(테스트가 씀): [data-results-tab], button[data-slug][aria-pressed], [data-field=name|meta|actions|viewer|missing|reason|response|response-text|response-error|note|legend|requirements|record], dd[data-req=<key>][data-mark=pass|partial|fail|none], dd[data-record=<key>], [data-action=restart|open].\n동작 결정: 결과물 없는 모델을 고르면 iframe을 문서에서 떼어 낸다(about:blank 대신, 프레임이 남지 않음). 다시 붙일 때 src를 먼저 바꿔 한 번만 로드. 다시 시작 = 같은 src를 setAttribute로 다시 설정(Chromium에서 load 재발생 확인). 이미 고른 모델 재클릭은 아무것도 안 함. 원문 fetch는 요청 번호로 늦은 응답을 버리고 성공한 원문은 캐시. 모델 0개면 목록·실행 카드·JSON 없이 상단만.\nCOPY 밖 문구: 원문 불러오기 실패 '응답 원문을 불러오지 못했어요.'(copy.ts RESPONSE_LOAD_FAILED, HTML에 숨긴 <p>로 넣음). 결과 탭의 토큰 값에는 †를 붙이지 않음(각주가 비교표에만 있어서). '결과' 행 값은 배지가 아닌 상태 라벨 글자(시안대로). aria: aside는 h2 '모델'로, 실행 카드는 표시명 h2로 이름 붙임(새 문구 없음).\nCSS: base.css에 [hidden]{display:none!important} 추가. 선택된 목록 버튼은 2px 테두리만큼 padding을 1px 줄임. 폭 820px 스크린샷에서 두 열이 위아래로 쌓임(목록 max-width 340 유지) — 휴대폰 select는 phase 5.\n테스트: site/test/results-tab.test.ts(dist), results-tab-browser.test.ts(chromium.launch 기본 인자, 외부 요청 route abort, 결과물이 load마다 console에 runLog(slug)), support/static-server.ts serveDist(outDir, base), support/results-data.ts(TAB_CASES 12개·NO_OUTPUT 3개, 메모에 </script> 포함), html.ts hasAttr 추가. site 테스트 전체 약 21초. 변이 확인: 다시 시작·iframe 제거·늦은 원문 무시를 깨면 테스트가 실패함.\n남은 것: 문서 갱신(ARCHITECTURE '사이트'에 JSON 전달 방식·iframe 떼어 내기). npm run build는 여전히 텔레메트리 켜짐.",
+      "completed_at": "2026-10-13T01:19:23+0900"
     }
   ],
   "created_at": "2026-10-12T17:06:34+0900"
