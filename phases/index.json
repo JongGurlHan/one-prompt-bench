@@ -2,7 +2,8 @@
   "phases": [
     {
       "dir": "01-pipeline-core",
-      "status": "pending"
+      "status": "completed",
+      "completed_at": "2026-10-12T15:41:21+0900"
     }
   ]
 }
