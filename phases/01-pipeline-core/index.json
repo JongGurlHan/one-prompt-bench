@@ -1,0 +1,107 @@
+{
+  "project": "One Prompt Bench",
+  "phase": "01-pipeline-core",
+  "model": "claude-opus-5-5",
+  "timeout_sec": 3600,
+  "steps": [
+    {
+      "step": 0,
+      "name": "workspace-setup",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ],
+      "started_at": "2026-10-12T14:41:07+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "07c99ad7-cadd-4e74-acdc-c8097b290cee",
+      "cost_usd": 2.312,
+      "num_turns": 48,
+      "summary": "npm workspaces(packages/core·pipeline) 연결, tsconfig.base·ESLint flat config·.gitattributes·package-lock 생성. core 17개 테스트+check-samples가 소스 변경 없이 통과(진입점 src/index.ts만 추가), pipeline에 NestJS 스탠드얼론 뼈대(main·cli·tokens·app.module)와 @Inject(CLOCK) DI·@opb/core import 테스트 6개",
+      "handoff": "1) TypeScript 7 → 6.0.3으로 내림(ADR 반영 필요): typescript-eslint 8.71.1 peer가 'typescript >=4.8.4 <6.1.0'이라 npm ERESOLVE, --legacy-peer-deps로 강행하면 파서가 'Error: typescript-eslint does not support TS 7.0.'을 던진다(공지된 대안: TS 6 API를 나란히 설치). tsconfig.base에 types:[\"node\"] 명시(TS 6은 types 기본값이 []).\n2) tsx는 tsconfig를 cwd에서 찾는다. 루트에서 'tsx pipeline/src/main.ts'는 'Parameter decorators only work when experimental decorators are enabled'로 실패한다. step 3·4의 루트 gen·smoke 스크립트는 'tsx --tsconfig pipeline/tsconfig.json pipeline/src/main.ts gen' 형태로 쓴다(--help로 동작 확인, 훅도 이 형태를 막음 확인).\n3) @opb/core: exports '.' → ./src/index.ts(모든 모듈 export * barrel). step 1이 새 모듈(프롬프트 로더 등)을 만들면 index.ts에 한 줄 추가. typescript·tsx·@types/node·eslint는 루트 devDependencies.\n4) pipeline/src/tokens.ts: CLOCK(Symbol), Clock = core RunnerDeps. app.module.ts: CLOCK(시스템 시계) + GenerationRunner(src/generation/generation-runner.ts, run(adapter, input, policy=DEFAULT_RUN_POLICY) → runGeneration에 주입한 시계 전달, readonly clock). batch(step 3)가 써도 되고 바꿔도 된다.\n5) cli.ts: Command = {kind:'help'} | {kind:'usage_error', message}. -h/--help는 명령 뒤에 붙어도 help로 처리(훅의 '--help는 실행 아님' 규칙과 맞춤). main.ts의 execute()는 never 검사만 있는 자리 — gen·smoke case와 Command 멤버를 여기 추가.\n6) ESLint 10.12 + typescript-eslint recommended, files는 packages/**·pipeline/** TS. check-samples.ts만 no-explicit-any off(일부러 스키마를 깨는 코드). phase 2 site는 files 패턴을 추가.\n7) 버전: NestJS 12.1.2(ESM 패키지), reflect-metadata 0.2.2, rxjs 7.8.2, zod 4.6.6, tsx 4.23.15, @types/node 26.6.5.",
+      "completed_at": "2026-10-12T14:51:16+0900",
+      "attempts": 1
+    },
+    {
+      "step": 1,
+      "name": "core-cli-schema",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ],
+      "started_at": "2026-10-12T14:51:16+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "ee256226-c5c9-4072-9c28-45a7df274d5d",
+      "cost_usd": 2.1997,
+      "num_turns": 48,
+      "summary": "core를 CLI/SDK 생성 방식으로 전환: schema(GeneratorToolSchema·GENERATOR_BY_PROVIDER, runtime.generator{tool,version,invocation}, maxOutputTokens 양의 정수|null, 스크린샷 .jpg), adapter(generator·supportsMaxOutputTokens·describeInvocation, DEFAULT_MAX_OUTPUT_TOKENS=65_536·maxOutputTokensFor), runner(generator 기록·null 전달), 새 prompt.ts(loadPrompt·CURRENT_PROMPT·PromptSpec), meta.sample.json 갱신. core 26개 테스트+check-samples(거부 11·허용 1), pipeline 7개 통과",
+      "handoff": "1) PromptSpec은 runner.ts → prompt.ts로 옮겼고 system을 string으로 좁혔다(ADR-005로 세 도구 모두 system.md를 보냄). GenerationRequest.system도 string(null 처리 불필요). 공개 이름은 그대로 '@opb/core'에서 나온다.\n2) 어댑터 필수 멤버: provider, generator{tool,version}, supportsMaxOutputTokens, describeInvocation(req), generate, classifyError. Runner는 첫 호출 전에 describeInvocation을 부른다(여기서 throw하면 모델을 부르지 않음).\n3) maxOutputTokensFor(adapter, limit=65_536): batch는 maxOutputTokensFor(adapter), smoke는 maxOutputTokensFor(adapter, 8_000). 인자는 Pick<ProviderAdapter,'supportsMaxOutputTokens'>라 어댑터를 만들기 전 객체로도 호출 가능.\n4) loadPrompt(repoRoot,id,version): 바이트를 fatal UTF-8 디코더로 읽어 그대로 반환. 거부(에러 메시지에 파일 경로 포함): 파일 없음, UTF-8 아님(UTF-16 등), BOM(제거하지 않고 거부 — 조용히 고치면 보낸 내용이 파일과 달라짐), CR 포함(CRLF·단독 CR 모두). id/version은 검증하지 않는다(CURRENT_PROMPT 상수만 씀).\n5) check-samples: 이슈를 '경로: 메시지' 문자열로 매칭하도록 바꿨고, GENERATOR_BY_PROVIDER[provider] === runtime.generator.tool 대조를 추가했다(phase 2 check:results도 같은 대조를 고려할 것).\n6) meta.sample.json: tool claude-code 2.1.296, invocation은 'CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude -p … --system-prompt <system prompt> …'(env 접두 포함, 형식은 phase 3이 확정). CLI는 비스트리밍이라 DATA.md 규칙대로 attempt 2의 firstTokenMs를 null로 바꿨다. prompt.sha256은 예시값 그대로.\n7) pipeline/test/core-import.test.ts에 공개 API(GENERATOR_BY_PROVIDER·maxOutputTokensFor·loadPrompt·CURRENT_PROMPT·extractHtml·judgeRequests·runGeneration·타입) import 테스트 추가.",
+      "completed_at": "2026-10-12T14:57:38+0900",
+      "attempts": 1
+    },
+    {
+      "step": 2,
+      "name": "gemini-adapter",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ],
+      "started_at": "2026-10-12T14:57:38+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "5e412325-0456-4580-b59a-59d8f637d18a",
+      "cost_usd": 4.372,
+      "num_turns": 68,
+      "summary": "pipeline/src/adapters/gemini/: @google/genai 2.28.0 스트리밍 어댑터(GeminiAdapter — thought 분리·usage 정규화·stopReason 매핑·firstTokenMs·describeInvocation), 에러 분류(429 rate_limited / 일일 PerDay usage_limit·RetryInfo→retryAfterMs·auth·bad_request·server_error·network·timeout, 키 가림, 스트림 도중 usage), createGeminiClient·readGeminiSdkVersion, 합성 fixture 9개+README, 새 테스트 36개(core runGeneration 통합 포함). core 26·pipeline 43 통과",
+      "handoff": "1) 파일: gemini.adapter.ts(GeminiAdapter·GeminiClient·GeminiChunk·GeminiStreamParams·normalizeUsage), gemini.errors.ts(GeminiCallError·classifyGeminiError), gemini.client.ts(createGeminiClient(apiKey)·readGeminiSdkVersion()). 만드는 법: new GeminiAdapter(createGeminiClient(key), { sdkVersion: readGeminiSdkVersion() }). barrel(index.ts) 없음.\n2) createGeminiClient: vertexai:false, httpOptions.retryOptions.attempts=1(SDK 재시도 끔. 2.28.0은 retryOptions가 없어도 재시도하지 않지만 명시), 빈 키면 throw(SDK가 환경변수 키로 대체하지 않게).\n3) step 4 기록 래퍼는 GeminiClient.generateContentStream 하나만 감싸면 된다. fixture 형식은 stream-*.jsonl(청크 한 줄씩)·error-*.json({status, body}) — smoke 원본을 이 형식으로 저장하면 그대로 교체 가능. 테스트 헬퍼는 pipeline/test/gemini-fakes.ts(fakeClient·loadChunks·loadApiError).\n4) generate는 실패하면 GeminiCallError(cause=원래 에러, usage, aborted)를 던진다(message는 키를 가림). invocation 예: {\"sdk\":\"@google/genai\",\"method\":\"models.generateContentStream\",\"stream\":true,\"model\":…,\"contents\":\"<user prompt>\",\"config\":{\"systemInstruction\":\"<system prompt>\",\"thinkingConfig\":{\"thinkingLevel\":\"HIGH\"},\"maxOutputTokens\":65536}}.\n5) 문서에 없어서 정한 것: FinishReason.CONTINUATION(SDK 주석: 요청당 토큰 한도로 미완성) → max_tokens(truncated). inputTokens = promptTokenCount(SDK 주석상 캐시 포함이라 cachedContentTokenCount는 안 더함) + toolUsePromptTokenCount. 그 밖 4xx(404 등) → unknown(httpStatus는 기록). 본문에 RetryInfo가 있으면 429가 아니어도 retryAfterMs를 채움. includeThoughts는 켜지 않음(thought 필터는 방어용).\n6) ⚠ 추측(smoke로 확인): thinkingConfig.thinkingLevel 'HIGH'가 3.8 Flash에 적용되는지, usage 필드 이름과 캐시 포함 여부, finishReason 값, 일일 할당량 구분(QuotaFailure.violations[].quotaId에 'PerDay'), 키 무효 표시(ErrorInfo.reason 'API_KEY_*' 또는 message 'API key not valid'), RetryInfo.retryDelay 'Ns' 형식, 스트림 도중 에러 message 형식('got status: … {본문 JSON}').\n7) 남은 이슈: Runner의 raceAbort가 abort 즉시 signal.reason으로 끝나서 타임아웃 시도의 부분 usage는 기록되지 않는다(어댑터는 담아 던지지만 Runner가 먼저 끝남). 다른 스트림 도중 에러는 usage가 남는다.",
+      "completed_at": "2026-10-12T15:12:04+0900",
+      "attempts": 1
+    },
+    {
+      "step": 3,
+      "name": "batch-gen",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ],
+      "started_at": "2026-10-12T15:12:05+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "7f56d28e-5f14-4b23-884d-0dd4ae273cbd",
+      "cost_usd": 4.8351,
+      "num_turns": 55,
+      "summary": "gen 명령 완성: config(.env를 dotenv.parse로 읽고 process.env는 안 바꿈)·ADAPTERS 레지스트리(gemini-api만, wrapClient)·preflight(API 키 변수/미등록 도구/GEMINI 키/커밋 안 된 변경, 순수 판정+수집)·batch(대상 선택, 폴더 상태 판정, --force y/N 확인, 순차 실행, 검증기 자리표시, 요약표, exit code)·BatchService·cli gen·루트 gen 스크립트. pipeline 테스트 119개(신규 76개, 가짜 어댑터·임시 레포·가짜 git), core 26개, lint·typecheck 통과",
+      "handoff": "1) 인터페이스: config/config.ts AppConfig{repoRoot,dotenv}·loadConfig·defaultRepoRoot·redactSecrets. adapters/registry.ts AdapterEntry<Client>{preflight?(), create(config,{wrapClient?})}, AdapterRegistry는 도구별 타입('gemini-api'?: AdapterEntry<GeminiClient>, claude-code·codex-cli는 AdapterEntry<unknown> 자리 — phase 3·4가 Client 타입을 좁혀 등록). createAdapterRegistry·registeredTools.\n2) preflight.ts: evaluatePreflight(facts) 순수, runPreflight(models,{env,config,adapters,git},{checkGit}) — smoke는 checkGit:false. 대상 도구의 등록 항목 preflight() 결과를 붙이고 throw는 실패 항목. formatPreflight·preflightPassed.\n3) batch.ts: runBatch(opts, BatchDeps{config,env,adapters,git,confirm,validator,run,out,nodeVersion}), 순수: selectTargets·planResultDir·forceConfirmMessage·formatSummary·batchExitCode·resultDirPath. generation/models.ts loadModels(smoke도 재사용 가능). system/git.ts GitClient{status,head}, system/confirm.ts createTerminalConfirm(readline/promises, EOF·Ctrl+C=거절).\n4) Nest 토큰 REPO_ROOT·ADAPTERS·GIT·CONFIRM·VALIDATOR·OUTPUT 추가. 컨텍스트 생성은 .env를 읽지 않는다(BatchService.gen이 실행 때 loadConfig) — app.module 테스트가 레포 .env를 읽지 않게. smoke 서비스도 같은 방식 권장. VALIDATOR=PlaceholderValidator(phase 2가 교체).\n5) 문서에 없어서 정한 것: exit 1 = --force 거절, 깨진 meta.json, 모델 처리 중 예외, 검증기 throw(npm run validate 필요). api_failed(usage_limit 포함)는 0. modelSlug가 폴더 이름과 다른 meta.json도 broken. --force는 깨진 meta.json 폴더도 비운다(확인 목록에 표시).\n6) 순서: 대상 → preflight → HEAD(스키마의 커밋 해시 규칙 검사) → 프롬프트 1회 로드 → 폴더 상태 → --force 확인 → 순차 실행. 프롬프트는 모델마다가 아니라 루프 전에 한 번 읽는다(깨진 프롬프트로 폴더를 비우지 않게).\n7) ANTHROPIC_API_KEY·OPENAI_API_KEY는 빈 문자열이어도 있으면 실패. batch가 출력하는 에러 메시지는 .env 값(8자 이상)을 ***로 가린다.\n8) 요약표는 운영자 로그라 display.ts 규칙(phase 2 신규) 대신 원래 단위(초 소수 1자리, $ 소수 4자리), 한글 2칸 폭으로 정렬. phase 2가 display.ts를 만들면 바꿀지 검토.\n9) dotenv 18.0.7을 pipeline dependencies에 추가. 루트 \"gen\": \"tsx --tsconfig pipeline/tsconfig.json pipeline/src/main.ts gen\" — smoke도 같은 형태로. 테스트 헬퍼: pipeline/test/batch-fakes.ts(makeRepo·fakeWorld(scripts,tools)·fakeGit·harness·seedResult·snapshot).",
+      "completed_at": "2026-10-12T15:28:14+0900",
+      "attempts": 1
+    },
+    {
+      "step": 4,
+      "name": "smoke-command",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ],
+      "started_at": "2026-10-12T15:28:15+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "6ddd0759-661b-4f37-861b-1ef0bbf33f4f",
+      "cost_usd": 4.2983,
+      "num_turns": 55,
+      "summary": "smoke 명령 완성: smoke.ts(SMOKE_PROMPT id smoke·v1 + season-tree-v1.system.md, 상한 8000, maxAttempts 1·타임아웃 5분, preflight checkGit:false, results-smoke/<slug>-<YYYYMMDD-HHmmss>/, 보고·입력 토큰 2,000 초과 경고), 기록 래퍼(raw-recorder.ts RawRecorder + gemini.recorder.ts → raw-stream.jsonl·raw-error.json, Runner 뒤에 씀), AdapterEntry.createRecorder, SmokeService·cli smoke <slug>·main case·루트 smoke 스크립트. 새 테스트 32개(pipeline 151, core 26), lint·typecheck 통과. smoke는 실행하지 않음",
+      "handoff": "1) 기록 래퍼: adapters/raw-recorder.ts RawRecorder<Client>{wrap(client), files(): RawFile[]{name,content}}, Redact, RAW_FILE_NAME(/^raw-[a-z0-9][a-z0-9.-]*$/). AdapterEntry에 createRecorder?(redact) 추가. smoke는 create(config,{wrapClient:c=>recorder.wrap(c)})로 만들고 Runner가 끝난 뒤 files()를 flag 'wx'로 쓴다. phase 3·4: 항목의 createRecorder가 프로세스 실행 함수를 감싸 raw-stdout.txt·raw-stderr.txt 같은 raw-* 파일을 내면 된다. createRecorder가 없으면 호출은 하고 '원본 출력 기록 래퍼가 없습니다'만 출력.\n2) CreateAdapterOptions.wrapClient를 메서드 표기로 바꿨다: 프로퍼티 표기면 AdapterEntry<GeminiClient>가 AdapterEntry<unknown>에 대입되지 않아 smoke가 도구별 항목을 한데 다룰 수 없다(같은 항목의 기록기로만 감싸므로 실제로는 안전).\n3) gemini.recorder.ts: raw-stream.jsonl = SDK 청크 JSON.stringify 한 줄씩(sdkHttpResponse.headers 포함, 스트림이 열렸을 때만, 0청크면 빈 파일). raw-error.json = {status, body, name, message, stage: request|stream, chunksBeforeError, cause[]} — status·body가 맨 위라 fixture error-*.json으로 그대로 복사 가능. 가림: .env 값은 두 파일 모두, key=·AIza 모양(gemini.errors의 redactGeminiKeys를 export)은 raw-error.json만(청크의 생성 코드가 바뀌지 않게).\n4) smoke.ts 공개: SMOKE_PROMPT·SMOKE_MAX_OUTPUT_TOKENS·SMOKE_RUN_POLICY·SMOKE_INPUT_TOKEN_WARN·SMOKE_ROOT·loadSmokePrompt·smokeDirRel·inputTokenWarning·formatSmokeReport·runSmoke(opts,{config,env,adapters,git,run(adapter,input,policy),out,now,nodeVersion}). SmokeService: REPO_ROOT·ADAPTERS·GIT·OUTPUT·GenerationRunner, now=runner.clock.now, .env는 실행 때 읽음.\n5) 문서에 없어서 정한 것: smoke의 api_failed는 exit 1(점검 명령이라서. batch는 0 그대로). 대상·preflight·준비 실패, 예외, 원본 저장 실패도 1. 폴더 시각은 실행 PC 로컬 시각. git 변경 검사는 안 하지만 HEAD는 읽는다(batch.ts의 resolveCommit을 export해서 재사용) → 커밋이 한 번은 있어야 한다. loadSmokePrompt는 core loadPrompt를 써서 season-tree-v1.md도 읽고 검사한다. 보고에 rawStopReason·resolvedModelId를 넣었다(⚠ 항목 확인용).\n6) cli: smoke는 positional 정확히 1개(같은 slug 두 번도 오류), --all·--force는 사용법 오류. main.ts never 검사는 'const unhandled: never = command'로 바꿨다(멤버가 2개 이상이면 command.kind는 never에서 에러).\n7) 남은 이슈: 타임아웃이면 Runner가 먼저 끝나서 SDK의 abort 에러가 기록기에 닿기 전에 파일을 쓸 수 있다 → raw-error.json이 빠질 수 있다(그때까지 받은 청크는 남음). 같은 초에 다시 실행하면 Runner가 '빈 폴더 아님'으로 모델을 부르기 전에 거부한다.",
+      "completed_at": "2026-10-12T15:41:20+0900",
+      "attempts": 1
+    }
+  ],
+  "created_at": "2026-10-12T14:41:07+0900",
+  "cost_usd": 18.0171,
+  "num_turns": 274,
+  "completed_at": "2026-10-12T15:41:21+0900"
+}

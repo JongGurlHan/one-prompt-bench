@@ -13,9 +13,12 @@
   },
   "runtime": {
     "gitCommit": "a1b2c3d",
-    "sdkPackage": "@anthropic-ai/sdk",
-    "sdkVersion": "0.0.0",
-    "nodeVersion": "22.0.0"
+    "nodeVersion": "22.0.0",
+    "generator": {
+      "tool": "claude-code",
+      "version": "2.1.296",
+      "invocation": "CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude -p --model example-model-a --effort high --tools \"\" --system-prompt <system prompt> --safe-mode --strict-mcp-config --no-session-persistence --output-format json"
+    }
   },
   "startedAt": "2026-10-09T10:12:03+09:00",
   "finishedAt": "2026-10-09T10:15:44+09:00",
@@ -37,7 +40,7 @@
       "n": 2,
       "startedAt": "2026-10-09T10:12:10+09:00",
       "latencyMs": 214000,
-      "firstTokenMs": 96000,
+      "firstTokenMs": null,
       "result": {
         "type": "response",
         "stopReason": "end",
@@ -90,22 +93,22 @@
       {
         "label": "spring",
         "atMs": 5000,
-        "path": "results/example-model-a/spring.webp"
+        "path": "results/example-model-a/spring.jpg"
       },
       {
         "label": "summer",
         "atMs": 15000,
-        "path": "results/example-model-a/summer.webp"
+        "path": "results/example-model-a/summer.jpg"
       },
       {
         "label": "autumn",
         "atMs": 25000,
-        "path": "results/example-model-a/autumn.webp"
+        "path": "results/example-model-a/autumn.jpg"
       },
       {
         "label": "winter",
         "atMs": 35000,
-        "path": "results/example-model-a/winter.webp"
+        "path": "results/example-model-a/winter.jpg"
       }
     ]
   }
