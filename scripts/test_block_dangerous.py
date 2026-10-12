@@ -105,6 +105,15 @@ def test_allows_safe(cmd):
     "FOO=1 npm run gen -- gpt-6-sol",
     "ls && (codex exec -)",
     "echo $(claude -p hi)",
+    # 파이프라인 진입점 직접 실행 — npm 스크립트를 거치지 않아도 안에서 실제 도구를 띄운다
+    "npx tsx pipeline/src/main.ts gen gemini-3-8-flash",
+    "npx tsx pipeline/src/main.ts smoke claude-haiku-5-5",
+    "cd pipeline && npx tsx src/main.ts smoke gpt-6-sol",
+    "tsx src/main.ts generate --all",
+    "node pipeline/dist/main.js gen --all --force",
+    "node --import tsx pipeline/src/main.ts smoke gemini-3-8-flash",
+    "npm exec -w pipeline -- tsx src/main.ts gen gpt-6-sol",
+    "npx tsx pipeline/src/main.ts --verbose smoke x",
 ])
 def test_blocks_live_generation(cmd):
     r = run_hook(cmd)
@@ -150,6 +159,13 @@ def test_blocks_secret_reads(cmd):
     "python - <<'EOF'\ns = '- [x] hook: 실호출(gen/smoke/claude -p/codex exec/Gemini API) 차단'\nEOF",
     "grep -n 'generativelanguage.googleapis.com' docs/ARCHITECTURE.md",
     "git commit -m 'chore: .env 읽기를 cat 으로 하지 않게'",
+    # 같은 진입점이라도 실제 모델을 부르지 않는 하위 명령·도움말·테스트
+    "npx tsx pipeline/src/main.ts validate gpt-6-sol",
+    "npx tsx pipeline/src/main.ts judge gpt-6-sol --scene pass",
+    "npx tsx pipeline/src/main.ts gen --help",
+    "npx tsx --test pipeline/test/generation/batch.test.ts",
+    'git commit -m "feat: main.ts에 gen 명령 추가"',
+    "grep -n 'main.ts smoke' docs/ARCHITECTURE.md",
 ])
 def test_allows_project_safe(cmd):
     assert run_hook(cmd).returncode == 0, cmd

@@ -56,7 +56,7 @@ npm workspaces 모노레포. 모든 TypeScript는 ESM(`"type": "module"`, NodeNe
 | `npm run smoke -- <slug>` | 짧은 실호출로 도구·인증·출력 파싱 확인 → `results-smoke/` | **있음 — 사람만** |
 | `npm run gen -- <slug…> \| --all [--force]` | 생성 + 검증 → `results/` | **있음 — 사람만** |
 
-`gen`·`generate`·`smoke` 스크립트와 `claude -p`·`codex exec`·Gemini API 직접 호출은 `.claude/hooks/block_dangerous.py`가 Claude 세션에서 막는다. 사람은 터미널이나 `! <명령>`으로 실행한다.
+`gen`·`generate`·`smoke` 스크립트, 파이프라인 진입점 직접 실행(`tsx`·`node … main.ts gen|smoke`), `claude -p`·`codex exec`·Gemini API 직접 호출은 `.claude/hooks/block_dangerous.py`가 Claude 세션에서 막는다. 무인 세션은 권한 확인 없이 돌기 때문에 이 훅이 실질적인 방어선이다. 진입점 파일 이름을 바꾸면 훅 패턴과 `scripts/test_block_dangerous.py`도 함께 바꾼다. 사람은 터미널이나 `! <명령>`으로 실행한다.
 
 ## 생성 파이프라인
 

@@ -17,7 +17,7 @@
 - 사이트 스타일: Astro scoped CSS + CSS 변수. React·Tailwind 없음
 
 ## 아키텍처 규칙
-- CRITICAL: 실제 모델 호출(`npm run gen`·`npm run smoke`·`claude -p`·`codex exec`·Gemini API)을 직접 실행하지 마라. 사람이 지시해도 `! <명령>`으로 사람이 직접 실행하게 안내한다. 이유: 구독 한도·요금을 쓴다. (훅이 막는다)
+- CRITICAL: 실제 모델 호출(`npm run gen`·`npm run smoke`·파이프라인 진입점의 gen·smoke 직접 실행·`claude -p`·`codex exec`·Gemini API)을 직접 실행하지 마라. 사람이 지시해도 `! <명령>`으로 사람이 직접 실행하게 안내한다. 이유: 구독 한도·요금을 쓴다. (훅이 막는다)
 - CRITICAL: 테스트는 가짜 어댑터·CLI 출력 fixture·로컬 HTML만 쓴다. 실제 CLI·API·네트워크를 부르는 테스트를 만들지 마라. 파일을 쓰는 테스트는 OS 임시 디렉토리에서 한다.
 - CRITICAL: `results/` 아래 파일을 손으로 만들거나 고치지 마라(테스트 픽스처 포함). 결과물은 파이프라인만 쓰고, `check:results`가 sha256으로 검사한다.
 - CRITICAL: 모델이 만든 HTML은 `<iframe sandbox="allow-scripts">` 안에서만 실행한다. `allow-same-origin`을 넣지 말고, 결과물 파일을 직접 링크하지 마라(새 창은 `/view/<slug>/` 래퍼).

@@ -26,6 +26,8 @@ NO_HELP = rf"(?!{SEG}\s(?:--help|-h){END})"  # --help 로 옵션을 확인하는
 # 명령 자리(줄·구분자·서브셸 시작 뒤, VAR=값·sudo·npx 접두 허용). 커밋 메시지·heredoc 안의 같은 단어는 걸리지 않는다
 CMD = r"(?:^|[;&|(\n`]|\$\()\s*(?:\w+=\S*\s+)*(?:(?:sudo|npx|exec|xargs)\s+)?"
 LIVE_SCRIPTS = r"(?:gen|generate|smoke)"  # 실제 모델을 부르는 npm 스크립트 (docs/ARCHITECTURE.md 명령어)
+# 파이프라인 진입점(pipeline/src/main.ts, 빌드된 main.js). 진입점 파일 이름을 바꾸면 이 패턴과 테스트도 바꾼다
+ENTRY = r"\bmain\.[cm]?[jt]s(?=[\s;&|)]|$)"
 ENV_FILE = r"(?:^|[\s/'\"=])\.env(?:\.(?!example\b|sample\b|template\b)[\w.-]+)?(?=[\s;&|)'\"]|$)"
 READERS = r"\b(?:cat|head|tail|less|more|bat|type|grep|egrep|rg|sed|awk|strings|xxd|od|nl|source)\b"
 
@@ -44,6 +46,9 @@ PATTERNS = [
     # run 뒤의 옵션(-w pipeline 등)을 건너뛴 첫 인자가 스크립트 이름이다. `npm test -- smoke` 같은 인자는 걸리지 않는다
     (rf"{CMD}npm\b{SEG}\s(?:run|run-script)(?:\s+-\S+(?:\s+[^-\s;&|]\S*)?)*\s+{LIVE_SCRIPTS}{END}",
      "npm run gen/smoke", LIVE),
+    # npm 스크립트를 거치지 않고 진입점을 직접 실행해도 안에서 claude -p·codex exec·Gemini API를 부른다 (훅은 자식 프로세스를 못 본다)
+    (rf"{CMD}(?:tsx|node|ts-node|npm|pnpm|yarn)\b{SEG}{ENTRY}{SEG}\s{LIVE_SCRIPTS}{END}{NO_HELP}",
+     "파이프라인 진입점 gen/smoke", LIVE),
     (rf"{CMD}codex\b(?={SEG}\sexec\b){NO_HELP}", "codex exec", LIVE),
     (rf"{CMD}claude\b(?={SEG}\s(?:-p|--print){END}){NO_HELP}", "claude -p", LIVE),
     (rf"{CMD}(?:curl|wget|http|https)\b{SEG}generativelanguage\.googleapis\.com", "Gemini API", LIVE),
