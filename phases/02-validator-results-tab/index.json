@@ -27,13 +27,22 @@
     {
       "step": 1,
       "name": "playwright-validator",
-      "status": "pending",
+      "status": "completed",
       "ac": [
         "npm run lint",
         "npm run typecheck",
         "npm test",
         "npm run check:results"
-      ]
+      ],
+      "started_at": "2026-10-12T20:31:42+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "566aac07-c64b-4a24-aaef-da10ffd6db9c",
+      "cost_usd": 4.4992,
+      "num_turns": 65,
+      "summary": "Playwright 검증기(validateResult: 로컬 서버+샌드박스 iframe 1280×800, loaded·콘솔/페이지 에러·외부 요청·JPEG 스크린샷 4장 → meta.json validation만 갱신), PlaywrightValidator로 VALIDATOR 교체, validate 명령(cli·ValidateService·루트 스크립트)과 실제 Chromium 픽스처 테스트(WebGL 포함) 추가",
+      "handoff": "API(pipeline/src/validation/): validate-result.ts validateResult(repoRoot, slug, {schedule, loadTimeoutMs, preparePage, now})→Validation, SCREENSHOT_SCHEDULE, CHROMIUM_ARGS, readValidationTarget(ok|not_ok|broken), validationPageHtml. Validator.validate는 이제 Promise<Validation>(batch는 무시). PlaywrightValidator(@Inject REPO_ROOT·OUTPUT, 시작·완료 한 줄 로그), PlaceholderValidator 삭제. validate.ts runValidate + validate.service.ts ValidateService(REPO_ROOT·VALIDATOR·OUTPUT). cli 'validate'(--force는 사용법 오류), 루트 스크립트 validate. batch.ts displayWidth를 export해 요약표에 재사용.\n⚠ WebGL 결과: launch args ['--enable-unsafe-swiftshader','--use-angle=swiftshader']. Windows·playwright 1.64.0·headless shell 156.0.8078.4에서 webgl2 · ANGLE(Vulkan SwiftShader) 확인(WebGL 픽스처 테스트, 스크린샷도 육안 확인). 이 PC는 플래그 없이도 됐지만 Playwright는 --enable-unsafe-swiftshader를 macOS에서만 기본으로 넣어 명시함. 리눅스 CI는 아직 미확인(deploy의 npm test가 확인하게 됨).\n결정: 스크린샷은 메모리에 받아 두고 검증이 끝까지 성공한 뒤에만 jpg·meta.json을 쓴다(도중 실패 시 파일 무변경). meta.json은 읽은 원본 JSON 객체에서 validation만 바꿔 Runner와 같은 형식(2칸 들여쓰기+\n)으로 쓴다(키 순서 유지). checkedAt=검증 완료 시각, pageErrors=err.message(타입 이름 없음).\nload 감지: 검증용 페이지 iframe의 onload 속성이 window 플래그를 세우고 waitForFunction(제한 loadTimeoutMs)으로 기다린다. page.goto는 domcontentloaded까지만(top load는 iframe load를 기다리므로). 서버는 '/'(검증용 페이지)·/results/<slug>/index.html(text/html; charset=utf-8)만, 나머지 404.\nvalidate 명령 결정(문서에 없음): --all에서 meta.json이 깨진 모델은 outcome을 알 수 없어 건너뜀이 아니라 실패(exit 1). 생성 전(meta.json 없음)은 --all이면 건너뜀, 직접 지정이면 실패. 요약은 운영자용 'loaded · 콘솔 에러 N · 페이지 에러 N · 외부 요청 N'(display.ts 에러 수 규칙을 다시 쓰지 않으려고 따로 표시).\n테스트로 확인한 사실: 샌드박스 iframe 안의 console·pageerror·request 이벤트가 page 리스너에 들어온다, 처리되지 않은 Promise 거부도 pageErrors, page.route가 iframe 요청도 가로챈다, FontFace 요청 resourceType은 'font'. 브라우저 테스트(test/validate-result.test.ts) 약 8초, pipeline 전체 npm test 약 12초.\n남은 것: 무한 루프 페이지는 스크린샷이 Playwright 기본 30초 제한에 걸려 throw(validation null로 남음). 문서 갱신 필요 — ARCHITECTURE 디렉토리 트리의 'phase 1은 자리표시' 문구, 검증기 절의 WebGL ⚠, Batch 규칙의 자리표시 문장. 레포 results/에 대해서는 검증을 실행하지 않았다.",
+      "completed_at": "2026-10-12T20:51:17+0900",
+      "attempts": 1
     },
     {
       "step": 2,
