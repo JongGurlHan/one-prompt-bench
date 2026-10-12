@@ -30,7 +30,7 @@
 
 이 프로젝트 전용 원칙:
 
-8. **phase = 개발 순서의 한 줄** — `docs/PRD.md` "개발 순서" 표의 한 줄이 phase 하나다. 디렉토리는 `NN-<slug>`(NN은 표의 순서를 두 자리로, 예: `01-pipeline-core`). phase는 날짜와 묶지 않는다. 하루에 여러 phase를 해도, phase 하나를 여러 날 해도 된다. 표의 "사람이 할 일"(생성·smoke·배포 설정·판정)은 step에 넣지 않는다. 무인 세션은 할 수 없다. 대신 phase 계획을 보여줄 때 "phase 뒤에 사람이 할 일"로 함께 안내한다.
+8. **phase = 개발 순서의 한 줄** — phase 단위와 디렉토리 이름(`NN-<slug>`, 예: `01-pipeline-core`)은 `docs/PRD.md` "개발 순서"를 따른다. 표의 "사람이 할 일"(생성·smoke·배포 설정·판정)은 step에 넣지 않는다. 무인 세션은 할 수 없다. 대신 phase 계획을 보여줄 때 "phase 뒤에 사람이 할 일"로 함께 안내한다.
 9. **실호출 금지 AC** — AC와 step 작업에 `npm run gen`·`smoke`·`validate`(실제 results 대상)·`judge`를 넣지 않는다. 어댑터는 CLI 출력 fixture로, 검증기는 로컬 HTML과 `page.route`로 테스트한다. 기본 AC 묶음은 `npm run lint`, `npm run typecheck`, `npm test`이고, 사이트를 건드리는 step은 `npm run build`, results를 읽는 코드를 건드리는 step은 `npm run check:results`를 더한다. 첫 phase의 step 0(워크스페이스 연결) 전에는 npm 명령이 없으니, 그 step의 AC는 step이 만드는 명령으로 정한다.
 10. **문서 섹션을 가리킨다** — 어댑터 step은 ARCHITECTURE "도구별 호출 사양"과 DATA "정규화 규칙"을, 화면 step은 UI_GUIDE의 해당 탭 절과 COPY의 해당 탭 절을, 데이터 step은 DATA "스키마 변경 예정"·"표시 규칙"을 "관련 파일"에 적는다.
 11. **⚠ 항목은 열어 둔다** — 실제 도구 출력으로 확인해야 하는 사양(⚠)은 추측으로 확정하지 않는다. 파싱 코드는 필드가 없을 때 null·unknown으로 안전하게 떨어지게 하고, 확인이 필요한 점을 handoff에 남기라고 step에 적는다.

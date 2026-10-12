@@ -63,7 +63,7 @@ npm workspaces 모노레포. 모든 TypeScript는 ESM(`"type": "module"`, NodeNe
 ```
 models.json ─▶ Batch ─▶ Runner(재시도·타임아웃·저장·비용) ─▶ Adapter(도구 호출 1회·정규화·에러 분류)
                  │                     └▶ results/<slug>/{response.txt, index.html, meta.json}
-                 └▶ (outcome ok면 바로) Validator(Playwright) ─▶ meta.json.validation + *.webp
+                 └▶ (outcome ok면 바로) Validator(Playwright) ─▶ meta.json.validation + *.jpg
 ```
 
 ### 책임 분리 (기존 코드 유지)
@@ -130,7 +130,7 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 
 - 로컬 정적 서버로 레포를 열고, 사이트와 **같은 조건**으로 `<iframe sandbox="allow-scripts" src=".../results/<slug>/index.html">`(1280×800)을 담은 검증용 페이지를 띄운다.
 - 기록: `loaded`(iframe load 이벤트, 30초 제한), `consoleErrors`(console error), `pageErrors`(처리되지 않은 예외), `externalRequests`(로컬 서버가 아닌 모든 요청의 url·resourceType). iframe 안의 이벤트까지 잡히는지 테스트로 확인한다.
-- 스크린샷: iframe load를 0초로 5·15·25·35초에 iframe 영역만 찍는다(spring/summer/autumn/winter). Playwright는 PNG/JPEG만 지원하므로 **sharp로 WebP 변환**해 `results/<slug>/<label>.webp`에 저장한다.
+- 스크린샷: iframe load를 0초로 5·15·25·35초에 iframe 영역만 찍는다(spring/summer/autumn/winter). Playwright의 JPEG(`type: 'jpeg'`, quality 80)로 `results/<slug>/<label>.jpg`에 바로 저장한다. 변환 라이브러리는 쓰지 않는다.
 - headless Chromium에서 WebGL이 동작해야 한다(SwiftShader 플래그 등). ⚠ 첫 구현 때 three.js 픽스처로 확인.
 - 검증 결과는 `meta.json`의 `validation`만 갱신한다. 다른 필드는 건드리지 않고, 저장 전에 스키마로 검사한다.
 - 테스트: `test/fixtures/`의 로컬 HTML로 실행하고, 외부 URL은 `page.route`로 가로채 가짜 응답을 준다. 테스트에서 실제 네트워크를 쓰지 않는다.
@@ -147,7 +147,7 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 
 - 정적 출력(`output: 'static'`). 페이지: `/`(결과 탭, 첫 화면), `/compare/`, `/prompt/`, `/intro/`, `/view/<slug>/`(새 창용 전체 화면 래퍼).
 - **데이터는 빌드 때만 읽는다**: `core/src/results.ts`로 `models.json`·`results/`·`prompts/`를 읽고 검증·조인해서, 표시 값은 `core/src/display.ts`로 만든다. 데이터 위치는 기본이 레포 루트이고, 테스트에서는 환경변수 `OPB_DATA_ROOT`로 픽스처 폴더를 가리킨다.
-- 빌드 때 `results/<slug>/index.html`과 `response.txt`를 `dist/r/<slug>/`로 복사한다. 스크린샷(webp)과 meta.json은 복사하지 않는다.
+- 빌드 때 `results/<slug>/index.html`과 `response.txt`를 `dist/r/<slug>/`로 복사한다. 스크린샷(jpg)과 meta.json은 복사하지 않는다.
 - **결과물 실행은 항상 `<iframe sandbox="allow-scripts">` 안에서만.** `allow-same-origin`을 절대 넣지 않는다. GitHub Pages는 사용자 계정의 모든 Pages 사이트가 한 출처(`<user>.github.io`)를 쓰기 때문이다. "새 창에서 열기"는 `/view/<slug>/`(같은 샌드박스 iframe을 화면 가득)로 연다. 결과물 파일을 직접 링크하지 않는다.
 - 한 번에 결과물 하나만 실행한다. 모델을 바꾸면 iframe의 src를 바꾸고, "다시 시작"은 같은 src를 다시 불러온다.
 - 결과물이 없는 모델은 이유를 보여 주고, 응답 원문(response.txt)은 그 모델을 고를 때 `fetch`로 불러온다(첫 화면 용량을 줄이기 위해).

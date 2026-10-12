@@ -6,7 +6,7 @@
 참고한 사이트: https://outliner-coach.github.io/aquagarden-bench (같은 과제를 여러 모델이 만든 결과를 하나씩 실행해 보는 방식, "순위가 아니라 기록").
 
 - 용도: 포트폴리오, 개인 기록·갤러리
-- **비용 원칙: 추가 결제 0원.** 현재 플랜(Claude Pro, ChatGPT Plus, Gemini API 무료 티어)만 쓴다. 이 원칙이 다른 모든 결정보다 앞선다.
+- **비용 원칙: 추가 결제 0원.** 현재 플랜(Claude Pro, ChatGPT Plus, Gemini API 무료 티어)만 쓴다 (우선순위는 `docs/ADR.md` "철학").
 - 방문자는 보기만 한다 (로그인·입력·댓글 없음).
 
 ## 사용자
@@ -66,4 +66,4 @@ main에 push하면 GitHub Actions가 검사(lint·typecheck·test·results 검�
 | 4 | Codex CLI 어댑터 | Codex smoke, 8개 일괄 생성과 검증 |
 | 5 | 판정 도우미, 비교표·프롬프트·소개 탭, 휴대폰 화면, README | 8개 판정, devlog·회고 검토 |
 
-각 phase가 끝나면 `/devlog <phase>`로 개발 일지 초안을 만들고 사람이 검토해 확정한다 (`docs/OPERATIONS.md`).
+phase가 끝난 뒤의 절차(merge·devlog·사람이 할 일)는 `docs/OPERATIONS.md` "하네스로 개발하기".

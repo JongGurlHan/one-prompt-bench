@@ -7,12 +7,13 @@
 - `docs/DATA.md` 데이터 형식·스키마 변경 예정·표시 규칙·check:results / `docs/UI_GUIDE.md` 토큰·화면 / `docs/COPY.md` 확정 문구
 - `docs/OPERATIONS.md` 사람이 직접 하는 일(생성·판정·배포) / `docs/design/*.dc.html` 시안 원본(참고용)
 - 대화형 세션을 시작하면 `PROGRESS.md`(작업 인계)를 먼저 읽는다. 무인 step 세션은 읽지 않아도 된다.
-- 문서에 적힌 결정은 확정이다. 바꾸거나 문서에 없는 것을 정해야 하면 구현 전에 사람에게 묻는다. 무인 세션은 문서 의도에 맞게 정하고 handoff에 남긴다. `⚠` 표시는 실제 도구 출력으로 확인해야 하는 부분이다.
+- 문서 내용은 두 등급이다. **확정**: 이 파일의 CRITICAL, `docs/ADR.md`의 결정, `docs/COPY.md` 문구, PRD의 범위(핵심 기능·MVP 제외) — 바꾸려면 구현 전에 사람에게 묻는다. **기준값**: UI_GUIDE의 수치, DATA의 포맷 세부, ARCHITECTURE의 구현 방법 — 구현 중 맞지 않으면 조정하고 handoff에 이유를 남긴다.
+- 문서에 없는 것을 정해야 하면 대화형 세션은 사람에게 묻고, 무인 세션은 문서 의도에 맞게 정하고 handoff에 남긴다. `⚠` 표시는 실제 도구 출력으로 확인해야 하는 부분이다.
 
 ## 기술 스택
 - npm workspaces 모노레포: `packages/core`(도메인 로직, zod 스키마), `pipeline/`(NestJS 스탠드얼론 CLI), `site/`(Astro 정적), `results/`(결과물 데이터)
 - TypeScript strict, ESM(NodeNext), Node ≥ 22. 테스트는 `node:test` + `tsx`
-- 생성 도구: Claude Code CLI · Codex CLI(구독 로그인) · Gemini API 무료 티어. 검증: Playwright + sharp(WebP)
+- 생성 도구: Claude Code CLI · Codex CLI(구독 로그인) · Gemini API 무료 티어. 검증: Playwright(스크린샷 JPEG)
 - 사이트 스타일: Astro scoped CSS + CSS 변수. React·Tailwind 없음
 
 ## 아키텍처 규칙

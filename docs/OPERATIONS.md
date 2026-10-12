@@ -57,9 +57,9 @@ npm run validate -- gpt-6-sol    # 한 모델
 ## 판정 (판정 도우미가 생긴 뒤, 이후 새 모델마다)
 
 1. `npm run dev`로 로컬 사이트를 열고 결과 탭에서 그 모델을 50초 이상(한 바퀴 넘게) 지켜본다. 사이트와 같은 샌드박스 조건이다.
-2. `results/<slug>/`의 스크린샷 4장(spring·summer·autumn·winter = 5·15·25·35초)을 본다. "계절마다 10초"는 스크린샷이 맞는 계절인지로 판단한다.
+2. `results/<slug>/`의 스크린샷 4장(spring·summer·autumn·winter `.jpg`)을 본다. 보는 방법은 `prompts/season-tree-v1.judging.md` 머리말.
 3. `prompts/season-tree-v1.judging.md` 기준으로 `npm run judge -- <slug>`를 실행해 요구사항 4개(pass/partial/fail)와 메모(1~200자, 사이트에 공개)를 입력한다. sha256·시각은 자동으로 채워진다.
-4. 커밋하고 push하면 배포된다. 결과물을 다시 만들면 판정은 무효가 되어("판정 전") 다시 판정해야 한다.
+4. 커밋하고 push하면 배포된다. `--force`로 결과물을 다시 만들면 판정도 함께 지워지므로 다시 판정한다.
 
 결과물이 없는 모델(HTML 없음·잘림·거부·생성 실패·한도 초과)은 판정하지 않는다.
 

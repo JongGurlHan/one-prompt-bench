@@ -233,7 +233,7 @@ export type GenerationRecord = z.infer<typeof GenerationRecordSchema>;
 /* ───────── judgment.json (사람이 쓰는 판정) ─────────
  * 위치: results/<slug>/judgment.json  (자동 기록인 meta.json과 분리)
  * --force로 결과물을 새로 만들면 폴더가 비워지면서 예전 판정도 함께 지워진다.
- * 그래도 혹시 남아 있으면 outputSha256이 meta.json의 결과물과 달라서 사이트 빌드 때 걸러낸다.
+ * 그래도 혹시 남아 있으면 outputSha256이 meta.json의 결과물과 달라서 check:results가 배포를 막는다.
  * 판정 기준표: prompts/season-tree-v1.judging.md
  */
 

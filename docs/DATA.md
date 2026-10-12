@@ -11,7 +11,7 @@ results/<slug>/
   index.html                  응답에서 꺼낸 결과물 (outcome ok일 때만)
   meta.json                   생성·검증 기록 (Runner가 쓰고, validation은 검증기가 채움)
   judgment.json               사람이 쓴 판정 (판정 도우미가 씀)
-  spring.webp summer.webp autumn.webp winter.webp   5·15·25·35초 스크린샷
+  spring.jpg summer.jpg autumn.jpg winter.jpg   계절별 스크린샷 (시점은 ARCHITECTURE "검증기")
 ```
 
 `results/`의 파일은 사람도 Claude 세션도 손으로 고치지 않는다. 바꾸려면 `npm run gen -- <slug> --force`로 다시 만들고, 판정은 `npm run judge`로 다시 쓴다. `check:results`가 index.html의 sha256을 meta.json과 대조해 손으로 고친 것을 잡는다.
@@ -56,6 +56,7 @@ results/<slug>/
 | `params.maxOutputTokens` | 양의 정수 | 양의 정수 \| `null` | Codex CLI는 상한을 지정할 수 없음. null = 도구 기본값 |
 | `ProviderAdapter.sdk` | `{ package, version }` | `generator: { tool, version }` + 호출마다 `invocation` | 위와 같음 |
 | `PromptSpec.system` | null | `prompts/<id>-<version>.system.md` 내용 | 공통 최소 시스템 프롬프트 (ADR-005) |
+| `validation.screenshots[].path` | `.webp$` 정규식 (`schema.ts` 주석·메시지 포함) | `.jpg$` 정규식. `examples/meta.sample.json`의 스크린샷 경로 4개도 `.jpg`로 | 스크린샷은 Playwright JPEG (ADR-010) |
 
 ### 정규화 규칙 (어댑터 책임)
 
@@ -86,8 +87,7 @@ results/<slug>/
 4. meta.json이 가리키는 파일(`responseTextPath`, `output.path`, 스크린샷)이 실제로 있다.
 5. `index.html`의 sha256이 `output.sha256`과 같다.
 6. `outcome`이 `ok`면 `validation`이 null이 아니다.
-7. `judgment.json`이 있으면 스키마를 통과하고, `modelSlug`·`prompt`가 meta.json과 같다.
-   `outputSha256`이 결과물과 **다르면 실패가 아니라 경고**다. 사이트 빌드가 그 판정을 버리고 "판정 전"으로 보여준다.
+7. `judgment.json`이 있으면 스키마를 통과하고, `modelSlug`·`prompt`가 meta.json과 같고, `outputSha256`이 meta.json의 `output.sha256`과 같다 (ADR-012).
 
 ## 표시 규칙 (`packages/core/src/display.ts`)
 
@@ -112,14 +112,7 @@ results/<slug>/
 
 ### 결과물이 없을 때 보여줄 이유 (결과 탭)
 
-| 라벨 | 이유 문구 | 원문 |
-|---|---|---|
-| 생성 전 | 아직 생성하지 않았어요. | 없음 |
-| 한도 초과 | 구독 사용 한도에 걸려 생성하지 못했어요. 한도가 풀리면 다시 생성해요. | 없음 |
-| 생성 실패 | 기술적인 문제로 생성하지 못했어요. (+ 마지막 에러 종류) | 없음 |
-| 거부 | 모델이 요청을 거부했어요. | response.txt |
-| 잘림 | 출력 상한에 닿아 응답이 중간에 끊겼어요. | response.txt |
-| HTML 없음 | 응답에서 실행할 HTML 문서를 찾지 못했어요. | response.txt |
+라벨별 이유 문구와 응답 원문 표시 여부는 `docs/COPY.md` "결과 탭"의 "결과물이 없을 때"에 있다.
 
 ### 값 계산·포맷
 
@@ -134,7 +127,7 @@ results/<slug>/
 | 비용 | `cost.totalUsd` | `$0.47` (소수 2자리), 0보다 크고 0.01 미만이면 `<$0.01` |
 | 걸린 시간 | **마지막 시도**의 `latencyMs` (재시도·백오프 제외, 도구 시작 시간 포함) | `3분 34초` / `48초`, api_failed면 — |
 | 재시도 | `attempts.length - 1` | 정수 |
-| 요구사항 판정 | judgment.json (sha256이 맞을 때만) | ✓ 충족 / △ 부분 충족 / ✗ 미충족, 판정 없음 → 판정 전, 결과물 없음 → — |
+| 요구사항 판정 | judgment.json | ✓ 충족 / △ 부분 충족 / ✗ 미충족, 판정 없음 → 판정 전, 결과물 없음 → — |
 | 출력 토큰 † | 생성 도구가 Codex CLI인 행 | 값 옆에 † |
 | 그중 추론 ‡ | 회사가 Google인 행 | 값 옆에 ‡ |
 | 모델 수 `{N}` | models.json의 모델 수 | 문구의 `{N}` 치환 |

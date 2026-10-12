@@ -1,6 +1,6 @@
 # UI 디자인 가이드 — 토큰, 컴포넌트, 탭별 레이아웃
 
-시안 원본은 `docs/design/*.dc.html`이다(claude.ai 디자인 캔버스 형식이라 단독으로는 렌더링되지 않는다). 레이아웃·문구 참고용이고, 아래 값이 구현 기준이다. 문구는 `docs/COPY.md`, 표시 값은 `docs/DATA.md` "표시 규칙".
+시안 원본은 `docs/design/*.dc.html`이다(claude.ai 디자인 캔버스 형식이라 단독으로는 렌더링되지 않는다). 레이아웃·문구 참고용이고, 아래 값이 구현 기준이다. 수치는 기준값이라 구현 중 맞지 않으면 조정하고 handoff에 남긴다(CLAUDE.md "문서"). 원칙과 안티패턴은 지킨다. 문구는 `docs/COPY.md`, 표시 값은 `docs/DATA.md` "표시 규칙".
 
 ## 디자인 원칙
 
@@ -102,8 +102,8 @@
 - 상단: h1 + 설명 + 칩 3개(`season-tree-v1`, `모델 {N}개`, `모델당 1회 생성`).
 - 두 열(`flex-wrap`): 왼쪽 목록(`flex 1 1 280px`, 최대 340px), 오른쪽 결과(`flex 999 1 560px`).
 - **모델 목록**: 제목 "모델"과 오른쪽 "출시일 최신순"(12px muted). 각 항목은 `<button>`(`min-height 56px`, `padding 10px 14px`, 10px 둥글기)이다. 왼쪽에 표시명(15px/600)과 "회사 · 생성 도구"(12px muted), 오른쪽에 출시일(Mono 12px)과 상태 배지. 선택된 항목은 `--surface-selected` 바탕에 2px `--accent` 테두리, `aria-pressed="true"`. 목록 아래 점선(1px dashed `--border-strong`) 범례 상자 "상태 표시"에 모든 라벨 배지를 둔다.
-- **실행 카드**: 머리 줄에 표시명(600) + "회사 · 도구로 생성 · YYYY-MM-DD 출시"(12px muted), 오른쪽에 [다시 시작] [새 창에서 열기] 작은 버튼. 아래 실행 영역은 `aspect-ratio 16 / 10`, `--viewer-bg`이고 iframe이 영역을 가득 채운다(`border 0`, `sandbox="allow-scripts"`, `title="<표시명> 결과물"`).
-- **결과물이 없을 때**: 실행 영역에 라벨 이유 문구(DATA.md)를 `--viewer-title`로 가운데 보여주고, 버튼 두 개는 숨긴다. 원문이 있는 라벨이면 실행 카드 아래에 "응답 원문" 카드를 둔다. `<pre>`(Mono 13px, `white-space: pre-wrap`, `max-height 480px`, `overflow auto`)이고, 모델을 고를 때 불러온다.
+- **실행 카드**: 머리 줄에 표시명(600) + "회사 · 도구로 생성 · YYYY-MM-DD 출시"(12px muted), 오른쪽에 [다시 시작] [새 창에서 열기] 작은 버튼. 아래 실행 영역은 `aspect-ratio 16 / 10`, `--viewer-bg`이고 iframe이 영역을 가득 채운다(`border 0`, `title`은 COPY). 샌드박스 속성은 ARCHITECTURE "사이트".
+- **결과물이 없을 때**: 실행 영역에 라벨 이유 문구(COPY "결과물이 없을 때")를 `--viewer-title`로 가운데 보여주고, 버튼 두 개는 숨긴다. 원문이 있는 라벨이면 실행 카드 아래에 "응답 원문" 카드를 둔다. `<pre>`(Mono 13px, `white-space: pre-wrap`, `max-height 480px`, `overflow auto`)이고, 모델을 고를 때 불러온다.
 - **아래 카드 두 개**(`grid auto-fit minmax(260px, 1fr)`, gap 16px):
   - "요구사항 판정": 장면·계절 순환·계절 모습·계절 이름 행(왼쪽 이름, 오른쪽 ✓ 충족 / △ 부분 충족 / ✗ 미충족 / 판정 전 / —). 아래 구분선 다음에 판정 메모(13px `--text-body`). 메모가 없으면 줄을 생략한다.
   - "생성 기록": 결과, 조건 검사, 토큰 (입력 / 출력), 비용 (정가 기준), 걸린 시간. 값은 Mono 13px `--text-strong`.
@@ -126,7 +126,7 @@
 - 수록 기준: 기준 문단 + "대상에서 뺀 모델" 목록(모델명 / 사유).
 
 ### 새 창 래퍼 (`/view/<slug>/`)
-- 화면 전체(`100vw × 100vh`, 여백 없음, 바탕 `--viewer-bg`)를 `sandbox="allow-scripts"` iframe 하나로 채운다. 다른 UI는 없고, `<title>`만 "<표시명> — One Prompt Bench"로 한다.
+- 화면 전체(`100vw × 100vh`, 여백 없음, 바탕 `--viewer-bg`)를 결과물 iframe 하나로 채운다(샌드박스는 결과 탭과 같다, ARCHITECTURE "사이트"). 다른 UI는 없고, `<title>`만 "<표시명> — One Prompt Bench"로 한다.
 
 ## 아이콘
 - 쓰지 않는 것이 기본이다. 필요하면 인라인 SVG(stroke 1.5)로 넣고, 둥근 배경 상자로 감싸지 않는다.
