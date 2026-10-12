@@ -3,6 +3,8 @@ import { GEMINI_API_KEY, type AppConfig } from '../config/config.js';
 import type { PreflightCheck } from '../generation/preflight.js';
 import { GeminiAdapter, type GeminiClient } from './gemini/gemini.adapter.js';
 import { createGeminiClient, readGeminiSdkVersion } from './gemini/gemini.client.js';
+import { createGeminiRecorder } from './gemini/gemini.recorder.js';
+import type { RawRecorder, Redact } from './raw-recorder.js';
 
 /* ────────────────────────────────────────────────────────────
  * 생성 도구(GeneratorTool)별 어댑터 레지스트리 (ADAPTERS 토큰).
@@ -11,8 +13,11 @@ import { createGeminiClient, readGeminiSdkVersion } from './gemini/gemini.client
  * ──────────────────────────────────────────────────────────── */
 
 export interface CreateAdapterOptions<Client> {
-  /** 어댑터에 주입하는 클라이언트(SDK 클라이언트·프로세스 실행 함수)를 감싼다. smoke가 원본 출력을 기록할 때 쓴다 */
-  wrapClient?: (client: Client) => Client;
+  /**
+   * 어댑터에 주입하는 클라이언트(SDK 클라이언트·프로세스 실행 함수)를 감싼다. smoke가 원본 출력을 기록할 때 쓴다.
+   * 메서드 표기: 도구별 AdapterEntry<Client>를 AdapterEntry<unknown>으로 한데 다룰 수 있게 한다(smoke는 같은 항목의 기록기로 감싼다)
+   */
+  wrapClient?(client: Client): Client;
 }
 
 export interface AdapterEntry<Client = unknown> {
@@ -20,6 +25,11 @@ export interface AdapterEntry<Client = unknown> {
   preflight?(): Promise<PreflightCheck[]>;
   /** 설정(.env)에서 필요한 값을 꺼내 어댑터를 만든다 */
   create(config: AppConfig, options?: CreateAdapterOptions<Client>): ProviderAdapter;
+  /**
+   * smoke용 원본 출력 기록기. smoke는 create(config, { wrapClient: (c) => recorder.wrap(c) })로 어댑터를 만들고,
+   * Runner가 끝난 뒤 recorder.files()를 저장 폴더에 쓴다. CLI 도구(phase 3·4)는 프로세스 실행 함수를 감싸 stdout·stderr를 낸다
+   */
+  createRecorder?(redact: Redact): RawRecorder<Client>;
 }
 
 /** 도구마다 주입하는 클라이언트 모양이 다르다 */
@@ -44,6 +54,7 @@ const geminiEntry: AdapterEntry<GeminiClient> = {
       sdkVersion: readGeminiSdkVersion(),
     });
   },
+  createRecorder: (redact) => createGeminiRecorder(redact),
 };
 
 export function createAdapterRegistry(): AdapterRegistry {

@@ -372,8 +372,8 @@ async function processModel(model: ModelEntry, plan: ResultDirPlan, ctx: RunCont
   return { slug, action: 'generated', record, issue };
 }
 
-/** runtime.gitCommit. 스키마의 커밋 해시 규칙을 통과해야 한다 (Runner가 저장할 때 실패하면 호출이 낭비된다) */
-async function resolveCommit(git: GitClient): Promise<string> {
+/** runtime.gitCommit. 스키마의 커밋 해시 규칙을 통과해야 한다 (Runner가 저장할 때 실패하면 호출이 낭비된다). smoke도 쓴다 */
+export async function resolveCommit(git: GitClient): Promise<string> {
   let head: string;
   try {
     head = await git.head();

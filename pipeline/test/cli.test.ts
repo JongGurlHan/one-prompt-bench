@@ -75,3 +75,31 @@ test('USAGE에 gen 명령과 --all·--force 설명이 있다', () => {
   assert.match(USAGE, /--force/);
   assert.match(USAGE, /judgment\.json/);
 });
+
+/* ───────── smoke ───────── */
+
+test('smoke <slug> → slug 1개', () => {
+  assert.deepEqual(parseCommand(['smoke', 'gemini-3-8-flash']), { kind: 'smoke', slug: 'gemini-3-8-flash' });
+});
+
+test('smoke에 slug가 0개·2개 이상이면 사용법 오류 (같은 slug 두 번도)', () => {
+  for (const argv of [['smoke'], ['smoke', 'a', 'b'], ['smoke', 'a', 'a']]) {
+    const cmd = parseCommand(argv);
+    assert.equal(cmd.kind, 'usage_error', argv.join(' '));
+    assert.match(cmd.kind === 'usage_error' ? cmd.message : '', /smoke/);
+  }
+});
+
+test('smoke에 --all·--force는 쓸 수 없다', () => {
+  assert.equal(parseCommand(['smoke', '--all']).kind, 'usage_error');
+  assert.equal(parseCommand(['smoke', 'gemini-3-8-flash', '--force']).kind, 'usage_error');
+});
+
+test('smoke --help → 실행하지 않고 도움말', () => {
+  assert.deepEqual(parseCommand(['smoke', 'gemini-3-8-flash', '--help']), { kind: 'help' });
+});
+
+test('USAGE에 smoke 명령과 저장 위치가 있다', () => {
+  assert.match(USAGE, /smoke <slug>/);
+  assert.match(USAGE, /results-smoke\//);
+});

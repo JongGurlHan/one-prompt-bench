@@ -7,6 +7,7 @@ import { AppModule } from '../src/app.module.js';
 import { defaultRepoRoot } from '../src/config/config.js';
 import { BatchService } from '../src/generation/batch.service.js';
 import { GenerationRunner } from '../src/generation/generation-runner.js';
+import { SmokeService } from '../src/generation/smoke.service.js';
 import type { Confirm } from '../src/system/confirm.js';
 import type { GitClient } from '../src/system/git.js';
 import {
@@ -53,6 +54,20 @@ test('AppModule: BatchService의 모든 의존성이 @Inject(TOKEN)으로 들어
     assert.ok(batch.validator instanceof PlaceholderValidator);
     assert.equal(batch.out, app.get<Output>(OUTPUT));
     assert.equal(batch.runner, app.get(GenerationRunner));
+  } finally {
+    await app.close();
+  }
+});
+
+test('AppModule: SmokeService도 같은 레지스트리·git·출력·Runner를 @Inject(TOKEN)으로 받는다', async () => {
+  const app = await NestFactory.createApplicationContext(AppModule, { logger: false });
+  try {
+    const smoke = app.get(SmokeService);
+    assert.equal(smoke.repoRoot, app.get<string>(REPO_ROOT));
+    assert.equal(smoke.adapters, app.get<AdapterRegistry>(ADAPTERS));
+    assert.equal(smoke.git, app.get<GitClient>(GIT));
+    assert.equal(smoke.out, app.get<Output>(OUTPUT));
+    assert.equal(smoke.runner, app.get(GenerationRunner));
   } finally {
     await app.close();
   }

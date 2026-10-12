@@ -158,11 +158,11 @@ function describe(err: unknown, status: number | null, body: ErrorBody | null): 
       .map((e) => (e instanceof Error ? `${e.name}: ${e.message}` : String(e)))
       .join(' <- cause: ');
   }
-  return redactSecrets(status === null ? text : `HTTP ${status} ${text}`);
+  return redactGeminiKeys(status === null ? text : `HTTP ${status} ${text}`);
 }
 
-/** URL 쿼리의 key=…와 Google API 키 모양(AIza…) 문자열을 가린다 */
-function redactSecrets(s: string): string {
+/** URL 쿼리의 key=…와 Google API 키 모양(AIza…) 문자열을 가린다. smoke의 raw-error.json도 쓴다 */
+export function redactGeminiKeys(s: string): string {
   return s.replace(/\b((?:api_?)?key=)[^&\s"'#]+/gi, '$1<redacted>').replace(/AIza[0-9A-Za-z_-]{30,}/g, '<redacted>');
 }
 
