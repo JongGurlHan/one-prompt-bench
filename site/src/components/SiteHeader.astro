@@ -1,5 +1,5 @@
 ---
-import { SITE_NAME, SITE_TAGLINE } from '../lib/copy.ts';
+import { NAV_LABEL, SITE_NAME, SITE_TAGLINE } from '../lib/copy.ts';
 import { withBase } from '../lib/paths.ts';
 import { TABS, type TabId } from '../lib/tabs.ts';
 
@@ -16,7 +16,7 @@ const { current } = Astro.props;
       <span class="name">{SITE_NAME}</span>
       <span class="tagline">{SITE_TAGLINE}</span>
     </div>
-    <nav aria-label="주요 메뉴">
+    <nav aria-label={NAV_LABEL}>
       {
         TABS.map((tab) => (
           <a href={withBase(tab.path)} aria-current={tab.id === current ? 'page' : undefined}>

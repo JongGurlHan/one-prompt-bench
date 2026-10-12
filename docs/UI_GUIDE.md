@@ -62,6 +62,7 @@
 
 ### 타이포그래피
 글꼴: IBM Plex Sans KR(400·500·600), IBM Plex Mono(400·500). Google Fonts, `display=swap`. 본문 기본은 `15px / line-height 1.6`.
+Mono 글꼴 스택은 `'IBM Plex Mono', 'IBM Plex Sans KR', monospace`다. Plex Mono에는 한글이 없어서, Mono 자리의 한글(헤더 부제, 칩 "모델 {N}개", "3분 34초")이 시스템 고정폭 글꼴로 떨어지지 않게 한다.
 
 | 용도 | 스타일 |
 |---|---|

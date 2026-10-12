@@ -40,7 +40,8 @@
 
   /* 글꼴 */
   --font-sans: 'IBM Plex Sans KR', sans-serif;
-  --font-mono: 'IBM Plex Mono', monospace;
+  /* IBM Plex Mono에는 한글이 없다 → 한글은 시스템 고정폭 글꼴 대신 Plex Sans KR로 그린다 */
+  --font-mono: 'IBM Plex Mono', 'IBM Plex Sans KR', monospace;
 
   /* 둥글기 (컴포넌트별 값만 쓴다) */
   --radius-card: 14px; /* 카드, 실행 영역 카드, 표 컨테이너 */

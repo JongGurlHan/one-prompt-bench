@@ -9,6 +9,9 @@ import { CURRENT_PROMPT, fillCount } from '@opb/core';
 export const SITE_NAME = 'One Prompt Bench';
 export const SITE_TAGLINE = '하나의 프롬프트, 모델마다 다른 나무';
 
+/** 헤더 탭 목록(nav)의 aria-label */
+export const NAV_LABEL = '주요 메뉴';
+
 /** meta description·og:description = 소개 탭 "제목 아래 문장" */
 export const SITE_DESCRIPTION =
   '같은 프롬프트를 여러 AI 모델에 한 번씩 보내, 브라우저에서 바로 실행되는 3D 나무를 받았어요. 새 모델이 나오면 같은 프롬프트로 한 그루씩 더해요.';
@@ -58,5 +61,5 @@ export const RECORD_CARD = {
 
 export const RESPONSE_CARD_TITLE = '응답 원문';
 
-/** 응답 원문을 불러오지 못했을 때 — COPY에 없어서 step 3(results-tab)에서 정했다 */
+/** 응답 원문을 불러오지 못했을 때 */
 export const RESPONSE_LOAD_FAILED = '응답 원문을 불러오지 못했어요.';

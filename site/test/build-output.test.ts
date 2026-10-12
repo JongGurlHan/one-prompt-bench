@@ -128,7 +128,9 @@ test('헤더 탭은 "결과" 하나이고 현재 탭에 aria-current="page"가 �
   const header = element(html, 'header');
   assert.equal(text(header.inner).startsWith('One Prompt Bench 하나의 프롬프트, 모델마다 다른 나무'), true, text(header.inner));
 
-  const tabs = elements(element(header.inner, 'nav').inner, 'a');
+  const nav = element(header.inner, 'nav');
+  assert.equal(nav.attrs.get('aria-label'), '주요 메뉴');
+  const tabs = elements(nav.inner, 'a');
   assert.deepEqual(
     tabs.map((a) => ({ label: text(a.inner), href: a.attrs.get('href'), current: a.attrs.get('aria-current') })),
     [{ label: '결과', href: TEST_BASE, current: 'page' }],
@@ -159,6 +161,15 @@ test('결과 탭: lang·title·meta description·글꼴', async () => {
   const href = new URL(fonts?.attrs.get('href') ?? 'https://invalid/');
   assert.deepEqual(href.searchParams.getAll('family').sort(), ['IBM Plex Mono:wght@400;500', 'IBM Plex Sans KR:wght@400;500;600']);
   assert.equal(href.searchParams.get('display'), 'swap');
+});
+
+test('Mono 글꼴에 없는 한글은 시스템 고정폭 글꼴이 아니라 IBM Plex Sans KR로 그린다', async () => {
+  const styles = await Promise.all(
+    site.files.filter((f) => /\.(html|css)$/.test(f) && !f.startsWith('r/')).map((f) => site.readText(f)),
+  );
+  const values = styles.flatMap((s) => [...s.matchAll(/--font-mono:\s*([^;}]+)/g)].map((m) => m[1]!.trim()));
+  assert.ok(values.length > 0, '--font-mono가 없다');
+  for (const v of values) assert.match(v, /^["']IBM Plex Mono["'],\s*["']IBM Plex Sans KR["'],\s*monospace$/, v);
 });
 
 test('결과 탭 상단: 제목·설명·칩, {N}은 모델 수로 바뀐다', async () => {
