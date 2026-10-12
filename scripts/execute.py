@@ -41,7 +41,10 @@ SECRET_GLOBS = (".env", ".env.*", ".envrc", "*.pem", "*.key", "*.p12", "*.pfx", 
 SECRET_ALLOW = (".env.example", ".env.sample", ".env.template")
 STEP_STATUSES = ("pending", "completed", "error", "blocked")
 # 구독(Pro) 사용 한도 메시지. 짧은 요청 한도(429 rate limit)는 곧 풀리므로 넣지 않는다 — 일반 재시도에 맡긴다
-USAGE_LIMIT_RE = re.compile(r"usage limit|hit your limit|(?<!rate )limit reached", re.IGNORECASE)
+# "hit your limit"·"hit your session limit"·"hit your 5-hour limit"처럼 한도 이름이 끼는 문구도 잡는다 (rate는 제외)
+USAGE_LIMIT_RE = re.compile(r"usage limit|hit your (?:(?!rate\b)[\w-]+ )?limit|(?<!rate )limit reached", re.IGNORECASE)
+# claude -p JSON 결과의 구조화된 에러 종류. 문구가 바뀌어도 이것으로 잡는다
+USAGE_LIMIT_API_ERROR = "usage_limit_reached"
 
 
 @contextlib.contextmanager
@@ -156,6 +159,9 @@ def detect_usage_limit(exit_code: int, stdout: str, stderr: str) -> Optional[str
     if isinstance(data, dict):
         if not data.get("is_error"):
             return None
+        if data.get("api_error") == USAGE_LIMIT_API_ERROR:
+            result = data.get("result")
+            return result.strip() if isinstance(result, str) and result.strip() else USAGE_LIMIT_API_ERROR
         texts = [data.get("result")]
     elif exit_code == 0:
         return None
