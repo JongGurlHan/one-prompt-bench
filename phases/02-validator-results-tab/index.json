@@ -7,13 +7,22 @@
     {
       "step": 0,
       "name": "results-core",
-      "status": "pending",
+      "status": "completed",
       "ac": [
         "npm run lint",
         "npm run typecheck",
         "npm test",
         "npm run check:results"
-      ]     
+      ],
+      "started_at": "2026-10-12T20:16:04+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "f8c53f2a-2bfe-4d42-b523-9260f92dbf8b",
+      "cost_usd": 4.609,
+      "num_turns": 46,
+      "summary": "core에 results.ts(loadResults·checkResults 규칙 1~9+엄격 추가), display.ts(상태 라벨·이유·포맷·ModelDisplay), sandbox.ts, check:results 스크립트, @opb/core/testing 가짜 데이터 루트 빌더와 테스트 추가",
+      "handoff": "API(@opb/core): loadResults(root)→ResultEntry[](스키마 위반이면 ResultsDataError, .issues에 경로), checkResults(root)→CheckIssue[], displayModel(entry)→ModelDisplay(전부 문자열, 없으면 NO_VALUE '—'), statusOf·missingOutputReason·STATUS_LEGEND·STATUS_TONE·fillCount·REQUIREMENT_LABEL·MARK_LABEL, RESULT_IFRAME_SANDBOX(src/sandbox.ts). request-rules에 pinnedThreeVersion(url) 추가(기존 THREE_PINNED에 캡처만 더함).\n@opb/core/testing(packages/core/test/support/testing.ts): makeDataRoot(models=FAKE_MODELS)→임시 루트(models.json+prompts/, results/ 없음), writeResult(root, slug, spec)→{record,judgment,files}, buildResult(model, spec)(파일 없이), patchJson(root, rel, fn)(스키마 검사 없이 고치기), fakeModel, STATUS_CASES·makeStatusDataRoot(labels), FAKE_HTML·FAKE_JPEG·THREE_PINNED_URL 등. ok 기본값은 검증됨(three@0.170.0 요청 1개, spring~winter.jpg 4장), validation:null이면 검증 전.\n'검증 전'은 check:results 규칙 6에 걸린다 → 통과해야 하는 데이터는 makeStatusDataRoot(STATUS_LEGEND.filter(l => l !== '검증 전')).\n포맷 결정: 생성 실패 이유 = '기술적인 문제로 생성하지 못했어요. (시간 초과)'(괄호로 덧붙임). 걸린 시간은 초 단위 Math.round, 60초 이상은 'M분 S초'(60초 → '1분 0초'). 파일 크기는 항상 KB(쉼표·MB 없음), 비용은 toFixed(2)(쉼표 없음), api_failed도 비용은 '$0.00'. tokens = '입력 / 출력'. api_failed이고 사용량 0이면 토큰·그중 추론 모두 —.\n†(Codex CLI)·‡(Google) 표시는 값과 무관한 행 기준(outputTokensMark·reasoningTokensMark, 값이 —여도 붙음) — phase 5 비교표에서 —일 때 숨길지 정할 것. 판정 text는 '✓ 충족' 등 기호+문구 한 문자열, mark 필드로 스타일 구분.\ncheck:results 엄격 추가(문서에 없는 경우): results/ 아래 심볼릭 링크(junction 포함)·하위 폴더는 이슈, meta.json이 가리키지 않는 파일은 이슈, output.path·responseTextPath는 정확히 results/<slug>/index.html·response.txt, 스크린샷은 폴더 바로 아래, output.bytes도 파일 크기와 대조, 결과물 없는 기록의 judgment.json은 이슈. models.json이 깨지면 규칙 2·8은 건너뜀(규칙 1로 이미 실패).\n스크립트 출력: 이슈는 stderr에 '경로: 이유' 한 줄씩 + FAIL 요약, 통과는 stdout 'OK  check:results: N result folders in <root>'. OPB_DATA_ROOT 빈 문자열은 미설정으로 본다.\npipeline/test/core-import.test.ts에 @opb/core/testing 해석 테스트 추가(tsx·tsc NodeNext 모두 통과). COPY에 없는 새 문구는 쓰지 않았다('미고정'은 DATA 표).",
+      "completed_at": "2026-10-12T20:31:42+0900",
+      "attempts": 1
     },
     {
       "step": 1,
