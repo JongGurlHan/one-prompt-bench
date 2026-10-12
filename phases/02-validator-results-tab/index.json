@@ -47,14 +47,23 @@
     {
       "step": 2,
       "name": "site-setup",
-      "status": "pending",
+      "status": "completed",
       "ac": [
         "npm run lint",
         "npm run typecheck",
         "npm test",
         "npm run build",
         "npm run check:results"
-      ]
+      ],
+      "started_at": "2026-10-12T20:51:18+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "b573f414-68ba-438f-b3a1-bec2ace4f23b",
+      "cost_usd": 4.5145,
+      "num_turns": 69,
+      "summary": "site/ Astro 워크스페이스(@opb/site): 공통 레이아웃·토큰·헤더(결과 탭 하나), 결과 탭 상단(제목·설명·칩), /r/<slug>/ 바이트 그대로 사본(정적 endpoint), /view/<slug>/ 샌드박스 래퍼, 임시 데이터로 빌드한 dist 검사 테스트와 재사용 빌드 헬퍼",
+      "handoff": "site API: src/lib/data.ts loadSiteData()→{models: SiteModel[]}({entry: ResultEntry, display: ModelDisplay}, sortByRelease 순서), DATA_ROOT, RAW_FILES·rawFileSlugs·rawFileResponse. 빌드는 loadResults 1회 캐시(로그 \"[opb] data: N models from <root>\" 한 줄, 테스트가 1회임을 확인), dev는 요청마다 다시 읽음. paths.ts withBase·resultSrc·responseTextSrc·viewHref. copy.ts SITE_NAME·SITE_TAGLINE·SITE_DESCRIPTION·pageTitle·PROMPT_LABEL·RESULTS_TAB·resultsChips(n)·resultFrameTitle. tabs.ts TABS(결과 하나).\n레이아웃: layouts/SiteLayout.astro(title, current) = Head + SiteHeader + <main>(1200px, gap 24px). components/Head.astro(title: charset·viewport·title·description·og:description). styles/tokens.css에 색 전부 + --badge-<BadgeTone>-bg/-text(core STATUS_TONE 이름 그대로) + --font-sans/mono + --radius-card/box/control/pill, base.css(바탕·글꼴·:focus-visible 링). 칩은 <ul class=chips><li>.\n결과물 사본: 정적 endpoint src/pages/r/[slug]/index.html.ts·response.txt.ts. Astro가 endpoint 본문을 arrayBuffer로 그대로 써서 바이트 동일(BOM·CRLF·잘못된 UTF-8로 테스트). dev도 같은 주소(text/html|text/plain; charset=utf-8, 없는 slug 404)를 curl로 확인. site/public 복사는 쓰지 않음(.gitignore의 site/public/r/ 항목은 미사용). 경로는 meta.json 값이 아니라 results/<slug>/index.html·response.txt 고정.\n데이터 루트 기본값: 번들 뒤엔 import.meta.url이 바뀌어서 astro.config.mjs가 레포 루트를 vite.define __OPB_REPO_ROOT__(src/env.d.ts)로 넘기고 data.ts가 OPB_DATA_ROOT || 그 값을 고른다(빈 문자열=미설정). SITE_BASE는 /x/ 꼴로 정규화, 없으면 /.\n@opb/core TS 소스: Astro 7.3.8(Vite 8.3.4) build·dev와 astro check(Bundler 해석)에서 추가 설정 없이 해석됨. @astrojs/check 0.9.10 + TS 6.0.3 동작, astro check가 site/test의 .ts도 검사한다. site tsconfig = astro/tsconfigs/strict + types [node] + noUncheckedIndexedAccess.\n테스트 헬퍼(step 3 재사용): site/test/support/build.ts buildSite(dataRoot, {base=TEST_BASE \"/opb-test/\"})→BuiltSite{outDir, log, files(POSIX), has, read, readText}, 실패는 SiteBuildError(.log). 자식 프로세스 astro build --outDir <임시>, env ASTRO_TELEMETRY_DISABLED=1·NO_COLOR. sitePages(site)(r/ 제외), sha256. html.ts elements·element·attributes·text·metaContent·urls(파서 의존성 없음).\n빌드 동시성: (데이터 루트, base)마다 Promise 메모 + 프로세스 안 큐로 하나씩, 파일끼리는 site test 스크립트의 --test-concurrency=1로 순차. 빌드 1회 약 2초(첫 콜드 빌드 약 16초), site 테스트 전체 약 25초.\nCOPY 밖 결정: nav aria-label \"주요 메뉴\"는 시안(Main.dc.html)에서 가져옴. /view/에도 description meta를 넣었고 글꼴은 불러오지 않는다. 결과 탭 설명은 데스크톱 문구만(휴대폰 \"목록에서\"는 phase 5).\n남은 것: npm run build·astro check는 Astro 텔레메트리가 켜져 있다(테스트만 끔) → phase 3 워크플로에서 ASTRO_TELEMETRY_DISABLED=1 고려. 문서 갱신 필요: ARCHITECTURE \"사이트\"에 endpoint 방식·__OPB_REPO_ROOT__, 버전 참고(vite 8.3.4).",
+      "completed_at": "2026-10-12T21:12:49+0900",
+      "attempts": 1
     },
     {
       "step": 3,
