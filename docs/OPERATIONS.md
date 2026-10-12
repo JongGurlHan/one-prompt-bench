@@ -65,7 +65,7 @@ npm run validate -- gpt-6-sol    # 한 모델
 
 ## 배포 (배포 워크플로가 생긴 phase 뒤에 최초 설정)
 
-1. GitHub에 **공개** 레포를 만들고 push한다(무료 플랜의 Pages는 공개 레포만).
+1. GitHub에 **공개** 레포를 만들고 push한다(무료 플랜의 Pages는 공개 레포만). `JongGurlHan/one-prompt-bench`는 이미 공개 레포다(2026-10-13 확인, git 기록에 실제 키 없음).
 2. 레포 Settings → Pages → Source를 "GitHub Actions"로 한다.
 3. main에 push하면 `.github/workflows/deploy.yml`이 검사(lint·typecheck·test·check:results)를 통과한 뒤에만 배포한다. Actions 탭의 "Run workflow"로 수동 실행할 수 있다.
 4. 주소: `https://<사용자>.github.io/<레포 이름>/`
@@ -94,3 +94,5 @@ python scripts/execute.py <phase> --resume        # 중단된 step 이어받기
 
 - 새 모델 규칙: 최대 출력이 65,536보다 작을 때 / 새 회사 모델일 때 / 추론 강도 high를 지원하지 않을 때
 - 다음 버전 검증 항목: 로딩 시간, 빈 화면 판정, FPS
+- 검증 중 멈추는 결과물(무한 루프): 스크린샷이 시간 초과돼 validation이 null로 남고 check:results가 배포를 막는다. 실제로 나오면 기록 방법(스키마 포함)을 정한다(ADR-026).
+- 같은 페이지 에러가 매 프레임 반복되면 `pageErrors`에 그대로 쌓인다(Gemini 3.8 Flash: 2105개, meta.json 110KB). 레포가 너무 커지면 저장 방식을 정한다. 지금은 그대로 둔다.

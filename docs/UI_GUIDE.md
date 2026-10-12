@@ -108,7 +108,7 @@ Mono 글꼴 스택은 `'IBM Plex Mono', 'IBM Plex Sans KR', monospace`다. Plex 
 - **결과물이 없을 때**: 실행 영역에 라벨 이유 문구(COPY "결과물이 없을 때")를 `--viewer-title`로 가운데 보여주고, 버튼 두 개는 숨긴다. 원문이 있는 라벨이면 실행 카드 아래에 "응답 원문" 카드를 둔다. `<pre>`(Mono 13px, `white-space: pre-wrap`, `max-height 480px`, `overflow auto`)이고, 모델을 고를 때 불러온다.
 - **아래 카드 두 개**(`grid auto-fit minmax(260px, 1fr)`, gap 16px):
   - "요구사항 판정": 장면·계절 순환·계절 모습·계절 이름 행(왼쪽 이름, 오른쪽 ✓ 충족 / △ 부분 충족 / ✗ 미충족 / 판정 전 / —). 아래 구분선 다음에 판정 메모(13px `--text-body`). 메모가 없으면 줄을 생략한다.
-  - "생성 기록": 결과, 조건 검사, 토큰 (입력 / 출력), 비용 (정가 기준), 걸린 시간. 값은 Mono 13px `--text-strong`.
+  - "생성 기록": 결과, 조건 검사, 에러 수(ADR-026), 토큰 (입력 / 출력), 비용 (정가 기준), 걸린 시간. 값은 Mono 13px `--text-strong`.
 - **휴대폰(폭 < 768px)**: 모델 목록을 `<label>모델</label><select>`(옵션: "표시명 · 상태")로 바꾸고 범례 상자는 결과 아래로 보낸다. 실행 영역은 폭 100%를 유지한다.
 
 ### 비교표 탭 (`/compare/`, 시안 Compare.dc.html)

@@ -133,7 +133,7 @@ phase 1에서 반영한 변경(SDK 방식 → CLI 방식): `runtime.sdkPackage`�
 |---|---|---|
 | 조건 검사 | `judgeRequests(validation.externalRequests).verdict` (저장하지 않고 매번 계산) | 정상 / 지시 미준수 / 위반, validation 없으면 — |
 | three.js 버전 | `kind`가 three인 요청의 URL에서 `three@x.y.z` → `x.y.z`, cdnjs `r170` → `r170`. 여러 버전이면 쉼표로 | three_unpinned만 있으면 "미고정", three 요청 없음 → — |
-| 에러 수 | `consoleErrors.length + pageErrors.length` | 정수, validation 없으면 — |
+| 에러 수 | `consoleErrors.length + pageErrors.length` | 정수(쉼표 없음), validation 없으면 —. 결과 탭 "생성 기록"과 비교표에 보인다(ADR-026) |
 | 파일 크기 | `output.bytes` | `40.3 KB` (1024 기준, 소수 1자리, 쉼표 없음, 크기와 관계없이 항상 KB), 없으면 — |
 | 입력·출력 토큰 | `usageTotal` | 천 단위 쉼표, api_failed이고 입력·출력이 모두 0이면 — (응답이 온 기록은 0도 숫자). 결과 탭은 `입력 / 출력` 한 칸 |
 | 그중 추론 | `usageTotal.reasoningTokens` | null이면 — (입력·출력이 —이면 함께 —) |

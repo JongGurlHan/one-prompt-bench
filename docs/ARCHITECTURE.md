@@ -35,7 +35,7 @@ npm workspaces 모노레포. 모든 TypeScript는 ESM(`"type": "module"`, NodeNe
 │   ├── src/config/                 레포 루트 + .env(dotenv.parse, process.env에 넣지 않음)
 │   ├── src/adapters/               도구별 어댑터(gemini/ …) + registry.ts(도구 → 생성 함수·도구별 preflight·기록 래퍼)
 │   ├── src/generation/             batch(일괄 실행), preflight(추가 결제 차단 점검), smoke
-│   ├── src/system/                 git·터미널 확인(y/N) 같은 I/O
+│   ├── src/system/                 git·터미널 확인(y/N)·CLI 실행(phase 3) 같은 I/O
 │   ├── src/validation/             Playwright 검증기(validate-result.ts, `VALIDATOR` 토큰 = PlaywrightValidator)와 validate 명령
 │   ├── src/judging/                (신규) 판정 도우미
 │   └── test/fixtures/              CLI 출력 샘플, 검증용 HTML
@@ -113,7 +113,7 @@ models.json ─▶ Batch ─▶ Runner(재시도·타임아웃·저장·비용) 
 
 ### 도구별 호출 사양
 
-공통: 프롬프트 원문은 **stdin**으로 넘긴다(Windows 셸 인용 문제 방지). 자식 프로세스 환경에서 `ANTHROPIC_API_KEY`·`OPENAI_API_KEY`를 지운다. 작업 디렉토리는 **매 시도 새로 만든 빈 임시 디렉토리**다. 레포 안에서 실행하면 CLAUDE.md·AGENTS.md가 생성 맥락에 섞인다. 타임아웃이면 프로세스 트리 전체를 종료한다(Windows: `taskkill /T /F`). Windows에서 npm 전역 설치 CLI는 `.cmd` shim이라 shell 없이 spawn할 수 없다. 실행 파일 경로를 해석하거나 cross-spawn을 쓴다.
+공통: 프롬프트 원문은 **stdin**으로 넘긴다(Windows 셸 인용 문제 방지). 자식 프로세스 환경에서 `ANTHROPIC_API_KEY`·`OPENAI_API_KEY`를 지운다. 작업 디렉토리는 **매 시도 새로 만든 빈 임시 디렉토리**다(끝나면 지운다). 레포 안에서 실행하면 CLAUDE.md·AGENTS.md가 생성 맥락에 섞인다. 타임아웃이면 프로세스 트리 전체를 종료한다(Windows: `taskkill /T /F`, POSIX: 프로세스 그룹). Windows에서 npm 전역 설치 CLI는 `.cmd` shim이라 shell 없이 spawn할 수 없다. 실행 파일 경로를 해석하거나 cross-spawn을 쓴다. 이 공통 부분은 `pipeline/src/system/`의 CLI 실행 모듈 한 곳에 두고 Claude Code·Codex 어댑터가 같이 쓴다(phase 3). 어댑터는 실행 함수를 주입받아, 테스트는 가짜 실행 함수나 가짜 CLI 스크립트(node)를 쓴다.
 
 **Claude Code CLI** (2.1.296에서 플래그 확인)
 ```
@@ -121,11 +121,19 @@ claude -p --model <modelId> --effort high --tools "" --system-prompt "<system.md
        --safe-mode --strict-mcp-config --no-session-persistence --output-format json
 env: CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536
 ```
-- shell 없이 인자 배열로 spawn한다(한글 인자 인용 문제 방지). Windows에서는 npm shim(`claude.cmd`) 대신 실제 `claude.exe`를 찾는다. 하네스 `scripts/execute.py`의 `resolve_claude_bin`과 같은 방식이다.
+- shell 없이 인자 배열로 spawn한다(한글 인자 인용 문제 방지). Windows에서는 npm shim(`claude.cmd`) 대신 실제 `claude.exe`(shim 옆 `node_modules/@anthropic-ai/claude-code/bin/claude.exe`)를 찾는다. 하네스 `scripts/execute.py`의 `resolve_claude_bin`과 같은 방식이다.
 - `--safe-mode`: CLAUDE.md·skills·hooks·MCP 등 사용자 설정을 끄고, 구독 인증은 유지한다.
 - **`--bare` 금지**: 인증이 ANTHROPIC_API_KEY로만 돼서 API 요금이 청구된다.
-- 출력 JSON의 `result`가 본문, `usage`의 input·cache_creation·cache_read를 합친 값이 inputTokens다(DATA.md). 추론 토큰을 따로 주지 않으면 `reasoningTokens: null`. 사용 한도 메시지("usage limit", "hit your limit" 등)는 `usage_limit`로 분류한다.
-- ⚠ smoke로 확인: 입력 토큰이 수백 개 수준인가(수천 개 이상이면 기본 지시문·메모리가 섞인 것). max_tokens 도달·거부를 어떤 필드로 알 수 있는가.
+- 자식 환경: 공통 규칙(API 키 변수 삭제)에 더해, Claude Code 세션이 자식에게 물려주는 변수를 지운다 — `CLAUDECODE`, `CLAUDE_CODE_`로 시작하는 변수(아래 예외 제외), `CLAUDE_EFFORT`, `CLAUDE_PID`, `AI_AGENT`. 사람이 Claude Code 안에서 `! npm run gen`을 실행하면 이 변수들이 넘어와, 중첩 세션으로 보고 실행을 거부하거나(`CLAUDECODE`) 추론 강도가 섞일 수 있다(`CLAUDE_EFFORT`, 2026-10-13 이 PC에서 변수 이름 확인). 사용자 설정 변수 `CLAUDE_CONFIG_DIR`·`CLAUDE_CODE_GIT_BASH_PATH`는 남기고, 어댑터가 `CLAUDE_CODE_MAX_OUTPUT_TOKENS`를 넣는다.
+- 버전: `claude --version` 출력 `2.1.296 (Claude Code)`의 앞 숫자. 로그인 점검(preflight): `claude auth status --json`은 `{ loggedIn, authMethod, apiProvider, subscriptionType, email, orgId, orgName, … }`이다(2.1.296, 이 PC는 `authMethod: "claude.ai"`, `apiProvider: "firstParty"`, `subscriptionType: "pro"`). `loggedIn`이 true이고 `authMethod`가 `claude.ai`, `apiProvider`가 `firstParty`일 때만 통과한다. email·org 값은 출력하지 않는다.
+- 출력(`--output-format json`)은 stdout의 JSON 객체 하나다. 하네스가 같은 CLI(2.1.296)로 받은 실제 출력에서 확인한 필드:
+  - `type: "result"`, `subtype`, `is_error`, `result`(본문 또는 에러 메시지), `stop_reason`(`end_turn` 등), `terminal_reason`(`completed`·`api_error`), `api_error_status`(HTTP 상태 또는 null), `api_error`(예: `usage_limit_reached`), `num_turns`, `session_id`, `ttft_ms`, `total_cost_usd`
+  - `usage`: `input_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens`, `output_tokens`, `output_tokens_details.thinking_tokens`
+  - `modelUsage`: 모델 ID를 키로 한 사용량(`canonicalModel` 포함)
+  - 구독 한도: exit code 1, `is_error: true`, `subtype: "success"`, `api_error_status: 429`, `api_error: "usage_limit_reached"`, `result: "You've hit your session limit · resets 8pm (Asia/Seoul)"` (fixture `pipeline/test/fixtures/claude-code/stdout-usage-limit.json`)
+- 정규화(DATA "정규화 규칙"): 본문 = `result`. inputTokens = `input_tokens + cache_creation_input_tokens + cache_read_input_tokens`. outputTokens = `output_tokens`, reasoningTokens = `output_tokens_details.thinking_tokens`(없으면 null) — 확인한 두 출력 모두 thinking ≤ output이라 output_tokens에 추론분이 들어 있다고 본다. resolvedModelId는 `modelUsage`의 키, requestId·firstTokenMs는 null(DATA: 스트리밍이 아닌 CLI).
+- 에러 분류: abort → `timeout`. `api_error`가 `usage_limit_reached`이거나 메시지가 사용 한도 문구("usage limit", "hit your session limit" 같은 "hit your … limit", "limit reached" — `rate limit`은 제외, execute.py `USAGE_LIMIT_RE`와 같은 기준)면 `usage_limit`. 그 밖에는 `api_error_status`로: 429 → `rate_limited`, 529·5xx → `server_error`, 401·403 → `auth`, 400 → `bad_request`. 실행 파일 없음·JSON이 아닌 출력·그 밖 → `unknown`.
+- ⚠ smoke로 확인: 입력 토큰이 수백 개 수준인가(수천 개 이상이면 기본 지시문·메모리가 섞인 것). `modelUsage`에 모델이 하나만 있는가. 출력 상한 도달(`stop_reason: max_tokens`인지, 에러로 끝나는지)·거부(`refusal`)가 어떻게 나오는가 — 모르는 값은 stopReason `other`로 둔다. API 키 로그인일 때 `authMethod` 값.
 
 **Codex CLI** (0.157.1에서 플래그 확인)
 ```
@@ -214,6 +222,9 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 - 트리거: main push + `workflow_dispatch`(수동 실행 버튼). 동시 실행은 `concurrency: pages`로 하나만.
 - 순서: `npm ci` → `npx playwright install --with-deps chromium` → `npm run lint` → `npm run typecheck` → `npm test` → `npm run check:results` → `npm run build`(SITE_BASE=`/<레포 이름>/`) → `actions/upload-pages-artifact` → `actions/deploy-pages`. **하나라도 실패하면 배포하지 않는다.**
 - 워크플로 환경에 `ASTRO_TELEMETRY_DISABLED=1`을 둔다. `astro check`·`astro build`는 기본으로 사용 통계를 보낸다(site 테스트의 빌드 헬퍼는 이미 끈다).
+- 구성: `ubuntu-latest`, Node 24(`actions/setup-node`, npm 캐시). 권한은 `contents: read`, `pages: write`, `id-token: write`만. `SITE_URL`·`SITE_BASE`는 `actions/configure-pages`의 출력(`origin`, `base_path`)에서 채운다. 빌드 job이 `site/dist`를 올리고, 배포 job(`environment: github-pages`)이 `actions/deploy-pages`로 배포한다.
+- 워크플로는 비밀값(`secrets.*`)을 쓰지 않는다. 모델을 부르는 명령(gen·smoke)과 results를 바꾸는 명령(validate·judge)은 넣지 않는다.
+- CI(리눅스)에서 처음 도는 것: 검증기 WebGL 픽스처 테스트(⚠ 위 "검증기"), CLI 실행 모듈의 POSIX 프로세스 종료. 실패하면 배포되지 않으므로 첫 배포 때 Actions 로그를 확인한다.
 - CI는 실제 모델을 부르지 않는다 (gen·smoke는 워크플로에 없다).
 - 한도 참고: Pages 사이트 1GB, 대역폭 월 100GB(권장), 배포 10분. 공개 레포의 Actions는 무료.
 
@@ -243,3 +254,5 @@ TS 6은 `types` 기본값이 `[]`라 `tsconfig.base.json`에 `types: ["node"]`�
 phase 2에서 설치한 값: astro ^7.3.8(Vite 8.3.4, Node ≥ 22.12 요구 → 루트 `engines`도 `>=22.12`), @astrojs/check ^0.9.10, playwright ^1.64.0(라이브러리만 쓰고 `@playwright/test` 러너는 쓰지 않는다. 브라우저는 `npx playwright install chromium`).
 - @astrojs/check 0.9.10은 TS 6.0.3과 동작한다. astro check는 `site/test`의 `.ts`도 검사한다. site tsconfig = `astro/tsconfigs/strict` + `types: ["node"]` + `noUncheckedIndexedAccess`.
 - `@opb/core`가 TS 소스를 직접 내보내도 Astro build·dev와 astro check(Bundler 해석)에서 추가 설정 없이 해석된다. `@opb/core/testing`은 tsx와 tsc(NodeNext) 모두에서 해석된다.
+
+phase 3 계획 때(2026-10-13) 확인한 GitHub Actions 최신 메이저: `actions/checkout@v7`, `actions/setup-node@v7`, `actions/configure-pages@v6`, `actions/upload-pages-artifact@v5`, `actions/deploy-pages@v5`. Claude Code CLI 2.1.296.
