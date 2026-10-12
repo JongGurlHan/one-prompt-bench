@@ -14,8 +14,13 @@ export default defineConfig({
   },
 });
 
-/** '/<레포 이름>/' 꼴로 맞춘다(BASE_URL이 늘 '/'로 끝나게). 없거나 비면 '/' */
-function normalizeBase(value) {
+/**
+ * '/<레포 이름>/' 꼴로 맞춘다(BASE_URL이 늘 '/'로 끝나게). 없거나 비면 '/'
+ * configure-pages의 base_path는 '/<레포 이름>'(끝 슬래시 없음)이거나, 사용자 사이트·사용자 도메인이면 빈 값이다
+ * @param {string | undefined} value
+ * @returns {string}
+ */
+export function normalizeBase(value) {
   const trimmed = (value ?? '').trim().replace(/^\/+|\/+$/g, '');
   return trimmed ? `/${trimmed}/` : '/';
 }

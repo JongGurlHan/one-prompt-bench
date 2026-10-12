@@ -4,6 +4,7 @@ import { displayModel, loadResults, type ModelDisplay } from '@opb/core';
 import { chromium, type Browser, type Page } from 'playwright';
 import { TEST_BASE, buildSite } from './support/build.ts';
 import {
+  EXPECTED_ERROR_COUNT,
   EXPECTED_REASON,
   FAIL_MARK_NOTE,
   FIRST_WITH_OUTPUT,
@@ -113,7 +114,7 @@ async function assertCards(page: Page, slug: string) {
   const reqs = await page.locator('dd[data-req]').allTextContents();
   assert.deepEqual(reqs.map((t) => t.trim()), d.requirements.map((r) => r.text), slug);
   const records = await page.locator('dd[data-record]').allTextContents();
-  assert.deepEqual(records.map((t) => t.trim()), [d.status.label, d.requestCheck, d.tokens, d.cost, d.duration], slug);
+  assert.deepEqual(records.map((t) => t.trim()), [d.status.label, d.requestCheck, d.errorCount, d.tokens, d.cost, d.duration], slug);
   assert.equal(await field(page, 'note').isVisible(), d.note !== null, slug);
   if (d.note !== null) assert.equal(await fieldText(page, 'note'), d.note);
 }
@@ -164,6 +165,23 @@ test('다른 모델을 누르면 aria-pressed·iframe src·카드 값이 바뀌�
   await button(page, 'model-fail-mark').click();
   assert.equal(await fieldText(page, 'note'), FAIL_MARK_NOTE);
   assert.equal(await page.locator('[data-field="note"] b').count(), 0, '메모는 글자 그대로');
+  await closeTab(tab);
+});
+
+test('다른 모델을 고르면 생성 기록의 에러 수 값이 바뀐다 (ADR-026)', async () => {
+  const tab = await openTab();
+  const { page } = tab;
+  await waitLoads(tab, FIRST_WITH_OUTPUT, 1);
+  const errorCount = async () => ((await page.locator('dd[data-record="errorCount"]').textContent()) ?? '').trim();
+  assert.equal(await errorCount(), EXPECTED_ERROR_COUNT[FIRST_WITH_OUTPUT]);
+
+  const seen = [await errorCount()];
+  for (const slug of ['model-fail-mark', 'model-violation', 'model-unvalidated', 'model-truncated', FIRST_WITH_OUTPUT]) {
+    await button(page, slug).click();
+    assert.equal(await errorCount(), displays.get(slug)!.errorCount, slug);
+    seen.push(await errorCount());
+  }
+  assert.deepEqual(seen, ['0', '3', '1', '—', '—', '0']);
   await closeTab(tab);
 });
 

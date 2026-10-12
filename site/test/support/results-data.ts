@@ -3,7 +3,7 @@ import type { ModelEntry, StatusLabel } from '@opb/core';
 
 /* ────────────────────────────────────────────────────────────
  * 결과 탭 테스트용 데이터 (dist 검사·브라우저 테스트 공용)
- * 상태 라벨 10개(STATUS_CASES) + 맨 위에 결과물이 없는 모델 + ✗ 판정이 있는 모델.
+ * 상태 라벨 10개(STATUS_CASES) + 맨 위에 결과물이 없는 모델 + ✗ 판정과 콘솔·페이지 에러가 있는 모델.
  * 결과물 HTML은 load 이벤트마다 콘솔에 runLog(slug)를 남겨서, 브라우저 테스트가 실행·다시 시작을 셀 수 있다.
  * 원문을 보여 주는 라벨(거부·잘림·HTML 없음)의 response.txt에는 표식(RESPONSE_MARK)을 넣어 빌드 HTML에 없는지 본다.
  * ──────────────────────────────────────────────────────────── */
@@ -16,6 +16,27 @@ export const FIRST_WITH_OUTPUT = 'model-ok';
 export const FAIL_MARK = fakeModel('model-fail-mark', 'openai', '2026-09-25', 'Model Fail Mark');
 /** '<'가 든 메모: 페이지에 넣은 JSON이 </script>에서 끊기지 않고, 메모가 글자 그대로 나오는지 본다 */
 export const FAIL_MARK_NOTE = '나무는 있지만 겨울 모습이 없다 </script><b>끝</b>';
+/** 조건 검사는 정상인데 콘솔 에러 2 + 페이지 에러 1 (ADR-026: "정상" 배지와 에러 수가 함께 보인다) */
+const FAIL_MARK_ERRORS = {
+  consoleErrors: ['THREE.Color: addScaledColor is not a function', 'THREE.Color: addScaledColor is not a function'],
+  pageErrors: ['TypeError: Cannot read properties of undefined (reading "position")'],
+};
+
+/** 결과 탭 "생성 기록"의 에러 수 (DATA "값 계산·포맷": 콘솔 + 페이지 에러, 검증 기록이 없으면 —) */
+export const EXPECTED_ERROR_COUNT: Readonly<Record<string, string>> = {
+  'model-newest': '—',
+  'model-ok': '0',
+  'model-miss': '0',
+  'model-violation': '1',
+  'model-truncated': '—',
+  'model-fail-mark': '3',
+  'model-no-html': '—',
+  'model-refused': '—',
+  'model-usage-limit': '—',
+  'model-failed': '—',
+  'model-pending': '—',
+  'model-unvalidated': '—',
+};
 
 /** 결과물이 load될 때마다 콘솔에 남는 줄 */
 export const runLog = (slug: string) => `opb-load:${slug}`;
@@ -80,6 +101,7 @@ export const TAB_CASES: readonly TabCase[] = [
     result: {
       outcome: 'ok',
       html: runHtml(FAIL_MARK.slug),
+      validation: FAIL_MARK_ERRORS,
       judgment: { requirements: { scene: 'partial', seasonLook: 'fail' }, note: FAIL_MARK_NOTE },
     },
   },

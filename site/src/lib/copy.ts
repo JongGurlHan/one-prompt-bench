@@ -53,6 +53,7 @@ export const RECORD_CARD = {
   rows: {
     status: '결과',
     requestCheck: '조건 검사',
+    errorCount: '에러 수',
     tokens: '토큰 (입력 / 출력)',
     cost: '비용 (정가 기준)',
     duration: '걸린 시간',

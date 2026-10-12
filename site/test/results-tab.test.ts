@@ -6,6 +6,7 @@ import type { ResultView } from '../src/lib/results-view.ts';
 import { TEST_BASE, buildSite, type BuiltSite } from './support/build.ts';
 import { element, elements, find, findAll, hasAttr, hasClass, text } from './support/html.ts';
 import {
+  EXPECTED_ERROR_COUNT,
   EXPECTED_ORDER,
   EXPECTED_REASON,
   EXPECTED_TONE,
@@ -23,7 +24,7 @@ import {
 
 const LEGEND = ['정상', '지시 미준수', '위반', '잘림', 'HTML 없음', '거부', '한도 초과', '생성 실패', '생성 전', '검증 전'];
 const REQUIREMENTS = ['장면', '계절 순환', '계절 모습', '계절 이름'];
-const RECORD_LABELS = ['결과', '조건 검사', '토큰 (입력 / 출력)', '비용 (정가 기준)', '걸린 시간'];
+const RECORD_LABELS = ['결과', '조건 검사', '에러 수', '토큰 (입력 / 출력)', '비용 (정가 기준)', '걸린 시간'];
 const ALL_PASS = ['✓ 충족', '✓ 충족', '✓ 충족', '✓ 충족'];
 const NOT_JUDGED = ['판정 전', '판정 전', '판정 전', '판정 전'];
 const NO_OUTPUT = ['—', '—', '—', '—'];
@@ -152,9 +153,9 @@ test('첫 선택 모델의 "요구사항 판정"·"생성 기록" 카드가 HTML
   assert.deepEqual(elements(byField(full.html, 'dl', 'record').inner, 'dt').map((dt) => text(dt.inner)), RECORD_LABELS);
   assert.deepEqual(
     recordCells(full.html).map((dd) => text(dd.inner)),
-    [d.status.label, d.requestCheck, d.tokens, d.cost, d.duration],
+    [d.status.label, d.requestCheck, d.errorCount, d.tokens, d.cost, d.duration],
   );
-  assert.deepEqual(recordCells(full.html).map((dd) => text(dd.inner)), ['정상', '정상', '1,000 / 20,000', '$0.10', '3분 34초']);
+  assert.deepEqual(recordCells(full.html).map((dd) => text(dd.inner)), ['정상', '정상', '0', '1,000 / 20,000', '$0.10', '3분 34초']);
 });
 
 /* ───────── 클라이언트에 넘기는 모델별 값 ───────── */
@@ -183,7 +184,7 @@ test('모델별 값(JSON)은 목록 순서대로 전부 있고 displayModel 결�
     assert.equal(v.note, d.note, slug);
     assert.deepEqual(
       v.record,
-      { status: d.status.label, requestCheck: d.requestCheck, tokens: d.tokens, cost: d.cost, duration: d.duration },
+      { status: d.status.label, requestCheck: d.requestCheck, errorCount: d.errorCount, tokens: d.tokens, cost: d.cost, duration: d.duration },
       slug,
     );
   }
@@ -219,6 +220,7 @@ test('생성 기록: 결과물이 없거나 생성 전이면 값이 —다', () 
   assert.deepEqual(view(full.html, 'model-failed').record, {
     status: '생성 실패',
     requestCheck: '—',
+    errorCount: '—',
     tokens: '—',
     cost: '$0.00',
     duration: '—',
@@ -226,11 +228,28 @@ test('생성 기록: 결과물이 없거나 생성 전이면 값이 —다', () 
   assert.deepEqual(view(full.html, 'model-newest').record, {
     status: '생성 전',
     requestCheck: '—',
+    errorCount: '—',
     tokens: '—',
     cost: '—',
     duration: '—',
   });
   assert.equal(view(full.html, 'model-unvalidated').record.status, '검증 전');
+});
+
+test('생성 기록의 에러 수: 모든 상태에서 displayModel의 errorCount 그대로이고, 검증 기록이 없으면 —다 (ADR-026)', () => {
+  assert.deepEqual(Object.keys(EXPECTED_ERROR_COUNT).sort(), [...EXPECTED_ORDER].sort());
+  for (const slug of EXPECTED_ORDER) {
+    const v = view(full.html, slug);
+    assert.equal(v.record.errorCount, full.displays.get(slug)!.errorCount, slug);
+    assert.equal(v.record.errorCount, EXPECTED_ERROR_COUNT[slug], slug);
+  }
+  // 상태 라벨은 그대로: 에러가 있어도 조건 검사가 정상이면 "정상" (ADR-016)
+  assert.deepEqual(
+    [view(full.html, 'model-fail-mark').record.status, view(full.html, 'model-fail-mark').record.errorCount],
+    ['정상', '3'],
+  );
+  // 결과물이 없는 데이터에서도 같다
+  for (const v of views(noOutput.html)) assert.equal(v.record.errorCount, noOutput.displays.get(v.slug)!.errorCount, v.slug);
 });
 
 /* ───────── 원문·문구 ───────── */
@@ -269,7 +288,7 @@ test('결과물이 하나도 없으면 맨 위 모델이 선택되고 실행 중
   assert.deepEqual(requirementCells(noOutput.html).map((dd) => text(dd.inner)), NO_OUTPUT);
   assert.deepEqual(requirementCells(noOutput.html).map((dd) => dd.attrs.get('data-mark')), ['none', 'none', 'none', 'none']);
   assert.ok(isHidden(noOutput.html, 'p', 'note'));
-  assert.deepEqual(recordCells(noOutput.html).map((dd) => text(dd.inner)), ['잘림', '—', '1,000 / 20,000', '$0.10', '3분 34초']);
+  assert.deepEqual(recordCells(noOutput.html).map((dd) => text(dd.inner)), ['잘림', '—', '—', '1,000 / 20,000', '$0.10', '3분 34초']);
 });
 
 test('모델이 하나도 없어도 빌드되고 목록·실행 카드가 없다', async () => {
