@@ -2,9 +2,25 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { NestFactory } from '@nestjs/core';
+import { registeredTools, type AdapterRegistry } from '../src/adapters/registry.js';
 import { AppModule } from '../src/app.module.js';
+import { defaultRepoRoot } from '../src/config/config.js';
+import { BatchService } from '../src/generation/batch.service.js';
 import { GenerationRunner } from '../src/generation/generation-runner.js';
-import { CLOCK, type Clock } from '../src/tokens.js';
+import type { Confirm } from '../src/system/confirm.js';
+import type { GitClient } from '../src/system/git.js';
+import {
+  ADAPTERS,
+  CLOCK,
+  CONFIRM,
+  GIT,
+  OUTPUT,
+  REPO_ROOT,
+  VALIDATOR,
+  type Clock,
+  type Output,
+} from '../src/tokens.js';
+import { PlaceholderValidator, type Validator } from '../src/validation/validator.js';
 
 test('AppModule: @Inject(CLOCK)로 받은 시계가 서비스에 들어오고 동작한다 (tsx, 메타데이터 없이)', async () => {
   const app = await NestFactory.createApplicationContext(AppModule, { logger: false });
@@ -18,6 +34,25 @@ test('AppModule: @Inject(CLOCK)로 받은 시계가 서비스에 들어오고 �
     assert.ok(now instanceof Date);
     assert.ok(Math.abs(now.getTime() - before) < 5_000);
     await runner.clock.sleep(1);
+  } finally {
+    await app.close();
+  }
+});
+
+test('AppModule: BatchService의 모든 의존성이 @Inject(TOKEN)으로 들어온다 (컨텍스트 생성은 .env를 읽지 않는다)', async () => {
+  const app = await NestFactory.createApplicationContext(AppModule, { logger: false });
+  try {
+    const batch = app.get(BatchService);
+    assert.equal(batch.repoRoot, app.get<string>(REPO_ROOT));
+    assert.equal(batch.repoRoot, defaultRepoRoot());
+    assert.equal(batch.adapters, app.get<AdapterRegistry>(ADAPTERS));
+    assert.deepEqual([...registeredTools(batch.adapters)], ['gemini-api']);
+    assert.equal(batch.git, app.get<GitClient>(GIT));
+    assert.equal(batch.confirm, app.get<Confirm>(CONFIRM));
+    assert.equal(batch.validator, app.get<Validator>(VALIDATOR));
+    assert.ok(batch.validator instanceof PlaceholderValidator);
+    assert.equal(batch.out, app.get<Output>(OUTPUT));
+    assert.equal(batch.runner, app.get(GenerationRunner));
   } finally {
     await app.close();
   }

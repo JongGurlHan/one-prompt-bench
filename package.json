@@ -12,7 +12,8 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm test --workspaces --if-present"
+    "test": "npm test --workspaces --if-present",
+    "gen": "tsx --tsconfig pipeline/tsconfig.json pipeline/src/main.ts gen"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
