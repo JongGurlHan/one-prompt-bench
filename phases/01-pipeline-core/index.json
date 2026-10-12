@@ -1,0 +1,13 @@
+{
+  "project": "One Prompt Bench",
+  "phase": "01-pipeline-core",
+  "model": "claude-opus-5-5",
+  "timeout_sec": 3600,
+  "steps": [
+    { "step": 0, "name": "workspace-setup", "status": "pending", "ac": ["npm run lint", "npm run typecheck", "npm test"] },
+    { "step": 1, "name": "core-cli-schema", "status": "pending", "ac": ["npm run lint", "npm run typecheck", "npm test"] },
+    { "step": 2, "name": "gemini-adapter", "status": "pending", "ac": ["npm run lint", "npm run typecheck", "npm test"] },
+    { "step": 3, "name": "batch-gen", "status": "pending", "ac": ["npm run lint", "npm run typecheck", "npm test"] },
+    { "step": 4, "name": "smoke-command", "status": "pending", "ac": ["npm run lint", "npm run typecheck", "npm test"] }
+  ]
+}

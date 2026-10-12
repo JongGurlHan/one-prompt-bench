@@ -1,0 +1,8 @@
+{
+  "phases": [
+    {
+      "dir": "01-pipeline-core",
+      "status": "pending"
+    }
+  ]
+}
