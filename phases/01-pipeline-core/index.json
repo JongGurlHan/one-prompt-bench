@@ -26,12 +26,21 @@
     {
       "step": 1,
       "name": "core-cli-schema",
-      "status": "pending",
+      "status": "completed",
       "ac": [
         "npm run lint",
         "npm run typecheck",
         "npm test"
-      ]
+      ],
+      "started_at": "2026-10-12T14:51:16+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "ee256226-c5c9-4072-9c28-45a7df274d5d",
+      "cost_usd": 2.1997,
+      "num_turns": 48,
+      "summary": "core를 CLI/SDK 생성 방식으로 전환: schema(GeneratorToolSchema·GENERATOR_BY_PROVIDER, runtime.generator{tool,version,invocation}, maxOutputTokens 양의 정수|null, 스크린샷 .jpg), adapter(generator·supportsMaxOutputTokens·describeInvocation, DEFAULT_MAX_OUTPUT_TOKENS=65_536·maxOutputTokensFor), runner(generator 기록·null 전달), 새 prompt.ts(loadPrompt·CURRENT_PROMPT·PromptSpec), meta.sample.json 갱신. core 26개 테스트+check-samples(거부 11·허용 1), pipeline 7개 통과",
+      "handoff": "1) PromptSpec은 runner.ts → prompt.ts로 옮겼고 system을 string으로 좁혔다(ADR-005로 세 도구 모두 system.md를 보냄). GenerationRequest.system도 string(null 처리 불필요). 공개 이름은 그대로 '@opb/core'에서 나온다.\n2) 어댑터 필수 멤버: provider, generator{tool,version}, supportsMaxOutputTokens, describeInvocation(req), generate, classifyError. Runner는 첫 호출 전에 describeInvocation을 부른다(여기서 throw하면 모델을 부르지 않음).\n3) maxOutputTokensFor(adapter, limit=65_536): batch는 maxOutputTokensFor(adapter), smoke는 maxOutputTokensFor(adapter, 8_000). 인자는 Pick<ProviderAdapter,'supportsMaxOutputTokens'>라 어댑터를 만들기 전 객체로도 호출 가능.\n4) loadPrompt(repoRoot,id,version): 바이트를 fatal UTF-8 디코더로 읽어 그대로 반환. 거부(에러 메시지에 파일 경로 포함): 파일 없음, UTF-8 아님(UTF-16 등), BOM(제거하지 않고 거부 — 조용히 고치면 보낸 내용이 파일과 달라짐), CR 포함(CRLF·단독 CR 모두). id/version은 검증하지 않는다(CURRENT_PROMPT 상수만 씀).\n5) check-samples: 이슈를 '경로: 메시지' 문자열로 매칭하도록 바꿨고, GENERATOR_BY_PROVIDER[provider] === runtime.generator.tool 대조를 추가했다(phase 2 check:results도 같은 대조를 고려할 것).\n6) meta.sample.json: tool claude-code 2.1.296, invocation은 'CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude -p … --system-prompt <system prompt> …'(env 접두 포함, 형식은 phase 3이 확정). CLI는 비스트리밍이라 DATA.md 규칙대로 attempt 2의 firstTokenMs를 null로 바꿨다. prompt.sha256은 예시값 그대로.\n7) pipeline/test/core-import.test.ts에 공개 API(GENERATOR_BY_PROVIDER·maxOutputTokensFor·loadPrompt·CURRENT_PROMPT·extractHtml·judgeRequests·runGeneration·타입) import 테스트 추가.",
+      "completed_at": "2026-10-12T14:57:38+0900",
+      "attempts": 1
     },
     {
       "step": 2,
