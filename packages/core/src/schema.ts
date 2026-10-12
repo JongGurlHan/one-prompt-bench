@@ -9,6 +9,17 @@ import { z } from 'zod';
 export const ProviderSchema = z.enum(['openai', 'anthropic', 'google']);
 export type Provider = z.infer<typeof ProviderSchema>;
 
+/** 결과물을 만든 생성 도구. 구독 CLI 2개와 무료 티어 API 1개 */
+export const GeneratorToolSchema = z.enum(['claude-code', 'codex-cli', 'gemini-api']);
+export type GeneratorTool = z.infer<typeof GeneratorToolSchema>;
+
+/** provider가 생성 도구를 정한다. '생성 전' 모델의 도구도 표시해야 해서 레지스트리와 별도로 둔다 (표시 이름은 display.ts) */
+export const GENERATOR_BY_PROVIDER: Readonly<Record<Provider, GeneratorTool>> = {
+  anthropic: 'claude-code',
+  openai: 'codex-cli',
+  google: 'gemini-api',
+};
+
 const Slug = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'kebab-case slug');
 const Sha256 = z.string().regex(/^[a-f0-9]{64}$/, 'sha256 hex');
 const NonNegInt = z.number().int().nonnegative();
@@ -19,7 +30,7 @@ const Timestamp = z.iso.datetime({ offset: true });
 export const ModelEntrySchema = z.object({
   slug: Slug, // 결과 폴더명이자 URL 경로: results/<slug>/
   provider: ProviderSchema,
-  modelId: z.string().min(1), // API에 보내는 모델 문자열
+  modelId: z.string().min(1), // 생성 도구에 보내는 모델 문자열
   displayName: z.string().min(1),
   releasedAt: z.iso.date(), // 목록 정렬 기준(최신순)
   pricing: z.object({
@@ -44,7 +55,7 @@ export const ModelRegistrySchema = z.array(ModelEntrySchema).superRefine((models
 /* ───────── 공통 조각 ───────── */
 
 /**
- * SDK마다 추론 토큰을 출력 토큰에 포함해서 주기도, 별도 필드로 주기도 한다.
+ * 도구마다 추론 토큰을 출력 토큰에 포함해서 주기도, 별도 필드로 주기도 한다.
  * 어댑터가 아래 의미로 정규화한다.
  */
 export const UsageSchema = z
@@ -78,18 +89,18 @@ export const FailureKindSchema = z.enum([
 ]);
 export type FailureKind = z.infer<typeof FailureKindSchema>;
 
-/* ───────── API 호출 1회 ───────── */
+/* ───────── 도구 호출 1회 (CLI 프로세스 또는 SDK 요청) ───────── */
 
 export const AttemptSchema = z.object({
   n: z.number().int().positive(),
   startedAt: Timestamp,
   latencyMs: NonNegInt, // 요청 시작 ~ 마지막 청크
-  firstTokenMs: NonNegInt.nullable(), // 첫 본문 텍스트 청크까지(스트리밍)
+  firstTokenMs: NonNegInt.nullable(), // 첫 본문 텍스트 청크까지(스트리밍). 스트리밍이 아닌 CLI는 null
   result: z.discriminatedUnion('type', [
     z.object({
       type: z.literal('response'),
       stopReason: StopReasonSchema,
-      rawStopReason: z.string().nullable(), // SDK 원문 값, 디버깅용
+      rawStopReason: z.string().nullable(), // 도구가 준 원문 값, 디버깅용
       resolvedModelId: z.string().nullable(), // 응답에 찍힌 실제 스냅샷 ID
       requestId: z.string().nullable(),
       usage: UsageSchema,
@@ -137,9 +148,9 @@ export const ValidationSchema = z.object({
   pageErrors: z.array(z.string()), // 실행 중 처리되지 않은 오류
   // 'three.js만 허용' 조건 확인용. 판정은 저장하지 않고 request-rules.ts가 이 목록에서 계산한다
   externalRequests: z.array(z.object({ url: z.url(), resourceType: z.string().min(1) })),
-  // 정해진 시점에 찍은 스크린샷(WebP). 사계절 나무는 계절 중간(5·15·25·35초)에 4장
+  // 정해진 시점에 찍은 스크린샷(Playwright JPEG). 사계절 나무는 계절 중간(5·15·25·35초)에 4장
   screenshots: z.array(
-    z.object({ label: z.string().min(1), atMs: NonNegInt, path: z.string().regex(/\.webp$/, 'screenshots are WebP') }),
+    z.object({ label: z.string().min(1), atMs: NonNegInt, path: z.string().regex(/\.jpg$/, 'screenshots are JPEG (.jpg)') }),
   ),
 });
 export type Validation = z.infer<typeof ValidationSchema>;
@@ -159,13 +170,18 @@ export const GenerationRecordSchema = z
     prompt: z.object({ id: Slug, version: z.string().min(1), sha256: Sha256 }),
     params: z.object({
       reasoningEffort: z.literal('high'),
-      maxOutputTokens: z.number().int().positive(),
+      // null = 상한을 지정할 수 없는 도구(Codex CLI)라 도구 기본값으로 생성. 숫자를 지어내 기록하지 않는다
+      maxOutputTokens: z.number().int().positive().nullable(),
     }),
     runtime: z.object({
       gitCommit: z.string().regex(/^[a-f0-9]{7,40}$/),
-      sdkPackage: z.string().min(1),
-      sdkVersion: z.string().min(1),
       nodeVersion: z.string().min(1),
+      generator: z.object({
+        tool: GeneratorToolSchema,
+        version: z.string().min(1), // CLI 버전 또는 SDK 패키지 버전
+        // 실제 호출 조건 공개용: CLI는 명령줄, SDK는 설정 JSON. user 프롬프트·비밀값은 넣지 않고 시스템 프롬프트는 자리표시
+        invocation: z.string().min(1),
+      }),
     }),
     startedAt: Timestamp,
     finishedAt: Timestamp,

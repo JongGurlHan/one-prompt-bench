@@ -3,9 +3,17 @@ import { mkdtemp, readFile, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import type { ClassifiedError, ProviderAdapter, ProviderResponse, RunPolicy } from '../src/adapter.js';
+import {
+  DEFAULT_MAX_OUTPUT_TOKENS,
+  maxOutputTokensFor,
+  type ClassifiedError,
+  type GenerationRequest,
+  type ProviderAdapter,
+  type ProviderResponse,
+  type RunPolicy,
+} from '../src/adapter.js';
 import { runGeneration, type RunInput } from '../src/runner.js';
-import type { FailureKind, ModelEntry } from '../src/schema.js';
+import { GenerationRecordSchema, type FailureKind, type ModelEntry } from '../src/schema.js';
 
 /* ───────── 가짜 어댑터: 호출마다 정해진 대본대로 응답/실패 ───────── */
 
@@ -20,12 +28,18 @@ type Step =
   | { fail: FailureKind; httpStatus?: number; retryAfterMs?: number }
   | { hang: true };
 
-function fakeAdapter(script: Step[]): ProviderAdapter & { calls: number } {
+function fakeAdapter(script: Step[]): ProviderAdapter & { calls: number; requests: GenerationRequest[] } {
   const adapter = {
     provider: 'anthropic' as const,
-    sdk: { package: 'fake-sdk', version: '0.0.0' },
+    generator: { tool: 'claude-code' as const, version: '0.0.0-fake' },
+    supportsMaxOutputTokens: true,
     calls: 0,
-    async generate(): Promise<ProviderResponse> {
+    requests: [] as GenerationRequest[],
+    describeInvocation(req: GenerationRequest): string {
+      return `fake-cli --model ${req.modelId} --max-output ${req.maxOutputTokens ?? 'default'} --system <system prompt>`;
+    },
+    async generate(req: GenerationRequest): Promise<ProviderResponse> {
+      adapter.requests.push(req);
       const step = script[adapter.calls++];
       if (!step) throw new Error('script exhausted');
       if ('hang' in step) return new Promise(() => {}); // signal 무시하는 나쁜 어댑터
@@ -68,15 +82,18 @@ const model: ModelEntry = {
 const policy: RunPolicy = { maxAttempts: 3, timeoutMs: 50, backoffBaseMs: 1000, backoffMaxMs: 8000 };
 const HTML = '<!doctype html><html><body><canvas></canvas></body></html>';
 
-async function run(script: Step[]) {
+const SYSTEM = '사용자의 요청에 답하세요.\n';
+
+async function run(script: Step[], overrides: Partial<RunInput> = {}) {
   const repoRoot = await mkdtemp(path.join(tmpdir(), 'bench-'));
   const input: RunInput = {
     model,
-    prompt: { id: 'season-tree', version: 'v1', system: null, user: '사계절이 바뀌는 3D 나무 애니메이션을 만들어주세요' },
+    prompt: { id: 'season-tree', version: 'v1', system: SYSTEM, user: '사계절이 바뀌는 3D 나무 애니메이션을 만들어주세요' },
     maxOutputTokens: 64000,
     repoRoot,
     outDirRel: 'results/example-model-a',
     runtime: { gitCommit: 'a1b2c3d', nodeVersion: process.versions.node },
+    ...overrides,
   };
   const sleeps: number[] = [];
   const adapter = fakeAdapter(script);
@@ -85,7 +102,7 @@ async function run(script: Step[]) {
     sleep: async (ms) => void sleeps.push(ms),
   });
   const files = await readdir(path.join(repoRoot, input.outDirRel));
-  return { record, sleeps, files, repoRoot, adapter };
+  return { record, sleeps, files, repoRoot, adapter, input };
 }
 
 /* ───────── 케이스 ───────── */
@@ -163,7 +180,7 @@ test('출력 폴더가 비어 있지 않으면 실행 거부', async () => {
   await assert.rejects(
     runGeneration(fakeAdapter([]), {
       model,
-      prompt: { id: 'season-tree', version: 'v1', system: null, user: 'x' },
+      prompt: { id: 'season-tree', version: 'v1', system: SYSTEM, user: 'x' },
       maxOutputTokens: 1000,
       repoRoot,
       outDirRel: 'results/example-model-a',
@@ -171,4 +188,43 @@ test('출력 폴더가 비어 있지 않으면 실행 거부', async () => {
     }),
     /not empty/,
   );
+});
+
+test('meta.json runtime.generator: 어댑터의 tool·version과 describeInvocation 결과를 기록', async () => {
+  const { record, adapter, repoRoot, input } = await run([{ respond: { text: `\`\`\`html\n${HTML}\n\`\`\`` } }]);
+  const invocation = 'fake-cli --model example-model-a --max-output 64000 --system <system prompt>';
+  assert.deepEqual(record.runtime, {
+    gitCommit: 'a1b2c3d',
+    nodeVersion: process.versions.node,
+    generator: { tool: 'claude-code', version: '0.0.0-fake', invocation },
+  });
+  // 디스크에 쓴 meta.json도 같은 값이고 스키마를 통과한다
+  const saved = JSON.parse(await readFile(path.join(repoRoot, input.outDirRel, 'meta.json'), 'utf8'));
+  assert.deepEqual(GenerationRecordSchema.parse(saved).runtime.generator, record.runtime.generator);
+  // 시스템 프롬프트는 내용 그대로 요청에 실린다
+  assert.equal(adapter.requests[0]!.system, SYSTEM);
+});
+
+test('maxOutputTokens null(도구 기본값): 요청과 params.maxOutputTokens에 null 그대로', async () => {
+  const { record, adapter, repoRoot, input } = await run(
+    [{ fail: 'server_error' }, { respond: { text: `\`\`\`html\n${HTML}\n\`\`\`` } }],
+    { maxOutputTokens: null },
+  );
+  assert.equal(record.outcome, 'ok');
+  assert.deepEqual(adapter.requests.map((r) => r.maxOutputTokens), [null, null]); // 재시도에도 그대로
+  assert.equal(record.params.maxOutputTokens, null);
+  assert.equal(
+    record.runtime.generator.invocation,
+    'fake-cli --model example-model-a --max-output default --system <system prompt>',
+  );
+  const saved = JSON.parse(await readFile(path.join(repoRoot, input.outDirRel, 'meta.json'), 'utf8'));
+  assert.equal(saved.params.maxOutputTokens, null);
+});
+
+test('maxOutputTokensFor: 상한을 지원하는 도구는 65,536(또는 준 값), 아니면 null', () => {
+  assert.equal(DEFAULT_MAX_OUTPUT_TOKENS, 65_536);
+  assert.equal(maxOutputTokensFor({ supportsMaxOutputTokens: true }), 65_536);
+  assert.equal(maxOutputTokensFor({ supportsMaxOutputTokens: false }), null);
+  assert.equal(maxOutputTokensFor({ supportsMaxOutputTokens: true }, 8_000), 8_000); // smoke
+  assert.equal(maxOutputTokensFor({ supportsMaxOutputTokens: false }, 8_000), null);
 });

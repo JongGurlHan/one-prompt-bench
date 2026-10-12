@@ -10,6 +10,7 @@ import {
   type RunPolicy,
 } from './adapter.js';
 import { extractHtml } from './extract-html.js';
+import type { PromptSpec } from './prompt.js';
 import {
   GenerationRecordSchema,
   type Attempt,
@@ -19,17 +20,10 @@ import {
   type Usage,
 } from './schema.js';
 
-export interface PromptSpec {
-  id: string;
-  version: string;
-  system: string | null;
-  user: string;
-}
-
 export interface RunInput {
   model: ModelEntry;
   prompt: PromptSpec;
-  maxOutputTokens: number; // 모든 모델 공통 상한
+  maxOutputTokens: number | null; // maxOutputTokensFor(adapter): 모든 모델 공통 상한, 지정할 수 없는 도구는 null
   repoRoot: string; // 절대 경로
   outDirRel: string; // 레포 기준, 예: results/<slug>
   runtime: { gitCommit: string; nodeVersion: string };
@@ -69,6 +63,8 @@ export async function runGeneration(
     reasoningEffort: 'high',
     maxOutputTokens: input.maxOutputTokens,
   };
+  // 호출 전에 만든다: 어댑터가 여기서 실패하면 모델을 부르기 전에 멈춘다
+  const generator = { ...adapter.generator, invocation: adapter.describeInvocation(req) };
 
   const startedAt = deps.now();
   const attempts: Attempt[] = [];
@@ -162,9 +158,8 @@ export async function runGeneration(
     params: { reasoningEffort: 'high', maxOutputTokens: input.maxOutputTokens },
     runtime: {
       gitCommit: input.runtime.gitCommit,
-      sdkPackage: adapter.sdk.package,
-      sdkVersion: adapter.sdk.version,
       nodeVersion: input.runtime.nodeVersion,
+      generator,
     },
     startedAt: startedAt.toISOString(),
     finishedAt: deps.now().toISOString(),
