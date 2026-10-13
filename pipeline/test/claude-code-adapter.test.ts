@@ -161,6 +161,27 @@ test('정상 출력 → 본문 = result, end_turn → end, 입력 = input + cach
   assert.equal(res.firstTokenMs, null, '스트리밍이 아닌 CLI (DATA "정규화 규칙")');
 });
 
+/* ───────── 실제 smoke 원본 (2026-10-13, claude-haiku-5-5, Claude Code 2.1.296) ───────── */
+
+test('실제 출력(fixture smoke-ok): JSON 한 줄 + 줄바꿈, 본문·end_turn·캐시 생성분을 포함한 입력을 정규화한다', async () => {
+  const stdout = await loadStdout('smoke-ok');
+  assert.equal(stdout.trimEnd().split('\n').length, 1, 'stdout은 JSON 객체 한 줄');
+  const res = await generateFrom(stdout);
+
+  assert.equal(
+    res.text,
+    '```html\n<!DOCTYPE html>\n<html lang="ko">\n<head>\n  <meta charset="UTF-8">\n  <title>Hello</title>\n</head>\n<body>\n  <h1>Hello</h1>\n</body>\n</html>\n```',
+  );
+  assert.equal(res.stopReason, 'end');
+  assert.equal(res.rawStopReason, 'end_turn');
+  // input 2 + cache_creation 653 + cache_read 0. thinking_tokens 0 (필드는 있다 → null이 아니라 0)
+  assert.deepEqual(res.usage, { inputTokens: 655, outputTokens: 85, reasoningTokens: 0 });
+  UsageSchema.parse(res.usage);
+  assert.equal(res.resolvedModelId, 'claude-haiku-5-5', 'modelUsage 키 하나');
+  assert.equal(res.requestId, null);
+  assert.equal(res.firstTokenMs, null);
+});
+
 test('stopReason: max_tokens → max_tokens, refusal → refusal, 그 밖·없음 → other (rawStopReason은 원문)', async () => {
   const truncated = await generateFrom(await loadStdout('max-tokens'));
   assert.deepEqual([truncated.stopReason, truncated.rawStopReason], ['max_tokens', 'max_tokens']);
