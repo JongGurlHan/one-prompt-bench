@@ -31,7 +31,8 @@
     },
     {
       "dir": "06-regeneration-disclosure",
-      "status": "pending"
+      "status": "completed",
+      "completed_at": "2026-10-14T03:35:09+0900"
     }
   ]
 }
