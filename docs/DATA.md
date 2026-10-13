@@ -54,7 +54,7 @@ phase 1에서 반영한 변경(SDK 방식 → CLI 방식): `runtime.sdkPackage`�
 
 ### 정규화 규칙 (어댑터 책임)
 
-- `inputTokens` = 캐시 여부와 관계없이 **모든 입력 토큰의 합**(Claude의 cache_creation·cache_read 포함, Codex의 cached_input 포함). 비용은 전부 입력 정가로 계산한다.
+- `inputTokens` = 캐시 여부와 관계없이 **모든 입력 토큰의 합**(Claude는 input에 cache_creation·cache_read를 더한다. Codex는 `input_tokens`에 cached_input이 이미 들어 있어 더하지 않는다 — ARCHITECTURE "Codex CLI"). 비용은 전부 입력 정가로 계산한다.
 - `outputTokens` = 추론 토큰을 포함한 전체 출력. 도구가 추론을 따로 주면 더한다. `reasoningTokens`는 그중 추론분이고, 도구가 주지 않으면 null이다.
 - `firstTokenMs`: 스트리밍이 아닌 CLI는 null.
 - `resolvedModelId`·`requestId`: 도구가 주면 기록하고, 없으면 null.

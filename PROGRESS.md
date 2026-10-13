@@ -31,7 +31,6 @@ aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. 
 
 ## 주의할 점
 
-- 미정(2026-10-13 사용자에게 물음): Claude Code가 프롬프트 밖의 내용을 약 600토큰 더 보낸다(smoke 입력 655 vs Gemini 35, ARCHITECTURE "Claude Code CLI" smoke로 확인한 것). 사이트 각주 등으로 공개할지는 아직 정하지 않았다. 정하면 COPY·ADR에 적는다.
 - git: origin/main = `60ade99`(2026-10-13 push). main에 push하면 배포 워크플로가 돈다. 원격 `feat-02-validator-results-tab`은 `209e652`까지만 올라가 있다.
 - gh 계정: 이 PC의 `gh`에 JongGurlHan·LeoMetascale 두 계정이 있고, 사용자가 **활성 계정을 JongGurlHan으로 두라고 했다**(2026-10-13, LeoMetascale로 되돌리지 않는다). 2026-10-13에 JongGurlHan 토큰에 `workflow` 권한을 더했다. 그때 활성 계정이 LeoMetascale인 상태에서는 push가 여전히 workflow 권한 없음으로 거부됐고, JongGurlHan을 활성으로 두자 통과했다(비활성 계정 쪽에는 갱신 전 토큰이 남아 있던 것으로 보인다).
 - 이 PC 환경(2026-10-12 확인): Claude Code 2.1.296, codex-cli 0.157.1, Node 24.14, npm 11.9, Python 3.12, Windows + Git Bash. 환경변수에 ANTHROPIC/OPENAI/GEMINI 키 없음. `~/.codex/config.toml` 있음(생성 때 `--ignore-user-config`로 무시). `.env`에 GEMINI_API_KEY 있음(값은 읽지 않는다).

@@ -107,7 +107,7 @@ models.json ─▶ Batch ─▶ Runner(재시도·타임아웃·저장·비용) 
   - 환경변수에 `ANTHROPIC_API_KEY`·`OPENAI_API_KEY`가 없다(빈 문자열로 있어도 실패).
   - 대상 모델의 생성 도구마다 어댑터가 등록돼 있다. 어댑터가 아직 없는 도구가 섞이면 아무것도 호출하지 않는다. 도구별 인증 점검(아래 두 항목)은 그 도구의 어댑터와 함께 만든다.
   - Anthropic 대상이 있으면 `claude auth status` 결과의 인증 방식이 claude.ai 구독이다.
-  - OpenAI 대상이 있으면 `codex login status`가 ChatGPT 로그인이다. ⚠ 출력 형식은 smoke 때 확인.
+  - OpenAI 대상이 있으면 `codex login status`가 ChatGPT 로그인이다(stderr `Logged in using ChatGPT`, 아래 "Codex CLI").
   - Google 대상이 있으면 `.env`에 `GEMINI_API_KEY`가 있다 (값은 출력하지 않는다).
   - `packages/`, `pipeline/`, `prompts/`, `models.json`에 커밋 안 된 변경이 없다 — meta.json의 `gitCommit`이 실제 코드를 가리키게.
 
@@ -162,17 +162,45 @@ env: CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536
   - 위 목록에 없던 필드: `uuid`, `ttft_stream_ms`, `time_to_request_ms`, `first_content_frame_ms`, `fast_mode_state`(`"off"`), `permission_denials`, `subagent_stats`, `safety_stops`(0), `queued_turn_count`, `result_index`. 어댑터는 쓰지 않는다.
 - ⚠ 아직 실제 출력으로 확인하지 못한 것(합성 fixture 그대로): 출력 상한 도달(`stop_reason: max_tokens`인지, 에러로 끝나는지)·거부(`refusal`인지, `safety_stops`와 관계있는지)가 어떻게 나오는가 — 지금은 `is_error: false` + `stop_reason`으로 가정했고, 모르는 값은 stopReason `other`로 둔다. `--effort high`가 적용되는가 — 첫 실제 생성의 reasoningTokens로 본다. API 키 로그인일 때 `authMethod` 값. 529·401 출력의 `api_error` 값과 `result` 문구(에러는 smoke로 일부러 만들 수 없으니 실제로 만나면 옮긴다). 시스템 프롬프트 끝 줄바꿈이 Windows 인자로 그대로 가는지는 출력으로 확인할 수 없다.
 
-**Codex CLI** (0.157.1에서 플래그 확인)
+**Codex CLI** (0.157.1. 플래그는 `codex exec --help`, 이벤트 형식·설정 키·에러 문구는 이 버전의 공개 소스 `openai/codex` 태그 `rust-v0.157.1`로 확인, 2026-10-13)
 ```
 codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemeral
-           --ignore-user-config --ignore-rules --json -o <tmp>/last-message.txt -C <emptyTmpDir>
-           -c model_reasoning_effort="high" -c model_instructions_file="<system.md 절대경로>" -
+           --ignore-user-config --ignore-rules --json
+           -o <tmp>/last-message.txt -C <tmp>/work
+           -c model_reasoning_effort="high" -c model_instructions_file="<tmp>/instructions.md"
+           -c include_environment_context=false -c include_apps_instructions=false
+           -c include_collaboration_mode_instructions=false -c skills.include_instructions=false -
 ```
-- Codex는 에이전트라 응답 대신 파일을 쓸 수 있다. read-only 샌드박스와 빈 디렉토리에서 실행해 답을 텍스트로 받는다.
-- `--ignore-user-config`: `~/.codex/config.toml`(사용자 기본 모델·추론 강도·MCP)을 무시하고, 인증은 유지한다.
+- Codex는 에이전트라 응답 대신 파일을 쓸 수 있다. read-only 샌드박스와 빈 디렉토리에서 실행해 답을 텍스트로 받는다. 마지막 `-`는 프롬프트를 stdin에서 읽으라는 뜻이다.
+- 실행 파일: PATH의 `codex`. Windows의 npm 전역 설치는 `codex.cmd` shim → `node <shim 폴더>/node_modules/@openai/codex/bin/codex.js` → 플랫폼 패키지(`@openai/codex-win32-x64`)의 `codex.exe` 순서로 실행된다. shell 없이 띄우려고 shim 옆의 `codex.js`를 지금 실행 중인 Node(`process.execPath`)로 실행한다. 공식 실행기가 넣는 `CODEX_MANAGED_*` 환경 변수와 신호 전달을 그대로 쓰기 위해서다. `codex.js`가 없으면 사람이 읽을 에러로 멈춘다. POSIX는 PATH의 `codex`(`codex.js`로 가는 링크, shebang)를 그대로 띄운다. invocation 기록에는 `codex`라고 적는다.
+- 버전: `codex --version` 출력 `codex-cli 0.157.1`의 숫자. 못 읽으면 에러로 멈춘다.
+- 작업 폴더: 매 시도 임시 폴더 하나에 빈 작업 폴더(`work/`, `-C`), 지시문 파일(`instructions.md`), 마지막 메시지 파일(`last-message.txt`)을 따로 둔다. 작업 폴더에는 아무것도 두지 않는다.
+- 시스템 프롬프트(ADR-005): `req.system`을 `instructions.md`에 UTF-8로 쓰고 `model_instructions_file`로 넘긴다. 0.157.1 소스에서 이 키가 기본 지시문을 교체함(요청의 `instructions` 필드)을 확인했다. Codex는 파일 내용의 앞뒤 공백을 지워서 보내므로 끝 줄바꿈이 빠진다(도구 차이로 둔다). 빈 파일이면 Codex가 에러로 멈춘다.
+- `-c` 값은 TOML로 읽힌다. 문자열은 큰따옴표로 감싸고, 경로는 슬래시(`/`)로 바꿔 넘긴다(Windows 역슬래시가 TOML 이스케이프로 읽히지 않게, 업스트림 테스트와 같은 방식). 불리언은 따옴표 없이 쓴다.
+- 덧붙는 블록(ADR-027): `--ignore-user-config`는 `$CODEX_HOME/config.toml`(사용자 기본 모델·추론 강도·personality·service_tier 등)만 무시하고 인증은 `CODEX_HOME`을 그대로 쓴다. 사용자 폴더의 스킬 목록·실행 환경 정보·앱·작업 방식 안내는 위 `include_*=false`·`skills.include_instructions=false`로 끈다. 읽기 전용 샌드박스 안내(`include_permissions_instructions`)와 도구 정의는 남는다.
 - 출력 상한을 지정할 수 없다 → `maxOutputTokens: null`, 사이트 † 각주.
-- 사용량은 JSONL `turn.completed` 이벤트(input / cached_input / output / reasoning_output tokens)를 모든 턴에 걸쳐 합친다.
-- ⚠ smoke로 확인: `model_reasoning_effort`·`model_instructions_file` 키가 적용되는가. `output_tokens`가 추론분을 포함하는가(포함이 아니면 더해서 정규화). ChatGPT 한도 초과 메시지 형식.
+- 자식 환경: 공통 `cliEnv`(API 키·Claude Code 세션 변수 삭제). `CODEX_HOME`은 남긴다(인증).
+- 로그인 점검(preflight): `codex login status`는 결과를 **stderr** 한 줄로 쓴다. `Logged in using ChatGPT`(exit 0)일 때만 통과한다(2026-10-13 이 PC 출력 확인). 그 밖의 문구(소스 기준): `Logged in using an API key - <가린 키>`(exit 0), `Not logged in`(exit 1), `Logged in using access token`·`personal access token`·`Amazon Bedrock …`(exit 0), `Error checking login status: …`(exit 1) — 모두 실패다. API 키 문구의 키 부분은 출력·기록하지 않는다.
+- 출력(`--json`): stdout에 이벤트 JSON이 한 줄에 하나씩(JSONL) 온다. `type`은 `thread.started`(`thread_id`), `turn.started`, `item.started`·`item.updated`·`item.completed`(`item`: `id` + `type` `agent_message`(`text`)·`reasoning`·`command_execution`·`file_change`·`mcp_tool_call`·`web_search`·`todo_list`·`error` 등), `turn.completed`(`usage`), `turn.failed`(`error.message`), `error`(`message`)다. exec는 턴 하나로 끝난다(`turn.completed`나 `turn.failed` 뒤 종료).
+- 성공: exit code 0 + `turn.completed` + `last-message.txt`가 있을 때뿐이다. `last-message.txt`는 턴이 완료됐을 때만 쓰인다.
+- 정규화(DATA "정규화 규칙"):
+  - 본문 = `last-message.txt` 내용.
+  - 사용량 = **마지막** `turn.completed`의 `usage`. 턴별 값이 아니라 스레드 누적 합계라서 더하지 않는다. 값은 OpenAI Responses API usage를 그대로 옮긴 것이다(소스 `codex-api` `From<ResponseCompletedUsage>`).
+  - inputTokens = `input_tokens`(이미 `cached_input_tokens`·`cache_write_input_tokens`를 포함한다 — 더하지 않는다). outputTokens = `output_tokens`(추론 포함), reasoningTokens = `reasoning_output_tokens`. 필드가 없거나 숫자가 아니면 Claude Code와 같이 0·null로 떨어뜨린다.
+  - stopReason: 이벤트에 모델이 멈춘 이유가 없어 `other`, rawStopReason은 `turn.completed`. resolvedModelId·requestId·firstTokenMs는 null(이벤트에 없다).
+- 에러 분류: HTTP 상태 필드가 없고 `turn.failed`·`error` 이벤트의 message 문자열뿐이다(httpStatus는 메시지의 `unexpected status NNN`에서 읽고, 없으면 null). 위에서부터 처음 맞는 것:
+  - abort → `timeout`
+  - 한도: `You’ve hit your usage limit…`(굽은 따옴표), `Quota exceeded` 또는 공통 한도 문구(`USAGE_LIMIT_RE`) → `usage_limit`
+  - `Incomplete response returned`(출력 잘림·필터) → `unknown`(재시도하지 않는다, 아래 한계)
+  - `rate limit exceeded`·`unexpected status 429` → `rate_limited`
+  - `unexpected status 5xx`·`high demand`·`at capacity` → `server_error`
+  - `stream disconnected`·`Connection failed` → `network`
+  - `unexpected status 401|403`·`Not logged in`·`upgrade to Plus` → `auth`
+  - `unexpected status 400` → `bad_request`
+  - 실행 파일 없음·JSON이 아닌 줄·그 밖 → `unknown`
+- smoke 기록기: Claude Code와 같다. `raw-stdout.txt`(JSONL 그대로)·`raw-stderr.txt`·`raw-exit.json`.
+- 알려진 한계: Codex는 스트림 끊김을 스스로 재시도하고 끌 수 없다. 출력 잘림·필터(`response.incomplete`)도 스트림 에러로 바뀌어 재시도된 뒤 실패하고, 받은 원문은 남지 않는다 → `api_failed`. 출력 상한을 지정할 수 없어(모델 기본값) 실제로 잘릴 가능성은 낮다.
+- ⚠ smoke로 확인: 입력 토큰 규모(도구 정의·샌드박스 안내가 남는다 — 수천 개면 무엇이 남는지 본다). Hello 요청에도 `reasoning_output_tokens`가 나오는가(`model_reasoning_effort` 적용). `output_tokens`가 추론분을 포함하는가(소스상 포함). 모델이 명령 실행·파일 쓰기(item 종류)를 시도하는가. stderr에 무엇이 나오는가. 실제 한도·에러 문구.
 
 **Gemini API** (`@google/genai` SDK, `.env`의 GEMINI_API_KEY)
 - `.env`는 `dotenv.parse`로 읽어 설정 객체로만 쓰고 `process.env`에는 넣지 않는다. Claude·Codex 자식 프로세스로 키가 넘어가지 않게 하려는 것이다.
