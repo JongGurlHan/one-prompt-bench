@@ -47,7 +47,7 @@
     {
       "step": 2,
       "name": "claude-code-adapter",
-      "status": "blocked",
+      "status": "pending",
       "ac": [
         "npm run lint",
         "npm run typecheck",
@@ -55,11 +55,8 @@
       ],
       "started_at": "2026-10-13T02:20:15+0900",
       "model": "claude-opus-5-5",
-      "session_id": "c6002017-fa21-4df2-8af3-08f210470320",
       "cost_usd": 1.8586,
       "num_turns": 25,
-      "blocked_reason": "Claude 사용 한도 도달: You've hit your session limit · resets 6am (Asia/Seoul)\n한도가 풀린 뒤 `python scripts/execute.py 03-deploy-claude-adapter --reset-failed`로 다시 실행하세요.",
-      "blocked_at": "2026-10-13T02:24:49+0900",
       "attempts": 1
     }
   ],
