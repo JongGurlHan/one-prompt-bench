@@ -180,6 +180,113 @@ test('--force인데 지울 파일이 없으면 묻지 않고 생성한다', asyn
   assert.equal((await readMeta(root, 'gemini-a')).outcome, 'ok');
 });
 
+/* ───────── --force: 버리기 전 커밋 검사 (ADR-032, ARCHITECTURE "다시 생성·수정 요청") ───────── */
+
+/** results/<slug>/ 경로에만 커밋 안 된 변경을 보고하는 가짜 git (preflight의 코드 경로는 깨끗하다) */
+const dirtyResults = (dirty: Record<string, string>) =>
+  fakeGit({
+    status: (paths) =>
+      paths
+        .map((p) => dirty[p] ?? '')
+        .filter(Boolean)
+        .join(''),
+  });
+
+test('--force: 버릴 폴더에 커밋 안 된 변경이 있으면 확인을 묻지 않고 아무것도 지우지 않고 exit 1', async () => {
+  const root = await makeRepo();
+  await seedResult(root, 'gemini-a'); // ok — 표본
+  await seedResult(root, 'claude-a', [{ respond: 'HTML 없음' }]); // no_html — 표본, 커밋됨
+  const before = { gemini: await snapshot(dirOf(root, 'gemini-a')), claude: await snapshot(dirOf(root, 'claude-a')) };
+  const git = dirtyResults({ 'results/gemini-a/': '?? results/gemini-a/\n' });
+  const h = harness(root, { git, confirm: true });
+
+  const code = await runBatch(gen(['gemini-a', 'claude-a', 'gpt-a'], { force: true }), h.deps);
+
+  assert.equal(code, 1);
+  assert.equal(h.confirms.length, 0, '확인을 묻기 전에 멈춘다');
+  assert.deepEqual(await snapshot(dirOf(root, 'gemini-a')), before.gemini);
+  assert.deepEqual(await snapshot(dirOf(root, 'claude-a')), before.claude);
+  assert.equal(await snapshot(dirOf(root, 'gpt-a')), null, '다른 모델도 생성하지 않는다');
+  assert.deepEqual(h.world.created, []);
+  assert.deepEqual(h.world.calls, []);
+  // 파일이 있는 폴더만 폴더마다 검사한다
+  assert.deepEqual(git.statusCalls.slice(1), [['results/gemini-a/'], ['results/claude-a/']]);
+  const errors = h.errors.join('\n');
+  assert.match(errors, /먼저 커밋하세요\(ADR-032 — 버린 결과물은 git에 남아야 한다\)/);
+  assert.match(errors, /results\/gemini-a\//);
+  assert.match(errors, /\?\? results\/gemini-a\//, 'git status 줄을 보여 준다');
+  assert.doesNotMatch(errors, /results\/claude-a/, '커밋된 폴더는 목록에 없다');
+});
+
+test('--force: 수정·삭제도 커밋 안 된 변경이다', async () => {
+  for (const status of [' M results/gemini-a/index.html\n', ' D results/gemini-a/spring.jpg\n']) {
+    const root = await makeRepo();
+    await seedResult(root, 'gemini-a');
+    const before = await snapshot(dirOf(root, 'gemini-a'));
+    const h = harness(root, { git: dirtyResults({ 'results/gemini-a/': status }), confirm: true });
+    assert.equal(await runBatch(gen(['gemini-a'], { force: true }), h.deps), 1, status);
+    assert.equal(h.confirms.length, 0);
+    assert.deepEqual(await snapshot(dirOf(root, 'gemini-a')), before);
+  }
+});
+
+test('--force: api_failed 폴더와 meta.json 없는 폴더는 표본이 아니라 변경이 있어도 확인을 거쳐 진행한다', async () => {
+  const root = await makeRepo();
+  await seedResult(root, 'gemini-a', [{ fail: 'auth', httpStatus: 401 }]); // api_failed
+  await mkdir(dirOf(root, 'claude-a'), { recursive: true });
+  await writeFile(path.join(dirOf(root, 'claude-a'), 'response.txt'), '중간에 끊긴 응답', 'utf8'); // 중단된 생성
+  const git = dirtyResults({ 'results/gemini-a/': '?? results/gemini-a/\n', 'results/claude-a/': '?? results/claude-a/\n' });
+  const h = harness(root, { git, confirm: true });
+
+  assert.equal(await runBatch(gen(['gemini-a', 'claude-a'], { force: true }), h.deps), 0, h.output());
+
+  assert.equal(h.confirms.length, 1);
+  assert.deepEqual(h.world.calls, ['gemini-a-id', 'claude-a-id']);
+  assert.equal((await readMeta(root, 'gemini-a')).outcome, 'ok');
+  assert.equal((await readMeta(root, 'claude-a')).outcome, 'ok');
+});
+
+test('--force: 변경이 없으면 기존처럼 확인을 묻는다 (검사는 확인 바로 앞)', async () => {
+  const root = await makeRepo();
+  await seedResult(root, 'gemini-a');
+  const git = dirtyResults({});
+  const h = harness(root, { git, confirm: false });
+
+  assert.equal(await runBatch(gen(['gemini-a'], { force: true }), h.deps), 1);
+
+  assert.equal(h.confirms.length, 1);
+  assert.deepEqual(git.statusCalls.at(-1), ['results/gemini-a/']);
+  assert.equal(git.headCalls, 1, 'HEAD·프롬프트·폴더 상태를 본 다음에 검사한다');
+});
+
+test('--force: 결과 폴더의 git status를 실행하지 못하면 아무것도 지우지 않고 exit 1', async () => {
+  const root = await makeRepo();
+  await seedResult(root, 'gemini-a');
+  const before = await snapshot(dirOf(root, 'gemini-a'));
+  const git = fakeGit({
+    statusError: (paths) => (paths[0]?.startsWith('results/') ? new Error('not a git repository') : null),
+  });
+  const h = harness(root, { git, confirm: true });
+
+  assert.equal(await runBatch(gen(['gemini-a'], { force: true }), h.deps), 1);
+
+  assert.equal(h.confirms.length, 0);
+  assert.deepEqual(await snapshot(dirOf(root, 'gemini-a')), before);
+  assert.match(h.output(), /not a git repository/);
+});
+
+test('--force 없이 다시 생성하는 폴더(api_failed·중단된 생성)는 커밋 검사를 하지 않는다', async () => {
+  const root = await makeRepo();
+  await seedResult(root, 'gemini-a', [{ fail: 'auth', httpStatus: 401 }]);
+  const git = dirtyResults({ 'results/gemini-a/': '?? results/gemini-a/\n' });
+  const h = harness(root, { git });
+
+  assert.equal(await runBatch(gen(['gemini-a']), h.deps), 0, h.output());
+
+  assert.equal(git.statusCalls.length, 1, 'preflight만');
+  assert.equal((await readMeta(root, 'gemini-a')).outcome, 'ok');
+});
+
 /* ───────── 대상 선택 실패 ───────── */
 
 test('모르는 slug가 있으면 어댑터를 만들거나 호출하지 않고 실패한다 (preflight·git도 안 함)', async () => {

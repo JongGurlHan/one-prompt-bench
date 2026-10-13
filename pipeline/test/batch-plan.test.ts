@@ -6,9 +6,11 @@ import {
   batchExitCode,
   forceConfirmMessage,
   formatSummary,
+  needsCommitBeforeDiscard,
   planResultDir,
   resultDirPath,
   selectTargets,
+  uncommittedMessage,
   type SummaryRow,
 } from '../src/generation/batch.js';
 import { MODELS } from './batch-fakes.js';
@@ -186,6 +188,38 @@ test('--force 확인 문구: 지울 폴더 목록과 "판정(judgment.json)도 �
   assert.match(message, /results\/gemini-a\//);
   assert.doesNotMatch(message, /results\/gemini-a\/ \(판정 있음\)/);
   assert.match(message, /판정\(judgment\.json\)도 함께 지워/);
+});
+
+/* ───────── 버리기 전 커밋 검사 (ADR-032) ───────── */
+
+test('needsCommitBeforeDiscard: 표본(정상 기록·깨진 meta.json)만 검사, meta.json 없음·api_failed는 표본이 아니다', () => {
+  const dir = (metaText: string | null, files = ['meta.json']) => ({ slug: 'gemini-a', files, metaText });
+  assert.equal(needsCommitBeforeDiscard(dir(metaText(record('gemini-a', 'ok')))), true);
+  assert.equal(needsCommitBeforeDiscard(dir(metaText(record('gemini-a', 'no_html')))), true);
+  assert.equal(needsCommitBeforeDiscard(dir('{ broken')), true);
+  assert.equal(needsCommitBeforeDiscard(dir(metaText(record('claude-a', 'ok')))), true, 'modelSlug가 다른 meta.json');
+  assert.equal(needsCommitBeforeDiscard(dir(metaText(record('gemini-a', 'api_failed', 'usage_limit')))), false);
+  assert.equal(needsCommitBeforeDiscard(dir(metaText(record('gemini-a', 'api_failed', 'auth')))), false);
+  assert.equal(needsCommitBeforeDiscard(dir(null, ['response.txt'])), false);
+  assert.equal(needsCommitBeforeDiscard(dir(null, [])), false);
+});
+
+test('uncommittedMessage: 폴더마다 git status 줄을 붙이고 먼저 커밋하라고 안내한다', () => {
+  assert.equal(
+    uncommittedMessage([
+      { slug: 'gemini-a', status: '?? results/gemini-a/\n' },
+      { slug: 'gpt-a', status: ' M results/gpt-a/index.html\n D results/gpt-a/spring.jpg\n' },
+    ]),
+    [
+      '--force: 아래 결과 폴더에 커밋 안 된 변경이 있습니다. 먼저 커밋하세요(ADR-032 — 버린 결과물은 git에 남아야 한다).',
+      '  results/gemini-a/',
+      '      ?? results/gemini-a/',
+      '  results/gpt-a/',
+      '       M results/gpt-a/index.html',
+      '       D results/gpt-a/spring.jpg',
+      '아무것도 지우지 않았습니다.',
+    ].join('\n'),
+  );
 });
 
 /* ───────── 결과 폴더 경로 ───────── */

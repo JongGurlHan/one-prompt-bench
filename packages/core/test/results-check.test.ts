@@ -5,7 +5,16 @@ import { test } from 'node:test';
 import { STATUS_LEGEND } from '../src/display.js';
 import { checkResults, type CheckIssue } from '../src/results.js';
 import type { GenerationRecord, Judgment, ModelEntry } from '../src/schema.js';
-import { FAKE_MODELS, buildResult, makeDataRoot, makeStatusDataRoot, patchJson, writeResult } from './support/testing.js';
+import {
+  FAKE_MODELS,
+  buildResult,
+  fakeDiscarded,
+  fakeModel,
+  makeDataRoot,
+  makeStatusDataRoot,
+  patchJson,
+  writeResult,
+} from './support/testing.js';
 
 /** path가 같고 message에 fragment가 들어 있는 이슈가 있는지 */
 function assertIssue(issues: readonly CheckIssue[], issuePath: string, fragment: string) {
@@ -231,6 +240,97 @@ test('규칙 9: 폴더 안이라도 결과물·원문은 정해진 이름(index.
   });
   await writeFile(file(root, 'results/gpt-a/answer.txt'), 'x');
   assertIssue(await checkResults(root), 'results/gpt-a/meta.json', 'responseTextPath must be results/gpt-a/response.txt');
+});
+
+/* ───────── 버린 결과물 기록 (models.json discarded, ADR-032 — DATA "불변식(phase 6)") ───────── */
+
+const REPAIR_NOT_IMPLEMENTED = '수정 요청(--repair)은 아직 구현되지 않았다(ADR-032)';
+
+/** 레포의 기록 3개와 같은 모양: 커밋 있는 blank_screen 2개(3회) · 1개(2회) · 커밋 없는 continued_output 1개(2회) */
+const REGENERATED: readonly ModelEntry[] = [
+  fakeModel('sol', 'openai', '2026-09-22', 'Sol', {}, [fakeDiscarded(), fakeDiscarded({ at: '2026-10-14' })]),
+  fakeModel('flash', 'google', '2026-09-02', 'Flash', {}, [fakeDiscarded({ at: '2026-10-14' })]),
+  fakeModel('sonnet', 'anthropic', '2026-09-28', 'Sonnet', {}, [fakeDiscarded({ reason: 'continued_output', commit: null })]),
+];
+
+async function regeneratedRoot(models: readonly ModelEntry[] = REGENERATED) {
+  const root = await makeDataRoot([...models, FAKE_MODELS[0]!]);
+  for (const m of models) await writeResult(root, m.slug, { outcome: 'ok', judgment: {} });
+  return root;
+}
+
+test('discarded: 생성본 기록(상한 안)과 공개 결과물(meta.json)이 있으면 통과', async () => {
+  const root = await regeneratedRoot();
+  assert.deepEqual(await checkResults(root), []);
+  // 공개 결과물이 api_failed·no_html이어도 meta.json만 있으면 된다 (표시는 그대로 생성 횟수)
+  const other = await makeDataRoot(REGENERATED);
+  await writeResult(other, 'sol', { outcome: 'no_html' });
+  await writeResult(other, 'flash', { outcome: 'api_failed' });
+  await writeResult(other, 'sonnet', { outcome: 'truncated' });
+  assert.deepEqual(await checkResults(other), []);
+});
+
+test('discarded: 결과 폴더·meta.json이 없는 모델에 기록이 있으면 이슈 (results/가 없어도)', async () => {
+  const noResults = await makeDataRoot(REGENERATED);
+  const issues = await checkResults(noResults);
+  for (const slug of ['sol', 'flash', 'sonnet']) assertIssue(issues, `results/${slug}/meta.json`, 'discarded');
+  assert.equal(issues.length, 3, format(issues));
+
+  const root = await regeneratedRoot();
+  await rm(file(root, 'results/flash'), { recursive: true }); // 폴더 없음
+  await rm(file(root, 'results/sonnet/meta.json')); // 폴더는 있는데 meta.json 없음 (규칙 3도 실패)
+  const after = await checkResults(root);
+  assertIssue(after, 'results/flash/meta.json', 'discarded');
+  assertIssue(after, 'results/sonnet/meta.json', 'discarded');
+  assert.ok(!after.some((i) => i.path.startsWith('results/sol/')), format(after));
+});
+
+test('discarded: 생성본 기록 3개(공개 결과물까지 4회)는 상한(3회)을 넘어 이슈', async () => {
+  const root = await regeneratedRoot([
+    fakeModel('sol', 'openai', '2026-09-22', 'Sol', {}, [fakeDiscarded(), fakeDiscarded(), fakeDiscarded()]),
+  ]);
+  const issues = await checkResults(root);
+  assertIssue(issues, 'models.json', 'sol.discarded');
+  assertIssue(issues, 'models.json', '4');
+  assert.equal(issues.length, 1, format(issues));
+});
+
+test('discarded: 수정 요청 항목(made repair 또는 next repair)은 아직 구현되지 않아 이슈', async () => {
+  const root = await regeneratedRoot([
+    fakeModel('sol', 'openai', '2026-09-22', 'Sol', {}, [fakeDiscarded(), fakeDiscarded({ next: 'repair' })]),
+    fakeModel('flash', 'google', '2026-09-02', 'Flash', {}, [fakeDiscarded({ next: 'repair' }), fakeDiscarded({ made: 'repair', next: 'repair' })]),
+  ]);
+  const issues = await checkResults(root);
+  assertIssue(issues, 'models.json', `sol.discarded.1: ${REPAIR_NOT_IMPLEMENTED}`);
+  assertIssue(issues, 'models.json', `flash.discarded.0: ${REPAIR_NOT_IMPLEMENTED}`);
+  assertIssue(issues, 'models.json', `flash.discarded.1: ${REPAIR_NOT_IMPLEMENTED}`);
+  assert.equal(issues.length, 3, format(issues));
+});
+
+test('discarded: 여러 위반을 모두 모아 보고하고, models.json이 스키마에서 깨지면 규칙 1로만 실패한다', async () => {
+  const root = await makeDataRoot([
+    fakeModel('sol', 'openai', '2026-09-22', 'Sol', {}, [
+      fakeDiscarded(),
+      fakeDiscarded(),
+      fakeDiscarded(),
+      fakeDiscarded({ made: 'repair' }),
+    ]),
+    ...REGENERATED.slice(1),
+  ]);
+  await writeResult(root, 'flash', { outcome: 'ok' });
+  const issues = await checkResults(root);
+  assertIssue(issues, 'models.json', 'sol.discarded: 3 discarded generations');
+  assertIssue(issues, 'models.json', `sol.discarded.3: ${REPAIR_NOT_IMPLEMENTED}`);
+  assertIssue(issues, 'results/sol/meta.json', 'discarded');
+  assertIssue(issues, 'results/sonnet/meta.json', 'discarded');
+  assert.equal(issues.length, 4, format(issues));
+
+  await patchJson<ModelEntry[]>(root, 'models.json', (models) => {
+    models[0]!.discarded![0]!.commit = 'F0E6988'; // 대문자·짧음
+  });
+  const broken = await checkResults(root);
+  assertIssue(broken, 'models.json', 'schema: 0.discarded.0.commit');
+  assert.ok(broken.every((i) => i.path === 'models.json' && i.message.startsWith('schema:')), format(broken));
 });
 
 /* ───────── 문서에 없는 경우: 엄격하게 ───────── */

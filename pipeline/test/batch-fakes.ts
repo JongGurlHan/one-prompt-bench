@@ -208,7 +208,17 @@ export async function readMeta(repoRoot: string, slug: string): Promise<Generati
   return GenerationRecordSchema.parse(JSON.parse(text));
 }
 
-export function fakeGit(opts: { status?: string; head?: string; statusError?: Error } = {}): GitClient & {
+/**
+ * status: 모든 호출에 같은 출력, 또는 경로마다 출력을 고르는 함수 (preflight의 코드 경로와 results/<slug>/를 나눠 답할 때).
+ * statusError: 함수면 그 경로에서만 throw할지 고른다
+ */
+export function fakeGit(
+  opts: {
+    status?: string | ((paths: readonly string[]) => string);
+    head?: string;
+    statusError?: Error | ((paths: readonly string[]) => Error | null);
+  } = {},
+): GitClient & {
   statusCalls: (readonly string[])[];
   headCalls: number;
 } {
@@ -217,8 +227,9 @@ export function fakeGit(opts: { status?: string; head?: string; statusError?: Er
     headCalls: 0,
     async status(paths: readonly string[]): Promise<string> {
       git.statusCalls.push(paths);
-      if (opts.statusError) throw opts.statusError;
-      return opts.status ?? '';
+      const error = typeof opts.statusError === 'function' ? opts.statusError(paths) : opts.statusError;
+      if (error) throw error;
+      return typeof opts.status === 'function' ? opts.status(paths) : (opts.status ?? '');
     },
     async head(): Promise<string> {
       git.headCalls++;

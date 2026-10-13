@@ -25,7 +25,7 @@ import { formatPreflight, preflightPassed, runPreflight } from './preflight.js';
 
 /* ────────────────────────────────────────────────────────────
  * Batch (`npm run gen -- <slug…> | --all [--force]`): 대상 선택 → preflight → 순차 실행 → 덮어쓰기 규칙 →
- * 생성 직후 검증 → 요약표. 규칙은 ARCHITECTURE "Batch 규칙", ADR-004·ADR-012.
+ * 생성 직후 검증 → 요약표. 규칙은 ARCHITECTURE "Batch 규칙"·"다시 생성·수정 요청", ADR-004·ADR-012·ADR-032.
  * 판단(대상·폴더 상태·요약표)은 순수 함수, I/O(git·확인·검증·Runner)는 BatchDeps로 주입한다.
  * ──────────────────────────────────────────────────────────── */
 
@@ -116,6 +116,36 @@ export function forceConfirmMessage(dirs: readonly ResultDirSnapshot[]): string 
     '--force: 아래 폴더의 파일을 모두 지우고 다시 생성합니다. 판정(judgment.json)도 함께 지워집니다.',
     ...lines,
     '계속할까요?',
+  ].join('\n');
+}
+
+/* ───────── 버리기 전 커밋 검사 (ADR-032, ARCHITECTURE "다시 생성·수정 요청") ───────── */
+
+/** git status의 경로 인자: results/<slug>/ */
+export const resultDirGitPath = (slug: string) => `results/${slug}/`;
+
+/**
+ * --force로 비우기 전에 git에 커밋돼 있어야 하는 폴더인지 = 표본(버린 결과물로 남을 것)인지.
+ * meta.json이 없거나(중단된 생성) outcome이 api_failed면 표본이 아니라 검사하지 않는다.
+ * meta.json이 깨진 폴더는 무엇인지 모르므로 검사한다 (문서에 없는 경우 → 엄격하게)
+ */
+export function needsCommitBeforeDiscard(dir: ResultDirSnapshot): boolean {
+  const plan = planResultDir(dir, false);
+  return plan.kind === 'skip' || plan.kind === 'broken';
+}
+
+/** 커밋 안 된 변경이 있는 폴더 목록 + 먼저 커밋하라는 안내 (아무것도 지우지 않았다) */
+export function uncommittedMessage(dirty: readonly { slug: string; status: string }[]): string {
+  return [
+    '--force: 아래 결과 폴더에 커밋 안 된 변경이 있습니다. 먼저 커밋하세요(ADR-032 — 버린 결과물은 git에 남아야 한다).',
+    ...dirty.flatMap((d) => [
+      `  ${resultDirGitPath(d.slug)}`,
+      ...d.status
+        .split('\n')
+        .filter((line) => line.trim() !== '')
+        .map((line) => `      ${line}`),
+    ]),
+    '아무것도 지우지 않았습니다.',
   ].join('\n');
 }
 
@@ -288,9 +318,21 @@ export async function runBatch(opts: BatchOptions, deps: BatchDeps): Promise<num
     return fail(errorMessage(err));
   }
 
-  // 4. --force: 지울 폴더를 보여 주고 확인받는다. 거절하면 아무것도 바꾸지 않는다
+  // 4. --force: 버릴 표본이 커밋돼 있는지 보고(ADR-032), 지울 폴더를 보여 주고 확인받는다. 멈추면 아무것도 바꾸지 않는다
   if (opts.force) {
     const toClear = dirs.filter((d) => d.files !== null && d.files.length > 0);
+    const dirty: { slug: string; status: string }[] = [];
+    for (const d of toClear.filter(needsCommitBeforeDiscard)) {
+      let status: string;
+      try {
+        status = await deps.git.status([resultDirGitPath(d.slug)]);
+      } catch (err) {
+        return fail(`git status를 실행하지 못했습니다 (${resultDirGitPath(d.slug)}): ${errorMessage(err)} — 아무것도 지우지 않았습니다.`);
+      }
+      if (status.trim() !== '') dirty.push({ slug: d.slug, status });
+    }
+    if (dirty.length > 0) return fail(uncommittedMessage(dirty));
+
     if (toClear.length > 0 && !(await deps.confirm(forceConfirmMessage(toClear)))) {
       return fail('취소했습니다. 아무것도 바꾸지 않았습니다.');
     }

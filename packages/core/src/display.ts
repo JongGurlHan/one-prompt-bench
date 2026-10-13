@@ -1,12 +1,14 @@
 import { judgeRequests, pinnedThreeVersion, type ExternalRequest, type Verdict } from './request-rules.js';
-import type { ResultEntry } from './results.js';
+import { REPAIR_NOT_IMPLEMENTED, type ResultEntry } from './results.js';
 import {
   GENERATOR_BY_PROVIDER,
+  type Discarded,
   type FailureKind,
   type GenerationRecord,
   type GeneratorTool,
   type Judgment,
   type Mark,
+  type ModelEntry,
   type Provider,
 } from './schema.js';
 
@@ -173,6 +175,41 @@ function lastFailureKind(record: GenerationRecord): FailureKind | null {
   return last.type === 'error' ? last.kind : null;
 }
 
+/* ───────── 생성 횟수·재생성 안내 (COPY "결과 탭" → "다시 생성하거나 고친 결과물", ADR-032) ───────── */
+
+/** 결과 탭 안내 박스: 첫 줄 + 버린 결과물마다 한 줄(오래된 것부터) */
+export interface RegenerationNotice {
+  title: string;
+  lines: string[];
+}
+
+/** 버린 생성본의 "이유와 한 일" (다음에 한 일이 다시 생성일 때). 수정 요청 문구는 --repair와 함께 더한다 */
+const REGENERATE_REASON: Readonly<Record<Discarded['reason'], string>> = {
+  blank_screen: '화면에 나무가 그려지지 않아 다시 생성했어요.',
+  continued_output: '생성 도구가 출력 상한을 넘겨 이어 쓴 응답을 잘못 기록해서, 그 기록을 버리고 다시 생성했어요.',
+};
+const UNCOMMITTED = '(기록은 남아 있지 않아요)';
+const commitText = (commit: string | null) => (commit === null ? UNCOMMITTED : `(커밋 ${commit.slice(0, 7)})`);
+
+/** 생성 횟수 = 버린 생성본 + 공개 결과물(지금은 항상 생성본) */
+const generationsOf = (model: ModelEntry) => (model.discarded ?? []).filter((d) => d.made === 'generation').length + 1;
+
+/**
+ * 버린 결과물이 없으면 null. 수정 요청 항목(made·next가 repair)은 아직 문구가 없어서 throw한다
+ * (check:results도 같은 이유로 막는다 — 수정 요청은 필요해질 때 만든다, ADR-032)
+ */
+export function regenerationNotice(model: ModelEntry): RegenerationNotice | null {
+  const discarded = model.discarded ?? [];
+  if (discarded.length === 0) return null;
+  const lines = discarded.map((d, i) => {
+    if (d.made !== 'generation' || d.next !== 'regenerate') {
+      throw new Error(`${model.slug}.discarded.${i}: ${REPAIR_NOT_IMPLEMENTED}`);
+    }
+    return `${i + 1}번째 생성: ${REGENERATE_REASON[d.reason]} ${commitText(d.commit)}`;
+  });
+  return { title: `${generationsOf(model)}번째로 생성한 결과물이에요.`, lines };
+}
+
 /* ───────── 모델 한 행의 표시 값 ───────── */
 
 export interface RequirementDisplay {
@@ -222,6 +259,12 @@ export interface ModelDisplay {
   /** 걸린 시간: 3분 34초 · 48초 */
   duration: string;
   retries: string;
+  /** 생성 횟수: 3회 (버린 생성본 + 공개 결과물). meta.json이 없으면 — */
+  generationCount: string;
+  /** 생성 횟수 옆 각주 기호: 버린 결과물이 있는 모델이면 ¶ (ADR-032) */
+  generationCountMark: '' | '¶';
+  /** 결과 탭 안내 박스. 버린 결과물이 없으면 null */
+  regeneration: RegenerationNotice | null;
   /** 요구사항 4개 (REQUIREMENT_LABEL 순서) */
   requirements: RequirementDisplay[];
   /** 판정 메모. 판정이 없거나 결과물이 없으면 null */
@@ -267,6 +310,9 @@ export function displayModel(entry: ResultEntry): ModelDisplay {
     cost: record ? formatUsd(record.cost.totalUsd) : NO_VALUE,
     duration: record && record.outcome !== 'api_failed' ? formatDuration(record.attempts.at(-1)!.latencyMs) : NO_VALUE,
     retries: record ? String(record.attempts.length - 1) : NO_VALUE,
+    generationCount: record ? `${generationsOf(model)}회` : NO_VALUE,
+    generationCountMark: model.discarded && model.discarded.length > 0 ? '¶' : '',
+    regeneration: regenerationNotice(model),
     requirements: (Object.keys(REQUIREMENT_LABEL) as RequirementKey[]).map((key) => {
       const mark = judgment ? judgment.requirements[key] : null;
       return {

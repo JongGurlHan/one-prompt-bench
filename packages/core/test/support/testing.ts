@@ -7,11 +7,13 @@ import { fileURLToPath } from 'node:url';
 import { STATUS_LEGEND, type StatusLabel } from '../../src/display.js';
 import { CURRENT_PROMPT } from '../../src/prompt.js';
 import {
+  DiscardedSchema,
   GENERATOR_BY_PROVIDER,
   GenerationRecordSchema,
   JudgmentSchema,
   ModelRegistrySchema,
   type Attempt,
+  type Discarded,
   type FailureKind,
   type GenerationRecord,
   type Judgment,
@@ -53,12 +55,14 @@ const RETRY_LATENCY_MS = 1_000;
 const BACKOFF_MS = 5_000;
 const T0 = Date.parse('2026-10-12T00:00:00.000Z');
 
+/** discarded를 주면 버린 결과물 기록이 있는 모델(ADR-032). 생략하면 키가 없다 (첫 생성 결과물을 그대로 공개한 모델) */
 export function fakeModel(
   slug: string,
   provider: Provider,
   releasedAt: string,
   displayName: string,
   pricing: Partial<ModelEntry['pricing']> = {},
+  discarded?: Discarded[],
 ): ModelEntry {
   return {
     slug,
@@ -73,7 +77,23 @@ export function fakeModel(
       sourceUrl: 'https://example.com/pricing',
       ...pricing,
     },
+    ...(discarded ? { discarded } : {}),
   };
+}
+
+/** 버린 결과물을 처음 커밋한 커밋 (가짜). 표시는 앞 7자 9876543 */
+export const FAKE_DISCARDED_COMMIT = '9876543210fedcba9876543210fedcba98765432';
+
+/** 버린 결과물 기록 하나. 기본: 화면에 나무가 그려지지 않아 다시 생성한 생성본, 커밋 있음 */
+export function fakeDiscarded(over: Partial<Discarded> = {}): Discarded {
+  return DiscardedSchema.parse({
+    made: 'generation',
+    reason: 'blank_screen',
+    next: 'regenerate',
+    at: '2026-10-13',
+    commit: FAKE_DISCARDED_COMMIT,
+    ...over,
+  } satisfies Discarded);
 }
 
 /** 기본 models.json. 등록 순서는 출시일 순서와 일부러 다르게 둔다 */
