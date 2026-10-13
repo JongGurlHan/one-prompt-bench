@@ -1,0 +1,7 @@
+{"type":"thread.started","thread_id":"00000000-0000-0000-0000-000000000000"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"reasoning","text":"**합성 fixture**\n\n파일로 쓰려다 막히면 본문으로 답한다."}}
+{"type":"item.started","item":{"id":"item_1","type":"command_execution","command":"bash -lc 'cat > index.html'","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_1","type":"command_execution","command":"bash -lc 'cat > index.html'","aggregated_output":"합성 fixture: 읽기 전용 샌드박스라 쓰지 못했다\n","exit_code":1,"status":"failed"}}
+{"type":"item.completed","item":{"id":"item_2","type":"agent_message","text":"합성 fixture: 파일을 쓸 수 없어 본문으로 답합니다.\n\n```html\n<!DOCTYPE html>\n<html lang=\"ko\">\n<head><meta charset=\"UTF-8\"><title>합성 fixture</title></head>\n<body><p>합성 fixture</p></body>\n</html>\n```"}}
+{"type":"turn.completed","usage":{"input_tokens":6100,"cached_input_tokens":4096,"cache_write_input_tokens":0,"output_tokens":10400,"reasoning_output_tokens":4300}}

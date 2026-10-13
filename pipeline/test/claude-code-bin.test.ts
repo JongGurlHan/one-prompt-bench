@@ -3,12 +3,8 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, test } from 'node:test';
-import {
-  parseClaudeVersion,
-  readClaudeVersion,
-  resolveClaudeBin,
-  type RunSync,
-} from '../src/adapters/claude-code/claude-code.bin.js';
+import { parseClaudeVersion, readClaudeVersion, resolveClaudeBin } from '../src/adapters/claude-code/claude-code.bin.js';
+import type { RunSync } from '../src/system/cli.js';
 import { PARENT_ENV } from './claude-code-fakes.js';
 
 /* ───────── claude 실행 파일 찾기·버전 읽기 (실제 claude를 띄우지 않는다: PATH는 임시 폴더, 실행은 가짜) ───────── */
