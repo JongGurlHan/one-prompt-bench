@@ -1,0 +1,298 @@
+---
+import SiteLayout from '../../layouts/SiteLayout.astro';
+import {
+  CONDITIONS_CARD,
+  JUDGE_SECTION,
+  PROMPT_COPY,
+  PROMPT_LABEL,
+  PROMPT_TAB,
+  conditionValues,
+  pageTitle,
+  type ConditionKey,
+} from '../../lib/copy.ts';
+import { loadPromptData } from '../../lib/data.ts';
+import { renderPromptBody } from '../../lib/prompt-body.ts';
+import { scriptJson } from '../../lib/results-view.ts';
+
+// 프롬프트 탭 (docs/UI_GUIDE.md "프롬프트 탭"). 원문·시스템 프롬프트·판정 기준표는 빌드 때 데이터 루트의 prompts/에서 읽는다.
+// 원문 카드 본문은 renderPromptBody로 그리고, 복사 버튼은 원문 그대로(#prompt-source)를 쓴다 (ADR-005: 보낸 프롬프트와 같은 글자)
+const { prompt, criteria } = await loadPromptData();
+const conditions = conditionValues(prompt.system);
+const CONDITION_KEYS = Object.keys(CONDITIONS_CARD.rows) as ConditionKey[];
+const MARKS = ['pass', 'partial', 'fail'] as const;
+---
+
+<SiteLayout title={pageTitle(PROMPT_TAB.title)} current="prompt">
+  <section class="intro">
+    <h1>{PROMPT_TAB.title}</h1>
+    <p>{PROMPT_TAB.description}</p>
+  </section>
+
+  <div class="columns">
+    <section class="card source" data-field="prompt-card">
+      <div class="source-head">
+        <span class="chip" data-field="prompt-id">{PROMPT_LABEL}</span>
+        <button type="button" class="small-button" data-action="copy" data-copied-label={PROMPT_COPY.copied}>{PROMPT_COPY.idle}</button>
+      </div>
+      <div class="prompt-body" data-field="prompt-body" set:html={renderPromptBody(prompt.user)} />
+      <script is:inline type="application/json" id="prompt-source" set:html={scriptJson(prompt.user)} />
+    </section>
+
+    <section class="card conditions" aria-labelledby="conditions-title">
+      <h2 id="conditions-title">{CONDITIONS_CARD.title}</h2>
+      <dl data-field="conditions">
+        {
+          CONDITION_KEYS.map((key) => (
+            <div class="condition">
+              <dt>{CONDITIONS_CARD.rows[key]}</dt>
+              <dd data-condition={key}>{conditions[key]}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </section>
+  </div>
+
+  <section class="judge" id="judge">
+    <h2 id="judge-title">{JUDGE_SECTION.title}</h2>
+    <p data-field="judge-description">{JUDGE_SECTION.description}</p>
+    <div class="table-wrap" role="region" tabindex="0" aria-labelledby="judge-title">
+      <table data-table="criteria" aria-labelledby="judge-title">
+        <thead>
+          <tr>{Object.values(JUDGE_SECTION.columns).map((name) => <th scope="col">{name}</th>)}</tr>
+        </thead>
+        <tbody>
+          {
+            criteria.rows.map((row) => (
+              <tr data-key={row.key}>
+                <th scope="row">{row.label}</th>
+                {MARKS.map((mark) => (
+                  <td data-mark={mark}>{row[mark]}</td>
+                ))}
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</SiteLayout>
+
+<script>
+  import { setupPromptCopy } from '../../scripts/prompt-copy.ts';
+
+  setupPromptCopy();
+</script>
+
+<style>
+  .intro {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+  }
+
+  .intro p {
+    margin: 0;
+    max-width: 720px;
+    color: var(--text-body);
+  }
+
+  /* ───────── 두 열: 왼쪽 원문, 오른쪽 생성 조건 (좁으면 위아래로 쌓인다) ───────── */
+
+  .columns {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 24px;
+  }
+
+  .card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+  }
+
+  /* 원문 카드: 머리 줄(칩 + 복사) + 본문 */
+  .source {
+    flex: 999 1 560px;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .source-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .chip {
+    padding: 4px 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-pill);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-strong);
+  }
+
+  .small-button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+    color: var(--accent);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    cursor: pointer;
+  }
+
+  .small-button:hover {
+    color: var(--accent-hover);
+    border-color: var(--accent);
+  }
+
+  /* 본문은 set:html로 넣으므로 :global로 안쪽 p·ul을 꾸민다 */
+  .prompt-body {
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    line-height: 1.75;
+    overflow-wrap: anywhere;
+  }
+
+  .prompt-body :global(p) {
+    margin: 0;
+  }
+
+  .prompt-body :global(ul) {
+    margin: 0;
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* 생성 조건: 라벨 / 값 행, --divider-soft 구분선 */
+  .conditions {
+    flex: 1 1 280px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .conditions h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  dl {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .condition {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--divider-soft);
+  }
+
+  .condition:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  dt {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  dd {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  /* ───────── 판정 기준 (비교표 탭의 표와 같은 방식, 좁으면 가로 스크롤) ───────── */
+
+  .judge {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .judge h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .judge p {
+    margin: 0;
+    max-width: 760px;
+    color: var(--text-body);
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+  }
+
+  table {
+    width: 100%;
+    min-width: 760px;
+    border-collapse: collapse;
+  }
+
+  th,
+  td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--divider);
+    font-size: 14px;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  /* 마지막 행 아래는 컨테이너 테두리가 맡는다 */
+  tbody tr:last-child > * {
+    border-bottom: 0;
+  }
+
+  thead th {
+    background: var(--surface-muted);
+    color: var(--text-body);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* 요구사항 이름 칸 */
+  tbody th {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+</style>

@@ -248,7 +248,7 @@ test('표 3 아래 범례 두 줄과 "판정 기준 보기" 링크(base 포함 /
 
 /* ───────── 헤더·결과 탭·결과물 ───────── */
 
-test('헤더 탭은 결과·비교표 2개이고, 현재 탭에만 aria-current="page"가 있다 (결과 탭에도 비교표 링크)', async () => {
+test('헤더 탭은 소개·결과·비교표·프롬프트 4개이고, 현재 탭에만 aria-current="page"가 있다 (결과 탭에도 비교표 링크)', async () => {
   const tabs = (html: string) =>
     elements(element(element(html, 'header').inner, 'nav').inner, 'a').map((a) => ({
       label: text(a.inner),
@@ -256,12 +256,16 @@ test('헤더 탭은 결과·비교표 2개이고, 현재 탭에만 aria-current=
       current: a.attrs.get('aria-current'),
     }));
   assert.deepEqual(tabs(full.html), [
+    { label: '소개', href: `${TEST_BASE}intro/`, current: undefined },
     { label: '결과', href: TEST_BASE, current: undefined },
     { label: '비교표', href: `${TEST_BASE}compare/`, current: 'page' },
+    { label: '프롬프트', href: `${TEST_BASE}prompt/`, current: undefined },
   ]);
   assert.deepEqual(tabs(await full.site.readText('index.html')), [
+    { label: '소개', href: `${TEST_BASE}intro/`, current: undefined },
     { label: '결과', href: TEST_BASE, current: 'page' },
     { label: '비교표', href: `${TEST_BASE}compare/`, current: undefined },
+    { label: '프롬프트', href: `${TEST_BASE}prompt/`, current: undefined },
   ]);
 });
 

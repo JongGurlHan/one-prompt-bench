@@ -298,7 +298,8 @@ function threeVersionOf(requests: readonly ExternalRequest[]): string {
 }
 
 const intFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
-const formatInt = (n: number) => intFormat.format(n);
+/** 천 단위 쉼표 정수: 토큰 수, 프롬프트 탭 "생성 조건"의 출력 상한 (65,536) */
+export const formatInt = (n: number) => intFormat.format(n);
 
 /** 1024 기준 소수 1자리 KB */
 const formatKb = (bytes: number) => `${(bytes / 1024).toFixed(1)} KB`;

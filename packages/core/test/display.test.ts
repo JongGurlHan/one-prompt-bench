@@ -7,6 +7,7 @@ import {
   STATUS_LEGEND,
   displayModel,
   fillCount,
+  formatInt,
   missingOutputReason,
   statusOf,
   type BadgeTone,
@@ -410,6 +411,13 @@ test('fillCount: {N}을 모델 수로 모두 치환', () => {
   assert.equal(fillCount('지금까지 {N}개 모델이 참여했고, {N}개 모두', 12), '지금까지 12개 모델이 참여했고, 12개 모두');
   assert.equal(fillCount('season-tree-v1', 3), 'season-tree-v1');
   assert.equal(fillCount('모델 {N}개', 0), '모델 0개');
+});
+
+test('formatInt: 천 단위 쉼표 정수 (토큰 수·프롬프트 탭 출력 상한)', () => {
+  assert.equal(formatInt(65_536), '65,536');
+  assert.equal(formatInt(1_234_567), '1,234,567');
+  assert.equal(formatInt(999), '999');
+  assert.equal(formatInt(0), '0');
 });
 
 test('결과물 iframe sandbox는 allow-scripts 하나뿐 (ADR-009)', () => {
