@@ -7,26 +7,58 @@
     {
       "step": 0,
       "name": "judge-cli",
-      "status": "pending",
-      "ac": ["npm run lint", "npm run typecheck", "npm test"]
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ],
+      "started_at": "2026-10-13T19:24:23+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "19177216-9bc5-4729-abbb-e259b29bc24f",
+      "cost_usd": 3.9857,
+      "num_turns": 59,
+      "summary": "npm run judge -- <slug> 구현: core judging.ts(parseJudgingCriteria·loadJudgingCriteria, prompt.ts의 readPromptFile 공유) + pipeline judging/(buildJudgment·runJudge·JudgeService, system/ask.ts의 Ask·createTerminalAsk, ASK 토큰, cli·main·루트 script 등록)와 테스트(core 12, pipeline judge 31·cli 8·ask 4·module 1)",
+      "handoff": "1) core: parseJudgingCriteria(markdown, source?)에 에러용 출처 인자를 더했고 judgingCriteriaPath(repoRoot,id,version)도 내보낸다. rows는 항상 REQUIREMENT_LABEL 순서, 열은 열 이름의 (`pass`)·(`partial`)·(`fail`)로 찾는다. intro는 표 위의 비어 있지 않은 줄 중 '#' 제목 줄을 뺀 것(레포 파일 기준 문단 2줄) — step 문서의 '비어 있지 않은 줄'에서 제목만 뺐다.\n2) prompt.ts의 readPromptFile을 export해서 기준표도 같은 규칙(UTF-8·BOM·CRLF 거부)으로 읽는다.\n3) pipeline: judging/judgment.ts(buildJudgment, toKstIsoString → 초 단위 '2026-10-13T19:24:23+09:00', parseMarkAnswer: pass·partial·fail 또는 p·a·f, noteProblem은 JudgmentSchema.shape.note로 검사), judging/judge.ts(runJudge, MARK_OPTION, JudgeOptions), JudgeService(REPO_ROOT·ASK·CONFIRM·CLOCK·OUTPUT). Ask = (질문) => Promise<string|null>, null = 취소.\n4) ARCHITECTURE '판정 도우미'와 다른 점(문서 반영 필요): 기존 판정 덮어쓰기 확인을 값 입력보다 먼저 한다(입력 다 하고 거절하는 낭비 방지). 판정 기준표 요약은 물을 것이 있을 때만 보인다. 검증 전(validation null) 결과물은 거절하지 않고 '스크린샷 없음 — npm run validate' 안내 후 받는다. 플래그 값은 pass·partial·fail만(p·a·f는 대화형만). judge 전용 플래그(--scene 등·--yes)를 다른 명령에 쓰면 사용법 오류.\n5) createTerminalAsk는 Confirm처럼 질문마다 readline을 열고 닫는다(터미널용). 여러 답을 stdin 파이프로 한꺼번에 넣는 방식은 지원하지 않는다 — 자동화는 플래그를 쓴다.\n6) 실행 예시: 대화형 `npm run judge -- claude-opus-5-5` / 플래그 `npm run judge -- claude-opus-5-5 --scene pass --cycle partial --look pass --label fail --note \"봄꽃과 단풍이 뚜렷하다\" [--yes]`.\n7) results/는 테스트·실행 모두 건드리지 않았다(실제 판정은 사람이 OPERATIONS '판정' 순서로).",
+      "completed_at": "2026-10-13T19:37:41+0900",
+      "attempts": 1
     },
     {
       "step": 1,
       "name": "compare-tab",
       "status": "pending",
-      "ac": ["npm run lint", "npm run typecheck", "npm test", "npm run build", "npm run check:results"]
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test",
+        "npm run build",
+        "npm run check:results"
+      ]
     },
     {
       "step": 2,
       "name": "prompt-intro-tabs",
       "status": "pending",
-      "ac": ["npm run lint", "npm run typecheck", "npm test", "npm run build", "npm run check:results"]
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test",
+        "npm run build",
+        "npm run check:results"
+      ]
     },
     {
       "step": 3,
       "name": "mobile-readme",
       "status": "pending",
-      "ac": ["npm run lint", "npm run typecheck", "npm test", "npm run build", "npm run check:results"]
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test",
+        "npm run build",
+        "npm run check:results"
+      ]
     }
-  ]
+  ],
+  "created_at": "2026-10-13T19:24:23+0900"
 }
