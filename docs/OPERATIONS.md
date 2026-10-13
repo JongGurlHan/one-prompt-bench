@@ -97,5 +97,4 @@ python scripts/execute.py <phase> --resume        # 중단된 step 이어받기
 - 다음 버전 검증 항목: 로딩 시간, 빈 화면 판정, FPS
 - 검증 중 멈추는 결과물(무한 루프): 스크린샷이 시간 초과돼 validation이 null로 남고 check:results가 배포를 막는다. 실제로 나오면 기록 방법(스키마 포함)을 정한다(ADR-026).
 - 같은 페이지 에러가 매 프레임 반복되면 `pageErrors`에 그대로 쌓인다(Gemini 3.8 Flash: 2105개, meta.json 110KB). 레포가 너무 커지면 저장 방식을 정한다. 지금은 그대로 둔다.
-- 도구가 프롬프트 밖에 덧붙이는 내용(Claude Code 약 600토큰 — ARCHITECTURE "Claude Code CLI", Codex는 ADR-027로 일부를 끈 뒤 smoke로 확인)을 사이트에 공개할지와 문구: 2026-10-13 사용자가 phase 5(비교표·소개 탭) 계획 때 정하기로 했다. 정하면 COPY·ADR에 적는다.
 - CLI 자식 환경에서 `ANTHROPIC_AUTH_TOKEN`·`ANTHROPIC_BASE_URL`(다른 과금 경로 변수)도 지울지: phase 3 확인 때(2026-10-13) 사용자가 "아직 지우지 않는다"로 미뤘다. 지금은 ADR-001의 두 API 키만 지운다. 이 PC 환경에는 두 변수가 없고, preflight가 `authMethod: claude.ai`·`apiProvider: firstParty`를 확인한다. 이 변수를 쓰게 되거나 preflight가 인증 방식으로 걸러 내지 못하는 경우가 나오면 다시 정한다(정하면 ADR-001과 `system/cli.ts`의 지우는 목록을 함께 고친다).

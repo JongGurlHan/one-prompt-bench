@@ -5,7 +5,7 @@
 
 ## 지금 하는 일
 
-aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. **phase 4(`04-codex-adapter`: Codex CLI 어댑터)까지 끝나 main에 merge됐다(`f0c0f59`).** 세 도구(Gemini·Claude Code·Codex) 어댑터로 **8개 모델 생성이 모두 끝나 커밋됐다**(2026-10-13, Codex CLI 0.162.1 업데이트·웹 검색 끔(ADR-028)·Claude Code 이어 쓰기 처리(ADR-029)를 거침). 다음은 push(배포)와 phase 5 계획이다. 설계는 전부 `docs/`에 있다(CLAUDE.md "문서" 절). 공개 사이트: https://jonggurlhan.github.io/one-prompt-bench/
+aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. **phase 4(`04-codex-adapter`: Codex CLI 어댑터)까지 끝나 main에 merge됐다(`f0c0f59`).** 세 도구(Gemini·Claude Code·Codex) 어댑터로 **8개 모델 생성이 모두 끝나 커밋됐다**(2026-10-13, Codex CLI 0.162.1 업데이트·웹 검색 끔(ADR-028)·Claude Code 이어 쓰기 처리(ADR-029)를 거침). push해 공개 사이트에 배포됐다. 다음은 phase 5 계획이다. 설계는 전부 `docs/`에 있다(CLAUDE.md "문서" 절). 공개 사이트: https://jonggurlhan.github.io/one-prompt-bench/
 
 ## 진행 상태
 
@@ -19,13 +19,13 @@ aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. 
 - [x] Codex smoke 3차(2026-10-13, 웹 검색 끈 뒤): 설정 거부 없음, 입력 6,962(캐시 0)·출력 21·추론 0, 13.5초. ARCHITECTURE·OPERATIONS에 기록(fixture는 모양이 같아 안 옮김)
 - [x] 일괄 생성(2026-10-13, 7개): check:results 통과. GPT 4개·Claude Haiku·Opus는 ok. **Claude Sonnet은 Claude Code가 출력 상한 뒤 스스로 이어 써서(출력 87,265) `no_html`로 잘못 기록됨** → 사용자 결정 ADR-029: 이어 쓰기는 잘림으로 기록하도록 어댑터 수정(테스트 먼저), Sonnet은 `--force` 1회 재생성. 6개는 `data:` 커밋
 - [x] Claude Sonnet 5.5 재생성(2026-10-13, `--force`, 고친 어댑터 `f0e6988`): ok, 입력 1,053·출력 65,060(추론 48,767)·456초, 검증 에러 0 → `data:` 커밋. 8개 결과가 모두 커밋됐다
-- [ ] push(첫 실제 데이터 배포)
-- [ ] phase 5 `05-…`(PRD "개발 순서" 5번: 판정 도우미, 비교표·프롬프트·소개 탭, 휴대폰 화면, README) → 8개 판정
+- [x] push(2026-10-13): 첫 run 38372457223은 `codex-bin` 테스트 하나가 리눅스에서만 실패(Windows 흉내 테스트가 소문자 `codex.cmd`를 만들어 대소문자 구분 FS에서 못 찾음) → 테스트 수정 `17bf737` → run 38372942894 성공(build 1분 10초, deploy 9초). 공개 사이트에 8개 모델이 보이고 `/view/<slug>/`가 열린다
+- [x] phase 5 계획(2026-10-13, `phases/05-judge-and-tabs`, step 4개: judge-cli · compare-tab · prompt-intro-tabs · mobile-readme). 결정 ADR-030(도구가 덧붙이는 내용은 비교표 각주 §로 공개, COPY·DATA 반영), † 표시는 값이 —여도 그대로
+- [ ] phase 5 실행 → 확인 → main `--no-ff` merge → 8개 판정(`npm run judge`)
 
 ## 다음 세션이 바로 할 일
 
-1. push(배포)를 사용자에게 묻는다. main은 origin/main보다 앞서 있고, push하면 배포 워크플로가 돈다(phase 4가 더한 `codex-bin` POSIX 테스트가 CI에서 처음 돈다).
-2. phase 5를 `/harness`로 계획한다(PRD "개발 순서" 5번). 미뤄 둔 결정: 도구가 덧붙이는 프롬프트 밖 내용(Claude Code 약 600토큰, Codex 약 6,900토큰)을 사이트에 공개할지(OPERATIONS "나중에 정할 것"). 판정 때 Gemini는 ✗(화면 검음, 에러 2105). Codex·Claude의 남은 ⚠는 ARCHITECTURE에 있다.
+1. `python scripts/execute.py 05-judge-and-tabs`로 phase 5를 실행한다(사람이 터미널에서). 끝나면 `feat-05-judge-and-tabs`를 확인하고 `--no-ff`로 merge한 뒤, handoff를 `docs/`에 옮기고 8개를 판정한다. 판정 때 Gemini는 ✗(화면 검음, 에러 2105). Codex·Claude의 남은 ⚠는 ARCHITECTURE에 있다.
 
 ## 사용자 결정·답변
 
@@ -33,7 +33,7 @@ aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. 
 
 ## 주의할 점
 
-- git: origin/main = `6f73b94`. main은 그보다 앞서 있다(phase 4·Codex smoke 수정·8개 생성 데이터, 2026-10-13 기준 20여 커밋). main에 push하면 배포 워크플로가 돈다 — phase 4가 더한 `codex-bin` POSIX 테스트가 CI에서 처음 돈다. 원격 `feat-02-validator-results-tab`은 `209e652`까지만 올라가 있다.
+- git: origin/main = `17bf737`(2026-10-13 push, 배포됨). main에 push하면 배포 워크플로가 돈다. Windows를 흉내 내는 테스트에서 파일을 만들 때는 대소문자까지 실제 이름대로 만든다(리눅스 CI는 구분한다). main에 push하면 배포 워크플로가 돈다 — phase 4가 더한 `codex-bin` POSIX 테스트가 CI에서 처음 돈다. 원격 `feat-02-validator-results-tab`은 `209e652`까지만 올라가 있다.
 - gh 계정: 이 PC의 `gh`에 JongGurlHan·LeoMetascale 두 계정이 있고, 사용자가 **활성 계정을 JongGurlHan으로 두라고 했다**(2026-10-13, LeoMetascale로 되돌리지 않는다). JongGurlHan 토큰에는 `workflow` 권한이 있다. LeoMetascale이 활성이면 push가 workflow 권한 없음으로 거부된다.
 - 이 PC 환경(2026-10-12 확인): Claude Code 2.1.296, codex-cli 0.162.1(2026-10-13 업데이트), Node 24.14, npm 11.9, Python 3.12, Windows + Git Bash. 환경변수에 ANTHROPIC/OPENAI/GEMINI 키 없음. `~/.codex/config.toml` 있음(생성 때 `--ignore-user-config`로 무시). `.env`에 GEMINI_API_KEY 있음(값은 읽지 않는다).
 - Claude Code 안에서 `!`로 실행한 명령은 `CLAUDECODE`·`CLAUDE_EFFORT`·`CLAUDE_CODE_SESSION_ID` 등을 물려받는다. `cliEnv`가 자식 CLI의 환경에서 지운다(Claude smoke에서 동작 확인).
