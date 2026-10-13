@@ -153,7 +153,14 @@ env: CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536
   - 한도 문구는 에러 결과(`is_error: true`)의 `result`와 stderr에서만 찾는다. 정상 결과의 `result`는 모델이 쓴 본문이라 같은 단어가 나올 수 있어서 보지 않는다.
   - message: 에러 결과의 `result` → stderr → exit code·출력 모양 설명 순서로, 500자까지. `retryAfterMs`는 항상 null이다. `usage`는 실패 출력에 입력+출력 > 0인 사용량이 있을 때만 담는다.
 - smoke 기록기: 생성 호출만 감싸서 `raw-stdout.txt`(stdout 그대로, fixture `stdout-*.json`으로 그대로 복사할 수 있다)·`raw-stderr.txt`(redact)·`raw-exit.json`(`{ exitCode, signal }`, redact)을 낸다. 실행 함수가 던졌으면(실행 파일 없음·abort·출력 상한 초과) `raw-exit.json`에 `error { name, message, code }`만 남는다. 버전 읽기·로그인 점검은 기록하지 않는다.
-- ⚠ smoke로 확인: 입력 토큰이 수백 개 수준인가(수천 개 이상이면 기본 지시문·메모리가 섞인 것). `modelUsage`에 모델이 하나만 있는가. 출력 상한 도달(`stop_reason: max_tokens`인지, 에러로 끝나는지)·거부(`refusal`)가 어떻게 나오는가 — 지금은 `is_error: false` + `stop_reason`으로 가정했고, 모르는 값은 stopReason `other`로 둔다. API 키 로그인일 때 `authMethod` 값. stdout이 정말 JSON 하나뿐인가. 시스템 프롬프트 끝 줄바꿈이 Windows 인자로 그대로 가는가. 529·401 출력의 `api_error` 값과 `result` 문구(합성 fixture는 지어낸 것이다 — 에러는 smoke로 일부러 만들 수 없으니 실제로 만나면 옮긴다).
+- smoke로 확인한 것(2026-10-13, claude-haiku-5-5, Claude Code 2.1.296, 원본은 fixture `stdout-smoke-ok.json`):
+  - 사람이 Claude Code 안에서 `! npm run smoke`로 실행해도 중첩 세션 거부 없이 돈다(`cliEnv`가 세션 변수를 지운 환경). preflight 통과(`authMethod: claude.ai`, `subscriptionType: pro`).
+  - exit code 0, stderr 비어 있음, stdout은 JSON 객체 한 줄 + 끝 줄바꿈이다. `stop_reason: "end_turn"`, `terminal_reason: "completed"`. 걸린 시간 3.3초(CLI `duration_ms` 1,171).
+  - `modelUsage` 키는 요청한 모델(`claude-haiku-5-5`) 하나이고 `canonicalModel`도 같다 → resolvedModelId = 요청 모델 ID.
+  - 입력 655토큰 = `input_tokens` 2 + `cache_creation_input_tokens` 653(1시간 캐시) + `cache_read_input_tokens` 0. 입력 전부가 캐시 생성분으로 온다 — 비용은 ADR-008대로 전부 입력 정가로 계산한다. 같은 smoke 프롬프트(system·user 모두 2026-10-12 이후 그대로)가 Gemini에서는 35토큰이었으므로, 토크나이저 차이를 감안해도 Claude Code가 프롬프트 밖의 내용을 대략 600토큰 더 보낸다. 무엇인지는 출력으로 알 수 없다. 기본 지시문(수천 토큰 이상)은 `--system-prompt`로 교체된 것으로 본다(토큰 수로 미루어 본 추정).
+  - `output_tokens_details.thinking_tokens`는 0이다(필드는 있다 → reasoningTokens 0). "Hello" 요청이라 추론하지 않은 것인지 `--effort high`가 적용되지 않은 것인지는 출력으로 구분할 수 없다(출력에 effort 필드가 없다).
+  - 위 목록에 없던 필드: `uuid`, `ttft_stream_ms`, `time_to_request_ms`, `first_content_frame_ms`, `fast_mode_state`(`"off"`), `permission_denials`, `subagent_stats`, `safety_stops`(0), `queued_turn_count`, `result_index`. 어댑터는 쓰지 않는다.
+- ⚠ 아직 실제 출력으로 확인하지 못한 것(합성 fixture 그대로): 출력 상한 도달(`stop_reason: max_tokens`인지, 에러로 끝나는지)·거부(`refusal`인지, `safety_stops`와 관계있는지)가 어떻게 나오는가 — 지금은 `is_error: false` + `stop_reason`으로 가정했고, 모르는 값은 stopReason `other`로 둔다. `--effort high`가 적용되는가 — 첫 실제 생성의 reasoningTokens로 본다. API 키 로그인일 때 `authMethod` 값. 529·401 출력의 `api_error` 값과 `result` 문구(에러는 smoke로 일부러 만들 수 없으니 실제로 만나면 옮긴다). 시스템 프롬프트 끝 줄바꿈이 Windows 인자로 그대로 가는지는 출력으로 확인할 수 없다.
 
 **Codex CLI** (0.157.1에서 플래그 확인)
 ```
@@ -196,7 +203,7 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 - 기록: `loaded`(iframe load 이벤트, 30초 제한), `consoleErrors`(console error), `pageErrors`(처리되지 않은 예외), `externalRequests`(로컬 서버가 아닌 http(s) 요청의 url·resourceType, 요청 순서대로. data:·blob:은 넣지 않는다). iframe 안의 이벤트까지 잡히는지 테스트로 확인한다.
 - 스크린샷: iframe load를 0초로 5·15·25·35초에 iframe 영역만 찍는다(spring/summer/autumn/winter). Playwright의 JPEG(`type: 'jpeg'`, quality 80)로 `results/<slug>/<label>.jpg`에 바로 저장한다. 변환 라이브러리는 쓰지 않는다. 기록하는 `atMs`는 계획한 시점(5000·15000·…)이다.
 - load가 30초 안에 오지 않으면 `loaded: false`로 기록하고, 그 시점을 0초로 스크린샷 4장은 그대로 찍는다(방문자가 보는 화면을 남긴다).
-- headless Chromium WebGL: launch 인자 `CHROMIUM_ARGS` = `--enable-unsafe-swiftshader --use-angle=swiftshader`. Playwright 1.64는 `--enable-unsafe-swiftshader`를 macOS에서만 기본으로 넣어서 명시한다. Windows(playwright 1.64.0, headless shell 156.0.8078.4)에서 WebGL 픽스처로 webgl2 · ANGLE(Vulkan SwiftShader)를 확인했다(2026-10-12). ⚠ 리눅스(CI)는 아직 확인하지 않았다 — phase 3 배포 워크플로의 `npm test`가 처음 확인한다.
+- headless Chromium WebGL: launch 인자 `CHROMIUM_ARGS` = `--enable-unsafe-swiftshader --use-angle=swiftshader`. Playwright 1.64는 `--enable-unsafe-swiftshader`를 macOS에서만 기본으로 넣어서 명시한다. Windows(playwright 1.64.0, headless shell 156.0.8078.4)에서 WebGL 픽스처로 webgl2 · ANGLE(Vulkan SwiftShader)를 확인했다(2026-10-12). 리눅스 CI(GitHub Actions `ubuntu-latest`, chromium 156.0.8078.4)에서도 같은 값(webgl2 · ANGLE Vulkan 1.3.0 SwiftShader)을 확인했다(2026-10-13 첫 배포).
 - load 감지: 검증용 페이지의 iframe `onload` 속성이 window 플래그를 세우고, `waitForFunction`(제한 30초)으로 기다린다. `page.goto`는 `domcontentloaded`까지만 기다린다(top의 load는 iframe load를 기다리기 때문). 서버는 `/`(검증용 페이지)와 `/results/<slug>/index.html`만 내주고 나머지는 404다.
 - 검증 결과는 `meta.json`의 `validation`만 갱신한다. 다른 필드·judgment.json·결과물은 건드리지 않고, 저장 전에 스키마로 검사한다. 재검증하면 스크린샷을 덮어쓴다.
   - 스크린샷은 메모리에 받아 두고, 검증이 끝까지 성공한 뒤에만 jpg와 meta.json을 쓴다(도중에 실패하면 파일이 바뀌지 않는다).
@@ -250,7 +257,8 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
   - 어디에도 `if`·`continue-on-error`가 없고, job에 `permissions`·`uses`가 없어야 한다.
   - 파일 전체 문자열(주석 포함)에 `gen`·`generate`·`smoke`·`validate`·`judge`·`claude`·`codex` 단어와 `API_KEY`·`ANTHROPIC`·`OPENAI`·`GEMINI`·`GITHUB_TOKEN`·`secrets.`가 없어야 한다. 주석에 이 단어를 써도 실패한다.
   - step id는 configure-pages가 `pages`, deploy-pages가 `deployment`다(출력을 참조한다).
-- CI(리눅스)에서 처음 도는 것: 검증기 WebGL 픽스처 테스트(⚠ 위 "검증기"), CLI 실행 모듈의 POSIX 분기(프로세스 그룹 SIGKILL, `findOnPath` 실행 권한), `claude-code-bin`의 POSIX 실행 파일 테스트(Windows에서는 건너뜀). 실패하면 배포되지 않으므로 첫 배포 때 Actions 로그를 확인한다.
+- CI(리눅스)에서만 도는 테스트: 검증기 WebGL 픽스처(위 "검증기"), CLI 실행 모듈의 POSIX 분기(프로세스 그룹 SIGKILL, `findOnPath` 실행 권한), `claude-code-bin`의 POSIX 실행 파일 테스트(Windows에서는 건너뜀). 2026-10-13 첫 배포(run 38334877323)에서 모두 통과했다(테스트 86·275·53개, 실패·건너뜀 0). build 1분 34초, deploy 26초.
+- `ubuntu-latest`는 2026-10-19부터 Ubuntu 26으로 바뀐다(Actions 안내). 그 뒤 첫 배포가 실패하면 `playwright install --with-deps`의 Ubuntu 26 지원부터 본다.
 - CI는 실제 모델을 부르지 않는다 (gen·smoke는 워크플로에 없다).
 - 한도 참고: Pages 사이트 1GB, 대역폭 월 100GB(권장), 배포 10분. 공개 레포의 Actions는 무료.
 

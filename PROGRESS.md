@@ -1,11 +1,11 @@
 # 작업 인계 (PROGRESS)
 
-> 새 대화형 세션은 이 파일부터 읽는다. 마지막 갱신: 2026-10-13 (phase 3 확인·merge 세션)
+> 새 대화형 세션은 이 파일부터 읽는다. 마지막 갱신: 2026-10-13 (phase 3 확인·merge·첫 배포·Claude smoke 세션)
 > 무인 step 세션(execute.py)은 이 파일을 읽을 필요 없다 — 필요한 맥락은 step 파일과 하네스가 준다.
 
 ## 지금 하는 일
 
-aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. **phase 3(`03-deploy-claude-adapter`: 배포 워크플로 + Claude Code 어댑터)까지 끝나 main에 merge됐다(`680ff0e`).** 이제 PRD "개발 순서" 3번의 사람 작업(Pages 설정·첫 배포·Claude smoke)을 하고 phase 4를 계획한다. 설계는 전부 `docs/`에 있다(CLAUDE.md "문서" 절).
+aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. **phase 3(`03-deploy-claude-adapter`: 배포 워크플로 + Claude Code 어댑터)까지 끝나 main에 merge되고 첫 배포까지 됐다(https://jonggurlhan.github.io/one-prompt-bench/).** Claude smoke도 끝났다(fixture·⚠ 반영). 다음은 phase 4(Codex CLI 어댑터) 계획이다. 설계는 전부 `docs/`에 있다(CLAUDE.md "문서" 절).
 
 ## 진행 상태
 
@@ -14,18 +14,16 @@ aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. 
 - [x] phase 2 `02-validator-results-tab` 완료·main merge(`d35d3f2`)
 - [x] 사람 작업: Gemini 3.8 Flash 생성(2026-10-13) → `data:` 커밋(`eac58e0`)
 - [x] phase 3 실행(step 0~2 모두 첫 시도에 완료, 정가 환산 $11.92·175턴, 세션 한도로 한 번 blocked 뒤 재개) → 확인(이 PC에서 lint·typecheck·test·build·check:results 통과) → main `--no-ff` merge(`680ff0e`)
-- [x] phase 3 handoff → docs 반영(2026-10-13): ARCHITECTURE "도구별 호출 사양"(CLI 실행 모듈·Claude Code CLI 절)·"배포"·"버전 참고", OPERATIONS "smoke로 확인할 것"·"배포"·"나중에 정할 것". **이 docs 변경은 아직 커밋하지 않았다.**
-- [ ] 사람 작업: Pages 설정 → push(첫 배포) → Claude smoke → fixture·⚠ 확정
+- [x] phase 3 handoff → docs 반영·커밋(`60ade99`)
+- [x] 첫 배포(2026-10-13): Pages Source = GitHub Actions, main push → run 38334877323 성공(리눅스에서만 도는 테스트 포함 전부 통과). 결과를 ARCHITECTURE "검증기"·"배포", OPERATIONS "배포"에 적었다.
+- [x] Claude smoke(2026-10-13, claude-haiku-5-5): outcome ok → `raw-stdout.txt`를 fixture `stdout-smoke-ok.json`으로(테스트 추가), ARCHITECTURE "Claude Code CLI"에 "smoke로 확인한 것"과 남은 ⚠ 정리. 첫 배포 결과와 함께 한 번에 커밋·push하기로 했다(사용자).
 - [ ] phase 4(Codex CLI 어댑터, slug는 계획 때 정한다) 계획·실행, phase 5
 
 ## 다음 세션이 바로 할 일
 
-1. `git status`에 `docs/ARCHITECTURE.md`·`docs/OPERATIONS.md` 변경이 남아 있으면 사용자에게 확인받고 `docs:` 커밋한다(phase 4 실행 전에 작업 트리가 깨끗해야 한다).
-2. 사람 작업 안내(실제 모델 호출은 사용자가 `! <명령>`으로):
-   - GitHub 레포 Settings → Pages → Source를 "GitHub Actions"로 바꾼다(2026-10-13 기준 미설정, 레포는 이미 공개).
-   - `git push origin main` → Actions 로그를 확인한다. 리눅스에서 처음 도는 테스트가 있다(ARCHITECTURE "배포"의 마지막 항목). 실패하면 배포만 안 되고, 고친 뒤 다시 push한다. push 전에 미리 보고 싶으면 이 PC의 WSL Ubuntu에서 레포를 따로 받아 `npm ci && npx playwright install --with-deps chromium && npm test`로 돌려 볼 수 있다(2026-10-13 확인: WSL Ubuntu·Docker Desktop 있음, WSL 안의 Node 버전은 미확인).
-   - `! npm run smoke -- claude-haiku-5-5` → `results-smoke/<slug>-<시각>/raw-stdout.txt`를 `pipeline/test/fixtures/claude-code/`로 옮기고(README 표에 "실제"로), ARCHITECTURE "Claude Code CLI"의 ⚠ 목록을 실제 출력으로 확정한다.
-3. 그다음 `/harness`로 phase 4(Codex CLI 어댑터) 계획. `system/cli.ts`(runCli·cliEnv·findOnPath·withTempDir)와 Claude Code 어댑터 구조를 그대로 본보기로 쓴다.
+1. `git status`가 깨끗한지 본다. 커밋 안 된 변경이 있으면 사용자에게 확인받고 커밋한다(phase 실행 전에 작업 트리가 깨끗해야 한다).
+2. `/harness`로 phase 4(Codex CLI 어댑터) 계획. `system/cli.ts`(runCli·cliEnv·findOnPath·withTempDir)와 Claude Code 어댑터 구조(`pipeline/src/adapters/claude-code/`, 레지스트리 주입점, smoke 기록기, fixture README의 실제/합성 구분)를 본보기로 쓴다. 사양은 ARCHITECTURE "Codex CLI"와 그 ⚠.
+3. Claude 모델 첫 실제 생성(phase 4 뒤 8개 일괄 생성 때)에서 reasoningTokens를 본다 — `--effort high`가 적용되는지의 유일한 단서다(ARCHITECTURE "Claude Code CLI" ⚠).
 
 ## 사용자 결정·답변
 
@@ -33,7 +31,9 @@ aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. 
 
 ## 주의할 점
 
-- git: main이 origin/main보다 33커밋 앞서 있다(push 안 함). 첫 배포 때 올린다. 원격 `feat-02-validator-results-tab`은 `209e652`까지만 올라가 있다.
+- 미정(2026-10-13 사용자에게 물음): Claude Code가 프롬프트 밖의 내용을 약 600토큰 더 보낸다(smoke 입력 655 vs Gemini 35, ARCHITECTURE "Claude Code CLI" smoke로 확인한 것). 사이트 각주 등으로 공개할지는 아직 정하지 않았다. 정하면 COPY·ADR에 적는다.
+- git: origin/main = `60ade99`(2026-10-13 push). main에 push하면 배포 워크플로가 돈다. 원격 `feat-02-validator-results-tab`은 `209e652`까지만 올라가 있다.
+- gh 계정: 이 PC의 `gh`에 JongGurlHan·LeoMetascale 두 계정이 있고, 사용자가 **활성 계정을 JongGurlHan으로 두라고 했다**(2026-10-13, LeoMetascale로 되돌리지 않는다). 2026-10-13에 JongGurlHan 토큰에 `workflow` 권한을 더했다. 그때 활성 계정이 LeoMetascale인 상태에서는 push가 여전히 workflow 권한 없음으로 거부됐고, JongGurlHan을 활성으로 두자 통과했다(비활성 계정 쪽에는 갱신 전 토큰이 남아 있던 것으로 보인다).
 - 이 PC 환경(2026-10-12 확인): Claude Code 2.1.296, codex-cli 0.157.1, Node 24.14, npm 11.9, Python 3.12, Windows + Git Bash. 환경변수에 ANTHROPIC/OPENAI/GEMINI 키 없음. `~/.codex/config.toml` 있음(생성 때 `--ignore-user-config`로 무시). `.env`에 GEMINI_API_KEY 있음(값은 읽지 않는다).
 - Claude Code 안에서 `!`로 실행한 명령은 `CLAUDECODE`·`CLAUDE_EFFORT`·`CLAUDE_CODE_SESSION_ID` 등을 물려받는다. `cliEnv`가 자식 `claude -p`의 환경에서 지운다(phase 3 구현). 첫 Claude smoke에서 중첩 세션 거부 같은 문제가 나오면 이 부분을 먼저 본다.
 - Claude smoke·생성과 Claude Code 개발이 같은 Pro 한도를 쓴다. phase 3도 step 2 도중 세션 한도에 걸렸다. smoke는 한도가 남아 있을 때 한다.
