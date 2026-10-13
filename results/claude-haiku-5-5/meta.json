@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "modelSlug": "claude-haiku-5-5",
+  "modelId": "claude-haiku-5-5",
+  "prompt": {
+    "id": "season-tree",
+    "version": "v1",
+    "sha256": "c0e9226157ca8dc2bb79972a98e8f60e125205fd37455cea727542447443abe6"
+  },
+  "params": {
+    "reasoningEffort": "high",
+    "maxOutputTokens": 65536
+  },
+  "runtime": {
+    "gitCommit": "3c7c7894f9e9958f36cd9e65bbfbfb794f17dcd9",
+    "nodeVersion": "v24.14.0",
+    "generator": {
+      "tool": "claude-code",
+      "version": "2.1.296",
+      "invocation": "CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude -p --model claude-haiku-5-5 --effort high --tools \"\" --system-prompt \"<system prompt>\" --safe-mode --strict-mcp-config --no-session-persistence --output-format json (stdin: <user prompt>)"
+    }
+  },
+  "startedAt": "2026-10-13T07:34:05.645Z",
+  "finishedAt": "2026-10-13T07:37:03.060Z",
+  "attempts": [
+    {
+      "n": 1,
+      "startedAt": "2026-10-13T07:34:05.645Z",
+      "latencyMs": 177406,
+      "firstTokenMs": null,
+      "result": {
+        "type": "response",
+        "stopReason": "end",
+        "rawStopReason": "end_turn",
+        "resolvedModelId": "claude-haiku-5-5",
+        "requestId": null,
+        "usage": {
+          "inputTokens": 1052,
+          "outputTokens": 41757,
+          "reasoningTokens": 33917
+        }
+      }
+    }
+  ],
+  "outcome": "ok",
+  "responseTextPath": "results/claude-haiku-5-5/response.txt",
+  "output": {
+    "path": "results/claude-haiku-5-5/index.html",
+    "bytes": 13757,
+    "sha256": "07afbb6fa04323ce2a0e2acf26bb917f286b554e4486e193b0532b69e139111a",
+    "extraction": "fenced_block"
+  },
+  "usageTotal": {
+    "inputTokens": 1052,
+    "outputTokens": 41757,
+    "reasoningTokens": 33917
+  },
+  "cost": {
+    "inputUsd": 0.000105,
+    "outputUsd": 0.020879,
+    "totalUsd": 0.020984,
+    "pricingAsOf": "2026-10-10"
+  },
+  "validation": {
+    "checkedAt": "2026-10-13T07:37:39.860Z",
+    "environment": {
+      "browser": "chromium",
+      "browserVersion": "156.0.8078.4"
+    },
+    "loaded": true,
+    "consoleErrors": [],
+    "pageErrors": [
+      "Cannot read properties of undefined (reading 'skyC')",
+      "Cannot read properties of undefined (reading 'skyC')"
+    ],
+    "externalRequests": [
+      {
+        "url": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "resourceType": "script"
+      }
+    ],
+    "screenshots": [
+      {
+        "label": "spring",
+        "atMs": 5000,
+        "path": "results/claude-haiku-5-5/spring.jpg"
+      },
+      {
+        "label": "summer",
+        "atMs": 15000,
+        "path": "results/claude-haiku-5-5/summer.jpg"
+      },
+      {
+        "label": "autumn",
+        "atMs": 25000,
+        "path": "results/claude-haiku-5-5/autumn.jpg"
+      },
+      {
+        "label": "winter",
+        "atMs": 35000,
+        "path": "results/claude-haiku-5-5/winter.jpg"
+      }
+    ]
+  }
+}

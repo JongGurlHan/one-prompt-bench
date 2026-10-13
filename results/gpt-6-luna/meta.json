@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "modelSlug": "gpt-6-luna",
+  "modelId": "gpt-6-luna",
+  "prompt": {
+    "id": "season-tree",
+    "version": "v1",
+    "sha256": "c0e9226157ca8dc2bb79972a98e8f60e125205fd37455cea727542447443abe6"
+  },
+  "params": {
+    "reasoningEffort": "high",
+    "maxOutputTokens": null
+  },
+  "runtime": {
+    "gitCommit": "3c7c7894f9e9958f36cd9e65bbfbfb794f17dcd9",
+    "nodeVersion": "v24.14.0",
+    "generator": {
+      "tool": "codex-cli",
+      "version": "0.162.1",
+      "invocation": "codex exec --model gpt-6-luna --sandbox read-only --skip-git-repo-check --ephemeral --ignore-user-config --ignore-rules --json -o <tmp>/last-message.txt -C <tmp>/work -c model_reasoning_effort=\"high\" -c model_instructions_file=\"<tmp>/instructions.md\" -c include_environment_context=false -c include_apps_instructions=false -c include_collaboration_mode_instructions=false -c skills.include_instructions=false -c web_search=\"disabled\" - (stdin: <user prompt>)"
+    }
+  },
+  "startedAt": "2026-10-13T08:05:54.815Z",
+  "finishedAt": "2026-10-13T08:07:44.513Z",
+  "attempts": [
+    {
+      "n": 1,
+      "startedAt": "2026-10-13T08:05:54.815Z",
+      "latencyMs": 109694,
+      "firstTokenMs": null,
+      "result": {
+        "type": "response",
+        "stopReason": "other",
+        "rawStopReason": "turn.completed",
+        "resolvedModelId": null,
+        "requestId": null,
+        "usage": {
+          "inputTokens": 7197,
+          "outputTokens": 5646,
+          "reasoningTokens": 1988
+        }
+      }
+    }
+  ],
+  "outcome": "ok",
+  "responseTextPath": "results/gpt-6-luna/response.txt",
+  "output": {
+    "path": "results/gpt-6-luna/index.html",
+    "bytes": 11315,
+    "sha256": "e0bbbb6cee817ff86ef8f7858d5711c0a9d1561d39e07ff42737834d4979d5d3",
+    "extraction": "fenced_block"
+  },
+  "usageTotal": {
+    "inputTokens": 7197,
+    "outputTokens": 5646,
+    "reasoningTokens": 1988
+  },
+  "cost": {
+    "inputUsd": 0.00072,
+    "outputUsd": 0.002823,
+    "totalUsd": 0.003543,
+    "pricingAsOf": "2026-10-10"
+  },
+  "validation": {
+    "checkedAt": "2026-10-13T08:08:26.619Z",
+    "environment": {
+      "browser": "chromium",
+      "browserVersion": "156.0.8078.4"
+    },
+    "loaded": true,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "externalRequests": [
+      {
+        "url": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js",
+        "resourceType": "script"
+      }
+    ],
+    "screenshots": [
+      {
+        "label": "spring",
+        "atMs": 5000,
+        "path": "results/gpt-6-luna/spring.jpg"
+      },
+      {
+        "label": "summer",
+        "atMs": 15000,
+        "path": "results/gpt-6-luna/summer.jpg"
+      },
+      {
+        "label": "autumn",
+        "atMs": 25000,
+        "path": "results/gpt-6-luna/autumn.jpg"
+      },
+      {
+        "label": "winter",
+        "atMs": 35000,
+        "path": "results/gpt-6-luna/winter.jpg"
+      }
+    ]
+  }
+}

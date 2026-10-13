@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "modelSlug": "claude-opus-5-5",
+  "modelId": "claude-opus-5-5",
+  "prompt": {
+    "id": "season-tree",
+    "version": "v1",
+    "sha256": "c0e9226157ca8dc2bb79972a98e8f60e125205fd37455cea727542447443abe6"
+  },
+  "params": {
+    "reasoningEffort": "high",
+    "maxOutputTokens": 65536
+  },
+  "runtime": {
+    "gitCommit": "3c7c7894f9e9958f36cd9e65bbfbfb794f17dcd9",
+    "nodeVersion": "v24.14.0",
+    "generator": {
+      "tool": "claude-code",
+      "version": "2.1.296",
+      "invocation": "CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude -p --model claude-opus-5-5 --effort high --tools \"\" --system-prompt \"<system prompt>\" --safe-mode --strict-mcp-config --no-session-persistence --output-format json (stdin: <user prompt>)"
+    }
+  },
+  "startedAt": "2026-10-13T07:55:32.442Z",
+  "finishedAt": "2026-10-13T08:05:11.052Z",
+  "attempts": [
+    {
+      "n": 1,
+      "startedAt": "2026-10-13T07:55:32.442Z",
+      "latencyMs": 578604,
+      "firstTokenMs": null,
+      "result": {
+        "type": "response",
+        "stopReason": "end",
+        "rawStopReason": "end_turn",
+        "resolvedModelId": "claude-opus-5-5",
+        "requestId": null,
+        "usage": {
+          "inputTokens": 2100,
+          "outputTokens": 46549,
+          "reasoningTokens": 31054
+        }
+      }
+    }
+  ],
+  "outcome": "ok",
+  "responseTextPath": "results/claude-opus-5-5/response.txt",
+  "output": {
+    "path": "results/claude-opus-5-5/index.html",
+    "bytes": 27105,
+    "sha256": "1747a08ed447c155945358150190d29dabd372dcae59e0749cacc43f2bce1797",
+    "extraction": "fenced_block"
+  },
+  "usageTotal": {
+    "inputTokens": 2100,
+    "outputTokens": 46549,
+    "reasoningTokens": 31054
+  },
+  "cost": {
+    "inputUsd": 0.0084,
+    "outputUsd": 0.93098,
+    "totalUsd": 0.93938,
+    "pricingAsOf": "2026-10-10"
+  },
+  "validation": {
+    "checkedAt": "2026-10-13T08:05:54.603Z",
+    "environment": {
+      "browser": "chromium",
+      "browserVersion": "156.0.8078.4"
+    },
+    "loaded": true,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "externalRequests": [
+      {
+        "url": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "resourceType": "script"
+      },
+      {
+        "url": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js",
+        "resourceType": "script"
+      }
+    ],
+    "screenshots": [
+      {
+        "label": "spring",
+        "atMs": 5000,
+        "path": "results/claude-opus-5-5/spring.jpg"
+      },
+      {
+        "label": "summer",
+        "atMs": 15000,
+        "path": "results/claude-opus-5-5/summer.jpg"
+      },
+      {
+        "label": "autumn",
+        "atMs": 25000,
+        "path": "results/claude-opus-5-5/autumn.jpg"
+      },
+      {
+        "label": "winter",
+        "atMs": 35000,
+        "path": "results/claude-opus-5-5/winter.jpg"
+      }
+    ]
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "modelSlug": "gpt-6-1-sol",
+  "modelId": "gpt-6.1-sol",
+  "prompt": {
+    "id": "season-tree",
+    "version": "v1",
+    "sha256": "c0e9226157ca8dc2bb79972a98e8f60e125205fd37455cea727542447443abe6"
+  },
+  "params": {
+    "reasoningEffort": "high",
+    "maxOutputTokens": null
+  },
+  "runtime": {
+    "gitCommit": "3c7c7894f9e9958f36cd9e65bbfbfb794f17dcd9",
+    "nodeVersion": "v24.14.0",
+    "generator": {
+      "tool": "codex-cli",
+      "version": "0.162.1",
+      "invocation": "codex exec --model gpt-6.1-sol --sandbox read-only --skip-git-repo-check --ephemeral --ignore-user-config --ignore-rules --json -o <tmp>/last-message.txt -C <tmp>/work -c model_reasoning_effort=\"high\" -c model_instructions_file=\"<tmp>/instructions.md\" -c include_environment_context=false -c include_apps_instructions=false -c include_collaboration_mode_instructions=false -c skills.include_instructions=false -c web_search=\"disabled\" - (stdin: <user prompt>)"
+    }
+  },
+  "startedAt": "2026-10-13T07:37:40.123Z",
+  "finishedAt": "2026-10-13T07:44:36.337Z",
+  "attempts": [
+    {
+      "n": 1,
+      "startedAt": "2026-10-13T07:37:40.123Z",
+      "latencyMs": 416209,
+      "firstTokenMs": null,
+      "result": {
+        "type": "response",
+        "stopReason": "other",
+        "rawStopReason": "turn.completed",
+        "resolvedModelId": null,
+        "requestId": null,
+        "usage": {
+          "inputTokens": 7197,
+          "outputTokens": 8157,
+          "reasoningTokens": 2070
+        }
+      }
+    }
+  ],
+  "outcome": "ok",
+  "responseTextPath": "results/gpt-6-1-sol/response.txt",
+  "output": {
+    "path": "results/gpt-6-1-sol/index.html",
+    "bytes": 20585,
+    "sha256": "1b8035b258fd66de84bb988b5d31c84b991cf43fd898a1233b40883692d5cda5",
+    "extraction": "fenced_block"
+  },
+  "usageTotal": {
+    "inputTokens": 7197,
+    "outputTokens": 8157,
+    "reasoningTokens": 2070
+  },
+  "cost": {
+    "inputUsd": 0.014394,
+    "outputUsd": 0.08157,
+    "totalUsd": 0.095964,
+    "pricingAsOf": "2026-10-10"
+  },
+  "validation": {
+    "checkedAt": "2026-10-13T07:45:14.400Z",
+    "environment": {
+      "browser": "chromium",
+      "browserVersion": "156.0.8078.4"
+    },
+    "loaded": true,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "externalRequests": [
+      {
+        "url": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "resourceType": "script"
+      }
+    ],
+    "screenshots": [
+      {
+        "label": "spring",
+        "atMs": 5000,
+        "path": "results/gpt-6-1-sol/spring.jpg"
+      },
+      {
+        "label": "summer",
+        "atMs": 15000,
+        "path": "results/gpt-6-1-sol/summer.jpg"
+      },
+      {
+        "label": "autumn",
+        "atMs": 25000,
+        "path": "results/gpt-6-1-sol/autumn.jpg"
+      },
+      {
+        "label": "winter",
+        "atMs": 35000,
+        "path": "results/gpt-6-1-sol/winter.jpg"
+      }
+    ]
+  }
+}
