@@ -22,6 +22,10 @@
       "dir": "04-codex-adapter",
       "status": "completed",
       "completed_at": "2026-10-13T12:00:11+0900"
+    },
+    {
+      "dir": "05-judge-and-tabs",
+      "status": "pending"
     }
   ]
 }
