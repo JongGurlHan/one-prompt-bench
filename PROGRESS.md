@@ -1,27 +1,29 @@
 # 작업 인계 (PROGRESS)
 
-> 새 대화형 세션은 이 파일부터 읽는다. 마지막 갱신: 2026-10-13 (phase 5 merge 세션)
+> 새 대화형 세션은 이 파일부터 읽는다. 마지막 갱신: 2026-10-13 (빈 화면 재생성 결정 세션)
 > 무인 step 세션(execute.py)은 이 파일을 읽을 필요 없다 — 필요한 맥락은 step 파일과 하네스가 준다.
 
 ## 지금 하는 일
 
-aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. **phase 5(`05-judge-and-tabs`: 판정 도우미, 비교표·프롬프트·소개 탭, 휴대폰 화면, README)가 끝나 main에 merge됐다(`2bcbdee`, 아직 push 전).** 8개 모델 생성·검증은 끝나 공개 사이트(https://jonggurlhan.github.io/one-prompt-bench/)에 올라가 있다. 남은 일은 8개 판정(사람) → push다. 설계는 전부 `docs/`에 있다(CLAUDE.md "문서" 절).
+aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. phase 5까지 main에 merge됐다(`2bcbdee`, **아직 push 전**). 판정 전 확인에서 GPT-6 Sol(배경만)·Gemini 3.8 Flash(검은 화면)가 화면을 그리지 못해, 사용자가 **ADR-031**(화면을 전혀 그리지 못하면 최대 2회 다시 생성하고, 다시 생성한 사실·이유를 결과 탭 안내 박스와 비교표 "생성 횟수" 열로 공개)을 정했다. 지금은 두 모델 재생성(사람) → phase 6(재생성 공개) → 8개 판정 → push 순서다. 설계는 전부 `docs/`에 있다(CLAUDE.md "문서" 절).
 
 ## 진행 상태
 
-- [x] phase 1~4 완료·main merge, 8개 모델(Gemini 1·Claude 3·GPT 4) 생성·검증 커밋, push·배포(2026-10-13, 마지막 run 38372942894)
-- [x] phase 5 계획(2026-10-13, ADR-030: 도구가 덧붙이는 내용은 비교표 각주 §로 공개) → 실행(step 4개 모두 첫 시도 완료, 정가 환산 $18.5·295턴. step 1은 첫 시도가 사용 한도로 중단돼 wip 커밋을 이어받음)
-- [x] phase 5 확인(이 PC): lint·typecheck·test(core 100 / pipeline 394+건너뜀 3 / site 108)·build·check:results(8개) 통과. 첫 `npm test`에서 복사 버튼 브라우저 테스트가 흔들려(느린 환경에서 가짜 시계가 실제 시간으로 흘러 2초 타이머가 먼저 끝남) 시계를 `pauseAt`으로 멈추고 쓰기 완료를 기다리게 고침(`bc8a709`)
-- [x] phase 5 handoff → `docs/ARCHITECTURE.md`(판정 도우미 실제 동작, 디렉토리 구조, 사이트 DOM 계약·복사 테스트 시계), `docs/UI_GUIDE.md`(§·각주 세 줄·생성 조건 6행·휴대폰 수치), `docs/OPERATIONS.md`(판정). 이 PROGRESS 갱신과 함께 `docs:` 커밋(브랜치 위)
-- [x] main에서 `git merge --no-ff feat-05-judge-and-tabs`(사용자, 2026-10-13, `2bcbdee`). 병합 뒤 `check:results` 통과, `results/` 변경 없음
-- [ ] 8개 모델 판정(`npm run judge -- <slug>`, 사용자) → 커밋 → push(배포)
-- [ ] 리눅스 CI 확인: phase 5가 더한 브라우저 테스트(복사·휴대폰 375px)가 CI에서 처음 돈다. push 뒤 Actions 결과를 본다
+- [x] phase 1~5 완료·main merge, 8개 모델 생성·검증 커밋(마지막 배포 run 38372942894, origin/main `17bf737`)
+- [x] 판정 전 확인(2026-10-13): 두 결과물이 모델 코드 버그로 화면을 못 그림(원인은 ADR-031 "이유"). 샌드박스·검증기 탓 아님
+- [x] ADR-031 결정과 문서 반영(2026-10-13): ADR(철학 2·ADR-004·ADR-029 보완), PRD(범위·개발 순서 6번 추가), DATA("스키마 변경 예정" — `models.json` `regenerations`, check:results 규칙, 표시 규칙), COPY(안내 박스·생성 횟수·각주 ¶·칩 "모델당 1회 생성(빈 화면은 다시)"·How·Caution·생성 조건 "횟수"), UI_GUIDE, OPERATIONS("화면이 전혀 나오지 않을 때")
+- [ ] 두 모델 재생성(사용자, OPERATIONS 절차): `npm run gen -- gpt-6-sol --force`, `npm run gen -- gemini-3-8-flash --force` → 개발 서버에서 화면 확인 → 안 나오면 한 번 더(최대 2회) → `results/` `data:` 커밋
+- [ ] phase 6 계획·실행(`06-…`, PRD 개발 순서 6번): `ModelEntrySchema.regenerations`·`MAX_REGENERATIONS`, check:results 규칙, `models.json` 기록 3개(아래 사실), display(생성 횟수·안내 줄), 결과 탭 안내 박스, 비교표 열·각주 ¶, 바뀐 COPY 문구 → merge
+- [ ] 8개 판정(`npm run judge -- <slug>`, 사용자) → 커밋 → push(배포) → 리눅스 CI(phase 5·6 브라우저 테스트가 처음 돈다) 확인
 
 ## 다음 세션이 바로 할 일
 
-1. origin/main은 `17bf737`이고 main은 phase 5 merge·문서 커밋만큼 앞서 있다. 판정 전에 push하면 판정 없는 상태로 배포되니, 판정 뒤에 push하도록 안내한다(판정 전 상태도 배포 게이트는 통과한다).
-2. 판정 전에 `npm run dev`로 각 모델을 50초 이상 지켜보게 안내한다(OPERATIONS "판정"). 판정 때 Gemini 3.8 Flash는 ✗ 예정(화면 검음, 에러 2105). 결과물이 있는 모델만 판정한다(8개 모두 ok). 판정 값은 사용자가 정한다 — 대신 정하지 마라.
-3. 판정 커밋·push 뒤 Actions run을 확인하고, 사이트에서 4개 탭·휴대폰 화면을 눈으로 본다. 이상이 없으면 MVP 성공 기준(PRD)을 점검한다: 8개 모두 기록 있음, 판정 끝, 공개 URL에서 탭 4개 동작.
+1. 사용자가 두 모델을 다시 생성했는지 `git log --oneline -5 -- results/`로 본다. 안 했으면 OPERATIONS "화면이 전혀 나오지 않을 때" 절차를 안내한다(실제 생성은 사람이 `! npm run gen -- <slug> --force`). 다시 생성한 결과물도 화면을 못 그리면 상한(2회)까지 한 번 더. 결과물 버그 확인은 `validation.pageErrors`와 개발 서버로(`results/`는 읽기만).
+2. 재생성이 끝나면 `/harness`로 phase 6을 계획한다. `models.json`에 넣을 기록(오래된 것부터):
+   - `gpt-6-sol`: `{ reason: "blank_screen", at: "<재생성 날짜>", previousCommit: "f0e698868f321729a36937aca7bca80966c706f9" }` (+ 2회째가 필요했으면 그 결과물을 커밋한 data 커밋 해시로 한 줄 더)
+   - `gemini-3-8-flash`: `{ reason: "blank_screen", at: "<재생성 날짜>", previousCommit: "eac58e07bb8d3d6ffdb1a4ba7ddc6eabd15d4ff0" }` (+ 같음)
+   - `claude-sonnet-5-5`: `{ reason: "continued_output", at: "2026-10-13", previousCommit: null }` (첫 기록은 커밋 전에 버림, ADR-029)
+3. push는 phase 6 merge와 8개 판정 뒤에 한다. 그 전에 push하면 다시 생성한 결과물이 아무 표시 없이 공개된다.
 
 ## 사용자 결정·답변
 
@@ -36,7 +38,7 @@ aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. 
 - Claude 모델 생성·smoke와 Claude Code 개발이 같은 Pro 한도를 쓴다. 한도에 걸리면 execute.py가 step을 `blocked`로 멈추거나(phase 5 step 1에서 한 번) 시도가 중단된다 — 같은 명령을 다시 실행하면 wip 커밋을 이어받는다.
 - `npm test`가 실제 Chromium을 띄운다(네트워크는 테스트가 전부 가로챈다). Chromium이 없으면 `npx playwright install chromium`. Windows Chromium은 클립보드에 쓸 때 LF를 CRLF로 바꾼다(복사 테스트가 OS 줄바꿈으로 비교).
 - check:results는 결과 폴더 안에 meta.json이 가리키지 않는 파일(judgment.json 제외)이나 하위 폴더가 있어도 실패한다. 생성·판정 뒤 `results/`에 다른 파일을 두지 않는다. judgment.json은 결과물 sha256에 묶여 있어서 `--force`로 다시 만들면 지워진다.
-- 모델이 만든 결과물은 그대로 둔다(ADR 철학 2). Gemini 3.8 Flash는 THREE.Color에 없는 `addScaledColor`를 매 프레임 불러 화면이 검다. 비교표·결과 탭의 "에러 수"로 드러난다(ADR-026).
+- 사람·세션이 결과물 코드를 고치는 일은 여전히 금지다(철학 2·CRITICAL). 화면을 못 그린 결과물은 ADR-031대로 **다시 생성**만 한다. 품질 문제(나무가 어색함 등)는 재생성 대상이 아니라 그대로 판정한다. GPT-6 Sol의 첫 결과물 버그는 타이밍에 달린 것처럼 보이지만 headless Chromium으로 12번 새로 열어 12번 모두 멈췄다.
 - 일괄 생성에서 무한 루프로 검증이 끝나지 않는 결과가 나오면 그때 처리 방법을 정한다(OPERATIONS "나중에 정할 것").
 - Mono 자리의 한글은 Plex Sans KR 글자로 그려지지만 단어 사이 공백은 Mono 고정폭이라 조금 넓다(UI_GUIDE대로 둠).
 - 훅은 Claude 세션의 Bash 명령만 검사한다. 사람이 `!`로 실행한 명령과 execute.py가 띄우는 `claude -p`는 막지 않는다(의도된 동작). `npm run validate`·`judge`는 results/를 바꾸므로 사람이 지시할 때만 쓴다.

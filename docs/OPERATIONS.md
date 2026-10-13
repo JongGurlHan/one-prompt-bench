@@ -63,6 +63,16 @@ npm run validate -- gpt-6-sol    # 한 모델
 
 결과물이 없는 모델(HTML 없음·잘림·거부·생성 실패·한도 초과)은 판정하지 않는다.
 
+### 화면이 전혀 나오지 않을 때 (ADR-031)
+
+1단계에서 결과물이 장면을 전혀 그리지 못하면(빈 화면·배경만) 판정하지 않고 다시 생성한다. 나무가 어색하거나 계절이 틀린 것처럼 품질 문제는 해당하지 않는다(그대로 판정).
+
+1. 원인을 기록해 둔다(Claude 세션에 맡겨도 된다): `meta.json`의 `validation.pageErrors`·`consoleErrors`, 결과물을 처음 커밋한 커밋 해시(`git log --format=%H -- results/<slug>/index.html`의 마지막 줄).
+2. `npm run gen -- <slug> --force` (main, 코드 변경 모두 커밋된 상태). 예전 판정도 지워진다.
+3. 개발 서버에서 다시 본다. 아직 화면이 안 나오면 1~2를 한 번 더 한다. 다시 생성은 **최대 2회**(첫 생성 포함 총 3회)이고, 그래도 안 나오면 마지막 결과를 그대로 판정한다(장면 ✗).
+4. `models.json`의 그 모델 항목 `regenerations`에 다시 생성할 때마다 `{ reason: "blank_screen", at: "<YYYY-MM-DD>", previousCommit: "<버린 결과물의 커밋 전체 해시>" }`를 오래된 것부터 더한다(phase 6에서 스키마가 생긴 뒤). `results/`와 함께 `data:` 커밋한다. 두 번째 재생성 전에는 이 커밋이 있어야 한다(preflight가 models.json 변경을 막는다).
+5. 사이트에 결과 탭 안내 박스와 비교표 "생성 횟수" 열로 공개된다(COPY "다시 생성한 결과물").
+
 ## 배포 (배포 워크플로가 생긴 phase 뒤에 최초 설정)
 
 1. GitHub에 **공개** 레포를 만들고 push한다(무료 플랜의 Pages는 공개 레포만). `JongGurlHan/one-prompt-bench`는 이미 공개 레포다(2026-10-13 확인, git 기록에 실제 키 없음).

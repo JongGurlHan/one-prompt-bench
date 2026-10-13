@@ -20,7 +20,7 @@
 
 ### 1. 생성 파이프라인 (운영자 PC에서 실행)
 1. `models.json`의 모델마다 프롬프트를 1회 보내 결과를 `results/<slug>/`에 저장한다. 도구: Anthropic → Claude Code CLI, OpenAI → Codex CLI, Google → Gemini API.
-2. 기술적 실패만 재시도하고, 응답이 온 경우(HTML 없음·거부·잘림)는 그대로 그 모델의 결과로 기록한다.
+2. 기술적 실패만 재시도하고, 응답이 온 경우(HTML 없음·거부·잘림)는 그대로 그 모델의 결과로 기록한다. 예외: 결과물이 화면을 전혀 그리지 못하면 운영자가 최대 2회 다시 생성하고, 다시 생성한 사실과 이유를 사이트에 공개한다(ADR-031).
 3. 생성 직후 Playwright 검증기가 자동으로 실행돼 열림·에러·외부 요청·스크린샷 4장을 기록한다. 전체 재검증도 할 수 있다.
 4. 운영자가 판정 도우미(`npm run judge`)로 요구사항 4개를 판정하고 한 줄 메모를 남긴다.
 
@@ -43,7 +43,7 @@ main에 push하면 GitHub Actions가 검사(lint·typecheck·test·results 검�
 - 모델별 고유 주소(딥링크), 정상 결과의 응답 원문 보기, 푸터 (인터뷰에서 제외)
 - 다국어, 다크 모드, 방문자 입력 기능, 분석 도구
 - 새 모델 자동 감지 (반영은 수동)
-- 한 모델의 여러 번 생성·평균 (모델마다 1회)
+- 한 모델의 여러 번 생성·평균 (모델마다 1회. 화면을 그리지 못한 결과물의 재생성(ADR-031)은 표본을 늘리는 것이 아니라 결과물을 바꾸는 것이라 이와 다르다)
 
 ## 성공 기준
 
@@ -63,6 +63,7 @@ main에 push하면 GitHub Actions가 검사(lint·typecheck·test·results 검�
 | 2 | Playwright 검증기(생성 직후 자동 실행 포함), check:results, Astro 결과 탭 | Gemini 1개 생성(자동 검증 포함), 결과 탭 로컬 확인 |
 | 3 | GitHub Actions 배포 워크플로, Claude Code 어댑터 | 공개 레포 생성·Pages 설정·push(첫 배포), Claude smoke |
 | 4 | Codex CLI 어댑터 | Codex smoke, 8개 일괄 생성과 검증 |
-| 5 | 판정 도우미, 비교표·프롬프트·소개 탭, 휴대폰 화면, README | 8개 판정 |
+| 5 | 판정 도우미, 비교표·프롬프트·소개 탭, 휴대폰 화면, README | 빈 화면 확인 → 화면을 그리지 못한 2개(GPT-6 Sol·Gemini 3.8 Flash) 다시 생성(ADR-031) |
+| 6 | 재생성 공개: `models.json` 재생성 기록(스키마·check:results), 결과 탭 안내 박스, 비교표 "생성 횟수" 열·각주, 바뀐 문구 | 8개 판정, push |
 
 첫 실제 생성은 검증기가 생긴 2번 뒤에 한다(ADR-022). phase가 끝난 뒤의 절차(merge·사람이 할 일)는 `docs/OPERATIONS.md` "하네스로 개발하기".
