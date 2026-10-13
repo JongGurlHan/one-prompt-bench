@@ -13,3 +13,6 @@ export const responseTextSrc = (slug: string) => withBase(`r/${slug}/response.tx
 
 /** "새 창에서 열기"의 래퍼 페이지 */
 export const viewHref = (slug: string) => withBase(`view/${slug}/`);
+
+/** 프롬프트 탭의 "판정 기준" 섹션 (비교표의 "판정 기준 보기" 링크) */
+export const judgingCriteriaHref = () => withBase('prompt/#judge');

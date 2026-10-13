@@ -1,4 +1,4 @@
-import { CURRENT_PROMPT, fillCount } from '@opb/core';
+import { CURRENT_PROMPT, MARK_LABEL, REQUIREMENT_LABEL, VERDICT_LABEL, fillCount, type ModelDisplay } from '@opb/core';
 
 /* ────────────────────────────────────────────────────────────
  * 사이트 문구 (docs/COPY.md 그대로, 바꾸지 않는다)
@@ -64,3 +64,72 @@ export const RESPONSE_CARD_TITLE = '응답 원문';
 
 /** 응답 원문을 불러오지 못했을 때 */
 export const RESPONSE_LOAD_FAILED = '응답 원문을 불러오지 못했어요.';
+
+/* ───────── 비교표 탭 ───────── */
+
+export const COMPARE_TAB = {
+  title: '비교표',
+  description: '모델마다 어떻게 만들어졌고, 얼마나 들었고, 프롬프트를 얼마나 지켰는지 나란히 봐요. 모델은 출시일 최신순이에요.',
+} as const;
+
+/** 표 1 "수록 모델"의 열 (이 순서로 보인다. 키는 칸의 data-col) */
+export const MODELS_TABLE = {
+  title: '수록 모델',
+  columns: {
+    displayName: '모델',
+    company: '회사',
+    releasedAt: '출시일',
+    generator: '생성 도구',
+    status: '결과',
+    fileSize: '파일 크기',
+    threeVersion: 'three.js 버전',
+  },
+} as const;
+
+/** 각주 기호 (core displayModel의 *TokensMark 값) */
+export type FootnoteMark = Exclude<
+  ModelDisplay['inputTokensMark'] | ModelDisplay['outputTokensMark'] | ModelDisplay['reasoningTokensMark'],
+  ''
+>;
+
+/** 표 2 "생성 기록": 표 위 안내 박스, 열, 표 아래 각주 († ‡ § 순서) */
+export const RECORD_TABLE = {
+  title: '생성 기록',
+  notice: '비용은 API 정가로 계산한 값이에요. 실제로는 구독과 무료 티어로 생성해서 청구된 금액은 없어요.',
+  columns: {
+    displayName: '모델',
+    inputTokens: '입력 토큰',
+    outputTokens: '출력 토큰',
+    reasoningTokens: '그중 추론',
+    cost: '비용 (정가 기준)',
+    duration: '걸린 시간',
+    retries: '재시도',
+  },
+  footnotes: [
+    { mark: '†', text: 'Codex CLI는 출력 상한을 지정할 수 없어 모델 기본값으로 생성했어요. 다른 모델의 출력 상한은 65,536 토큰이에요.' },
+    {
+      mark: '‡',
+      text: 'Gemini 3.8 Flash는 추론 강도가 low·medium·high 세 단계라 high가 최고 단계예요. 다른 모델은 high 위에 단계가 더 있어요.',
+    },
+    {
+      mark: '§',
+      text: 'Claude Code와 Codex CLI는 프롬프트 밖에 도구 정의 같은 내용을 덧붙여 보내요. 입력 토큰에 이 몫이 들어 있어요(Claude Code 약 600토큰, Codex CLI 약 7,000토큰).',
+    },
+  ] satisfies { mark: FootnoteMark; text: string }[],
+} as const;
+
+/**
+ * 표 3 "요구사항과 검증": 열, 표 아래 범례 두 줄과 링크.
+ * 요구사항 이름·판정 기호·조건 검사 라벨은 core display.ts의 것을 COPY 순서대로 잇는다.
+ */
+export const CHECKS_TABLE = {
+  title: '요구사항과 검증',
+  columns: {
+    displayName: '모델',
+    ...REQUIREMENT_LABEL,
+    requestCheck: '조건 검사',
+    errorCount: '에러 수',
+  },
+  legend: [`${Object.values(MARK_LABEL).join(' · ')} (사람이 판정)`, `조건 검사: ${Object.values(VERDICT_LABEL).join(' · ')}`],
+  criteriaLink: '판정 기준 보기',
+} as const;

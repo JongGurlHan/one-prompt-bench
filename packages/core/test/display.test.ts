@@ -382,6 +382,18 @@ test('출력 토큰 †는 생성 도구가 Codex CLI인 행, 그중 추론 ‡�
   assert.equal(show(openai, null).outputTokensMark, '†'); // 행 기준 (생성 전도)
 });
 
+test('입력 토큰 §는 생성 도구가 Claude Code 또는 Codex CLI인 행 (ADR-030), 값이 —여도 붙는다', () => {
+  assert.equal(show(anthropic, { outcome: 'ok' }).inputTokensMark, '§');
+  assert.equal(show(openai, { outcome: 'ok' }).inputTokensMark, '§');
+  assert.equal(show(google, { outcome: 'ok' }).inputTokensMark, '');
+  // 행 기준: 생성 전·api_failed(입력 토큰 —)도 기호는 그대로
+  for (const spec of [null, { outcome: 'api_failed', failure: 'timeout' }] as const) {
+    const [a, o, g] = [anthropic, openai, google].map((m) => show(m, spec));
+    assert.equal(a!.inputTokens, '—');
+    assert.deepEqual([a!.inputTokensMark, o!.inputTokensMark, g!.inputTokensMark], ['§', '§', ''], String(spec?.outcome));
+  }
+});
+
 /* ───────── 그 밖 ───────── */
 
 test('ModelDisplay는 JSON으로 그대로 옮길 수 있다 (사이트가 빌드 때 HTML에 넣는다)', () => {
