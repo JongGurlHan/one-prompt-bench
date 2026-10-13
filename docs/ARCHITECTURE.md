@@ -193,21 +193,27 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
   - 사용량 = **마지막** `turn.completed`의 `usage`. 턴별 값이 아니라 스레드 누적 합계라서 더하지 않는다. 값은 OpenAI Responses API usage를 그대로 옮긴 것이다(소스 `codex-api` `From<ResponseCompletedUsage>`).
   - inputTokens = `input_tokens`(이미 `cached_input_tokens`·`cache_write_input_tokens`를 포함한다 — 더하지 않는다). outputTokens = `output_tokens`(추론 포함), reasoningTokens = `reasoning_output_tokens`. 필드가 없거나 숫자가 아니면 Claude Code와 같이 0·null로 떨어뜨린다.
   - stopReason: 이벤트에 모델이 멈춘 이유가 없어 `other`, rawStopReason은 `turn.completed`. resolvedModelId·requestId·firstTokenMs는 null(이벤트에 없다).
-- 에러 분류: HTTP 상태 필드가 없고 `turn.failed`·`error` 이벤트의 message 문자열뿐이다(httpStatus는 메시지의 `unexpected status NNN`에서 읽고, 없으면 null). 위에서부터 처음 맞는 것:
+- 에러 분류: HTTP 상태 필드가 없고 `turn.failed`·`error` 이벤트의 message 문자열뿐이다. 상태 코드는 두 모양으로 문구에 들어 있다 — HTTP 응답 실패 `unexpected status NNN`과, 웹소켓 에러 프레임을 그대로 담은 JSON `{"type":"error","status":NNN,"error":{"type":…,"message":…}}`(실제 출력, 아래 "smoke로 확인한 것"). 아래 `상태 NNN`은 둘 다를 뜻하고, httpStatus도 이 둘에서 읽는다(없으면 null). 위에서부터 처음 맞는 것:
   - abort → `timeout`
-  - 한도: `You’ve hit your usage limit…`(굽은 따옴표), `Quota exceeded` 또는 공통 한도 문구(`USAGE_LIMIT_RE`) → `usage_limit`
+  - 한도: `You’ve hit your usage limit…`(굽은 따옴표), `Quota exceeded`, `usage_limit_reached` 또는 공통 한도 문구(`USAGE_LIMIT_RE`) → `usage_limit`
   - `Incomplete response returned`(출력 잘림·필터) → `unknown`(재시도하지 않는다, 아래 한계)
-  - `rate limit exceeded`·`unexpected status 429` → `rate_limited`
-  - `unexpected status 5xx`·`high demand`·`at capacity` → `server_error`
+  - `rate limit exceeded`·상태 429 → `rate_limited`
+  - 상태 5xx·`high demand`·`at capacity` → `server_error`
   - `stream disconnected`·`Connection failed` → `network`
-  - `unexpected status 401|403`·`Not logged in`·`upgrade to Plus` → `auth`
-  - `unexpected status 400` → `bad_request`
+  - 상태 401|403·`Not logged in`·`upgrade to Plus` → `auth`
+  - 상태 400 → `bad_request`
   - 실행 파일 없음·JSON이 아닌 줄·그 밖 → `unknown`
   - 분류와 message에는 대표 에러 문구 하나만 쓴다: `turn.failed`의 `error.message` → 마지막 `error` 이벤트의 `message` → stderr 순서로 처음 있는 것. 이벤트·stderr 전체를 훑지 않는다. 앞선 재연결 메시지(`stream disconnected`)가 뒤의 401을 `network`로 바꾸지 않게 하려는 것이다. 정상 본문(`agent_message`)은 보지 않는다.
   - message: 위 문구(없으면 exit code·출력 모양 설명), 500자까지. 한도 문구 `USAGE_LIMIT_RE`는 `claude-code.errors.ts`의 것을 가져다 쓴다. `retryAfterMs`·`usage`는 항상 null이다(실패 출력에 사용량이 없다).
 - smoke 기록기: Claude Code와 같은 공용 기록기(`adapters/cli-recorder.ts`)다. `raw-stdout.txt`(JSONL 그대로, fixture `stdout-*.jsonl`로 그대로 복사)·`raw-stderr.txt`·`raw-exit.json`.
 - 알려진 한계: Codex는 스트림 끊김을 스스로 재시도하고 끌 수 없다. 출력 잘림·필터(`response.incomplete`)도 스트림 에러로 바뀌어 재시도된 뒤 실패하고, 받은 원문은 남지 않는다 → `api_failed`. 출력 상한을 지정할 수 없어(모델 기본값) 실제로 잘릴 가능성은 낮다.
-- ⚠ smoke로 확인: 입력 토큰 규모(도구 정의·샌드박스 안내가 남는다 — 수천 개면 무엇이 남는지 본다). Hello 요청에도 `reasoning_output_tokens`가 나오는가(`model_reasoning_effort` 적용). `output_tokens`가 추론분을 포함하는가(소스상 포함). 모델이 명령 실행·파일 쓰기(item 종류)를 시도하는가. stderr에 무엇이 나오는가. 실제 한도·에러 문구. `codex login status`가 실제로 stderr 첫 줄에 결과를 쓰는가(앞에 경고 줄이 오면 지금은 preflight 실패로 멈춘다 — 안전한 쪽). 에러 이벤트가 없을 때는 stderr가 meta.json의 에러 message가 되므로, stderr에 사용자 폴더 경로가 찍히면 공개 기록에 남는다(Claude Code도 같은 방식) — smoke의 `raw-stderr.txt`로 본다.
+- smoke로 확인한 것(2026-10-13, gpt-6.1-sol, Codex 0.157.1, 원본은 fixture `stdout-model-not-supported.jsonl` — 실패한 smoke):
+  - 사람이 Claude Code 안에서 `! npm run smoke`로 실행해 preflight를 통과했다. `codex login status`의 결과는 stderr 첫 줄이 정확히 `Logged in using ChatGPT`였다(앞에 경고 줄 없음).
+  - 서버가 모델을 거부했다: exit 1, stderr 비어 있음, 걸린 시간 3.9초, 사용량 없음. `turn.failed`의 message는 웹소켓 에러 JSON `{"type":"error","status":400,"error":{"type":"invalid_request_error","message":"The 'gpt-6.1-sol' model is not supported when using Codex with a ChatGPT account."}}`이다. 0.157.1 소스의 모델 목록(`codex-rs/models-manager/models.json`)에서 GPT-6 모델은 모두 `prefer_websockets: true`라서, 에러가 `unexpected status NNN`이 아니라 이 JSON 모양으로 온다고 본다. 이 출력으로 위 에러 분류에 JSON 모양을 더했다(처음 구현은 `unknown`·httpStatus null로 기록했다).
+  - `thread.started` 바로 뒤, `turn.started` 앞에 `item.completed`(`item.type: "error"`)로 경고가 온다: ``Model metadata for `gpt-6.1-sol` not found. Defaulting to fallback metadata; this can degrade performance and cause issues.`` 어댑터는 item을 분류에 쓰지 않으므로 message는 `turn.failed` 쪽이다.
+  - 원인: 0.157.1(2026-09-26 배포)은 `gpt-6.1-sol`(2026-09-29 출시)보다 먼저 나와 모델 목록에 이 모델이 없다. 0.162.1(2026-10-09, 2026-10-13 기준 npm 최신)의 목록에는 있다(`available_in_plans`에 `plus`, `minimal_client_version` 0.153.0). 공개 이슈 openai/codex#49396에도 같은 400을 CLI·app-server 업데이트로 해결했다는 보고가 있다(관리자 답변은 없음). `gpt-6-astra`·`gpt-6-sol`·`gpt-6-luna`는 0.157.1 목록에도 있다.
+  - 0.157.1 → 0.162.1에서 이 어댑터가 쓰는 부분의 소스 비교(2026-10-13): `exec/src/cli.rs`는 `--cyber-access-program` 옵션 추가뿐, `exec/src/exec_events.rs`는 같다, `cli/src/login.rs`의 상태 문구는 같다(로그아웃 정리만 바뀜), `-c`로 넘기는 설정 키(`model_instructions_file`·`include_*`·`skills.include_instructions`·`model_reasoning_effort`)는 모두 있다.
+- ⚠ smoke로 확인: 입력 토큰 규모(도구 정의·샌드박스 안내가 남는다 — 수천 개면 무엇이 남는지 본다). Hello 요청에도 `reasoning_output_tokens`가 나오는가(`model_reasoning_effort` 적용). `output_tokens`가 추론분을 포함하는가(소스상 포함). 모델이 명령 실행·파일 쓰기(item 종류)를 시도하는가. 성공했을 때 stderr에 무엇이 나오는가(실패 smoke에서는 비어 있었다). 한도·429·5xx·401의 실제 문구(웹소켓 JSON의 `error.type` 값 포함). 에러 이벤트가 없을 때는 stderr가 meta.json의 에러 message가 되므로, stderr에 사용자 폴더 경로가 찍히면 공개 기록에 남는다(Claude Code도 같은 방식).
 
 **Gemini API** (`@google/genai` SDK, `.env`의 GEMINI_API_KEY)
 - `.env`는 `dotenv.parse`로 읽어 설정 객체로만 쓰고 `process.env`에는 넣지 않는다. Claude·Codex 자식 프로세스로 키가 넘어가지 않게 하려는 것이다.
