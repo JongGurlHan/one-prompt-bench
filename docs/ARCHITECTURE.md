@@ -33,7 +33,7 @@ npm workspaces 모노레포. 모든 TypeScript는 ESM(`"type": "module"`, NodeNe
 ├── pipeline/                   @opb/pipeline — NestJS 스탠드얼론 CLI
 │   ├── src/main.ts                 진입점 → cli.ts(parseArgs) → createApplicationContext. 토큰은 tokens.ts
 │   ├── src/config/                 레포 루트 + .env(dotenv.parse, process.env에 넣지 않음)
-│   ├── src/adapters/               도구별 어댑터(gemini/ · claude-code/ …) + registry.ts(도구 → 생성 함수·도구별 preflight·기록 래퍼)
+│   ├── src/adapters/               도구별 어댑터(gemini/ · claude-code/ · codex/) + registry.ts(도구 → 생성 함수·도구별 preflight·기록 래퍼) + cli-recorder.ts(CLI 공용 smoke 기록기)
 │   ├── src/generation/             batch(일괄 실행), preflight(추가 결제 차단 점검), smoke
 │   ├── src/system/                 git·터미널 확인(y/N)·CLI 실행(cli.ts) 같은 I/O
 │   ├── src/validation/             Playwright 검증기(validate-result.ts, `VALIDATOR` 토큰 = PlaywrightValidator)와 validate 명령
@@ -122,6 +122,7 @@ CLI 실행 모듈 (`system/cli.ts`, phase 3):
   - Windows의 libuv는 env에 없는 PATH·SYSTEMROOT·TEMP·USERPROFILE 등 시스템 변수 11개를 부모 환경에서 채운다(비밀값 아님). "준 env만 넘긴다"는 Windows에서 이 변수들을 뺀 기준이다.
 - `findOnPath(name)`: PATH(Windows는 PATHEXT까지)에서 찾고, 현재 디렉토리는 보지 않는다. Windows에서 돌려주는 경로의 확장자는 PATHEXT 표기 그대로다(`claude.CMD`처럼 대문자일 수 있다).
 - `withTempDir(prefix, fn)`: OS 임시 폴더에 mkdtemp로 만들고 끝나면 지운다(재시도 5회). 지우기 실패는 무시한다. 이미 받은 생성 결과를 잃지 않기 위해서다.
+- `runSync(bin, args, env)`(phase 4에 `claude-code.bin.ts`에서 옮김, `RunSync`·`SyncRunResult`): 레지스트리 `create()`가 동기라서 버전 읽기(`--version`)에만 쓰는 동기 실행이다. shell 없이, OS 임시 폴더에서, 준 env(`cliEnv`로 만든 것)만으로, 30초(`SYNC_TIMEOUT_MS`) 제한.
 - 알려진 한계: POSIX에서는 자식을 새 프로세스 그룹(detached)으로 띄워서 터미널 Ctrl+C(SIGINT)가 CLI에 가지 않는다. 파이프라인이 SIGINT를 받아 abort하지 않으면 CLI가 고아 프로세스로 남을 수 있다(개발 PC는 Windows라 같은 콘솔에서 함께 받는다). 정상 종료 뒤에도 트리 밖으로 빠져나간 손자 프로세스가 파이프를 쥐고 있으면 Runner 타임아웃(abort)까지 기다린다.
 
 **Claude Code CLI** (2.1.296에서 플래그 확인)
@@ -130,12 +131,12 @@ claude -p --model <modelId> --effort high --tools "" --system-prompt "<system.md
        --safe-mode --strict-mcp-config --no-session-persistence --output-format json
 env: CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536
 ```
-- 구현: `pipeline/src/adapters/claude-code/`(adapter·errors·bin·preflight·recorder). 레지스트리 항목은 `createClaudeCodeEntry(overrides?)`로 만들고, 테스트는 `runCli`·`resolveBin`·`readVersion`·`env`를 가짜로 바꾼다. 항목을 만들 때는 아무것도 실행하지 않는다. `create()`가 실행 파일 찾기 → 버전 읽기를 하고(실패하면 throw, 모델 호출 없음), `preflight()`가 로그인을 점검한다.
+- 구현: `pipeline/src/adapters/claude-code/`(adapter·errors·bin·preflight). smoke 기록기는 Codex와 함께 쓰는 `pipeline/src/adapters/cli-recorder.ts`(`createCliRecorder`)다. 레지스트리 항목은 `createClaudeCodeEntry(overrides?)`로 만들고, 테스트는 `runCli`·`resolveBin`·`readVersion`·`env`를 가짜로 바꾼다. 항목을 만들 때는 아무것도 실행하지 않는다. `create()`가 실행 파일 찾기 → 버전 읽기를 하고(실패하면 throw, 모델 호출 없음), `preflight()`가 로그인을 점검한다.
 - shell 없이 인자 배열로 spawn한다(한글 인자 인용 문제 방지). Windows에서는 npm shim(`claude.cmd`) 대신 실제 `claude.exe`(shim 옆 `node_modules/@anthropic-ai/claude-code/bin/claude.exe`)를 찾는다. 하네스 `scripts/execute.py`의 `resolve_claude_bin`과 같은 방식이다. 다만 shim 옆에 exe가 없으면 execute.py처럼 shim으로 대신하지 않고 에러로 멈춘다(shell 없이는 shim을 띄울 수 없다). `.cmd`·`.bat` 판별은 대소문자를 무시한다.
 - `--safe-mode`: CLAUDE.md·skills·hooks·MCP 등 사용자 설정을 끄고, 구독 인증은 유지한다.
 - **`--bare` 금지**: 인증이 ANTHROPIC_API_KEY로만 돼서 API 요금이 청구된다.
 - 자식 환경: 공통 규칙(API 키 변수 삭제)에 더해, Claude Code 세션이 자식에게 물려주는 변수를 지운다 — `CLAUDECODE`, `CLAUDE_CODE_`로 시작하는 변수(아래 예외 제외), `CLAUDE_EFFORT`, `CLAUDE_PID`, `AI_AGENT`. 사람이 Claude Code 안에서 `! npm run gen`을 실행하면 이 변수들이 넘어와, 중첩 세션으로 보고 실행을 거부하거나(`CLAUDECODE`) 추론 강도가 섞일 수 있다(`CLAUDE_EFFORT`, 2026-10-13 이 PC에서 변수 이름 확인). 사용자 설정 변수 `CLAUDE_CONFIG_DIR`·`CLAUDE_CODE_GIT_BASH_PATH`는 남기고, 어댑터가 `CLAUDE_CODE_MAX_OUTPUT_TOKENS`를 넣는다.
-- 버전: `claude --version` 출력 `2.1.296 (Claude Code)`의 앞 숫자. 레지스트리 `create()`가 동기라서 `spawnSync`로 읽는다(cwd는 OS 임시 폴더, 환경은 `cliEnv`, 30초 제한). 숫자를 못 읽으면 에러로 멈춘다. 지어낸 버전을 기록하지 않기 위해서다.
+- 버전: `claude --version` 출력 `2.1.296 (Claude Code)`의 앞 숫자. 레지스트리 `create()`가 동기라서 `system/cli.ts`의 `runSync`로 읽는다(cwd는 OS 임시 폴더, 환경은 `cliEnv`, 30초 제한). 숫자를 못 읽으면 에러로 멈춘다. 지어낸 버전을 기록하지 않기 위해서다.
 - 로그인 점검(preflight): `claude auth status --json`은 `{ loggedIn, authMethod, apiProvider, subscriptionType, email, orgId, orgName, … }`이다(2.1.296, 이 PC는 `authMethod: "claude.ai"`, `apiProvider: "firstParty"`, `subscriptionType: "pro"`). `loggedIn`이 true이고 `authMethod`가 `claude.ai`, `apiProvider`가 `firstParty`일 때만 통과한다.
   - 점검 이름 `Claude Code 로그인 (claude auth status)`, 30초 제한, OS 임시 폴더, `cliEnv` 환경. 로그아웃 상태는 exit code가 0이 아닐 수 있어서, 출력이 JSON이면 exit code와 관계없이 판정한다.
   - detail에는 authMethod·subscriptionType만 쓰고, 식별자 모양(`/^[\w.-]{1,40}$/`)이 아닌 값은 숨긴다. email·org·apiProvider 값은 쓰지 않는다. 출력이 JSON이 아니면 내용을 옮기지 않는다. 실행 실패도 throw하지 않고 실패 항목으로 돌려준다.
@@ -149,10 +150,10 @@ env: CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536
   - resolvedModelId: `modelUsage` 키가 하나면 그 키, 여럿이면 요청한 모델 ID와 같은 키 또는 `canonicalModel`이 같은 키, 고를 수 없으면 null.
   - stopReason: `end_turn` → end, `max_tokens` → max_tokens, `refusal` → refusal, 그 밖·없음 → other. rawStopReason은 원문 그대로.
 - `runtime.generator.invocation`: `CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude -p --model <id> --effort high --tools "" --system-prompt "<system prompt>" --safe-mode --strict-mcp-config --no-session-persistence --output-format json (stdin: <user prompt>)`. 실제 인자를 만드는 같은 함수로 만든다. 실행 파일 경로(사용자 폴더가 들어 있다) 대신 `claude`라고 적고, 출력 상한이 null이면 환경변수 부분이 빠진다.
-- 에러 분류: abort → `timeout`. `api_error`가 `usage_limit_reached`이거나 메시지가 사용 한도 문구("usage limit", "hit your session limit" 같은 "hit your … limit", "limit reached" — `rate limit`은 제외, execute.py `USAGE_LIMIT_RE`와 같은 기준)면 `usage_limit`. 그 밖에는 `api_error_status`로: 429 → `rate_limited`, 529·5xx → `server_error`, 401·403 → `auth`, 400 → `bad_request`. 실행 파일 없음·출력 상한 초과·JSON이 아닌 출력·그 밖 → `unknown`.
+- 에러 분류: abort → `timeout`. `api_error`가 `usage_limit_reached`이거나 메시지가 사용 한도 문구("usage limit", "hit your session limit" 같은 "hit your … limit", "limit reached" — `rate limit`은 제외, execute.py `USAGE_LIMIT_RE`와 같은 기준. 파이프라인 쪽 정의는 `claude-code.errors.ts`의 `USAGE_LIMIT_RE`이고 Codex도 가져다 쓴다)면 `usage_limit`. 그 밖에는 `api_error_status`로: 429 → `rate_limited`, 529·5xx → `server_error`, 401·403 → `auth`, 400 → `bad_request`. 실행 파일 없음·출력 상한 초과·JSON이 아닌 출력·그 밖 → `unknown`.
   - 한도 문구는 에러 결과(`is_error: true`)의 `result`와 stderr에서만 찾는다. 정상 결과의 `result`는 모델이 쓴 본문이라 같은 단어가 나올 수 있어서 보지 않는다.
   - message: 에러 결과의 `result` → stderr → exit code·출력 모양 설명 순서로, 500자까지. `retryAfterMs`는 항상 null이다. `usage`는 실패 출력에 입력+출력 > 0인 사용량이 있을 때만 담는다.
-- smoke 기록기: 생성 호출만 감싸서 `raw-stdout.txt`(stdout 그대로, fixture `stdout-*.json`으로 그대로 복사할 수 있다)·`raw-stderr.txt`(redact)·`raw-exit.json`(`{ exitCode, signal }`, redact)을 낸다. 실행 함수가 던졌으면(실행 파일 없음·abort·출력 상한 초과) `raw-exit.json`에 `error { name, message, code }`만 남는다. 버전 읽기·로그인 점검은 기록하지 않는다.
+- smoke 기록기(`adapters/cli-recorder.ts`, Codex와 공용): 생성 호출만 감싸서 `raw-stdout.txt`(stdout 그대로, fixture `stdout-*.json`으로 그대로 복사할 수 있다)·`raw-stderr.txt`(redact)·`raw-exit.json`(`{ exitCode, signal }`, redact)을 낸다. 실행 함수가 던졌으면(실행 파일 없음·abort·출력 상한 초과) `raw-exit.json`에 `error { name, message, code }`만 남는다. 버전 읽기·로그인 점검은 기록하지 않는다.
 - smoke로 확인한 것(2026-10-13, claude-haiku-5-5, Claude Code 2.1.296, 원본은 fixture `stdout-smoke-ok.json`):
   - 사람이 Claude Code 안에서 `! npm run smoke`로 실행해도 중첩 세션 거부 없이 돈다(`cliEnv`가 세션 변수를 지운 환경). preflight 통과(`authMethod: claude.ai`, `subscriptionType: pro`).
   - exit code 0, stderr 비어 있음, stdout은 JSON 객체 한 줄 + 끝 줄바꿈이다. `stop_reason: "end_turn"`, `terminal_reason: "completed"`. 걸린 시간 3.3초(CLI `duration_ms` 1,171).
@@ -171,6 +172,7 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
            -c include_environment_context=false -c include_apps_instructions=false
            -c include_collaboration_mode_instructions=false -c skills.include_instructions=false -
 ```
+- 구현: `pipeline/src/adapters/codex/`(adapter·errors·bin·preflight), smoke 기록기는 공용 `adapters/cli-recorder.ts`. 레지스트리 항목은 `createCodexEntry(overrides?)`로 만들고, 테스트는 `runCli`·`resolveCommand`·`readVersion`·`env`를 가짜로 바꾼다(가짜 실행 함수 `test/codex-fakes.ts`는 `-o` 경로에 마지막 메시지를 써서 Codex를 흉내 낸다). 항목을 만들 때는 아무것도 실행하지 않는다. `create()`가 실행 명령 찾기(`resolveCodexCommand` → `{ bin, prefixArgs }`) → 버전 읽기를 하고(실패하면 throw, 모델 호출 없음), `preflight()`가 로그인을 점검한다. `.env` 값은 쓰지 않는다.
 - Codex는 에이전트라 응답 대신 파일을 쓸 수 있다. read-only 샌드박스와 빈 디렉토리에서 실행해 답을 텍스트로 받는다. 마지막 `-`는 프롬프트를 stdin에서 읽으라는 뜻이다.
 - 실행 파일: PATH의 `codex`. Windows의 npm 전역 설치는 `codex.cmd` shim → `node <shim 폴더>/node_modules/@openai/codex/bin/codex.js` → 플랫폼 패키지(`@openai/codex-win32-x64`)의 `codex.exe` 순서로 실행된다. shell 없이 띄우려고 shim 옆의 `codex.js`를 지금 실행 중인 Node(`process.execPath`)로 실행한다. 공식 실행기가 넣는 `CODEX_MANAGED_*` 환경 변수와 신호 전달을 그대로 쓰기 위해서다. `codex.js`가 없으면 사람이 읽을 에러로 멈춘다. POSIX는 PATH의 `codex`(`codex.js`로 가는 링크, shebang)를 그대로 띄운다. invocation 기록에는 `codex`라고 적는다.
 - 버전: `codex --version` 출력 `codex-cli 0.157.1`의 숫자. 못 읽으면 에러로 멈춘다.
@@ -178,11 +180,14 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 - 시스템 프롬프트(ADR-005): `req.system`을 `instructions.md`에 UTF-8로 쓰고 `model_instructions_file`로 넘긴다. 0.157.1 소스에서 이 키가 기본 지시문을 교체함(요청의 `instructions` 필드)을 확인했다. Codex는 파일 내용의 앞뒤 공백을 지워서 보내므로 끝 줄바꿈이 빠진다(도구 차이로 둔다). 빈 파일이면 Codex가 에러로 멈춘다.
 - `-c` 값은 TOML로 읽힌다. 문자열은 큰따옴표로 감싸고, 경로는 슬래시(`/`)로 바꿔 넘긴다(Windows 역슬래시가 TOML 이스케이프로 읽히지 않게, 업스트림 테스트와 같은 방식). 불리언은 따옴표 없이 쓴다.
 - 덧붙는 블록(ADR-027): `--ignore-user-config`는 `$CODEX_HOME/config.toml`(사용자 기본 모델·추론 강도·personality·service_tier 등)만 무시하고 인증은 `CODEX_HOME`을 그대로 쓴다. 사용자 폴더의 스킬 목록·실행 환경 정보·앱·작업 방식 안내는 위 `include_*=false`·`skills.include_instructions=false`로 끈다. 읽기 전용 샌드박스 안내(`include_permissions_instructions`)와 도구 정의는 남는다.
-- 출력 상한을 지정할 수 없다 → `maxOutputTokens: null`, 사이트 † 각주.
+- 출력 상한을 지정할 수 없다 → `maxOutputTokens: null`, 사이트 † 각주. 요청의 `maxOutputTokens`가 null이 아니면 `generate`·`describeInvocation` 모두 던진다. 기록된 상한과 실제 호출이 어긋나지 않게, Runner가 모델을 부르기 전에 멈추려는 것이다(정상 경로는 `maxOutputTokensFor`가 null을 준다).
 - 자식 환경: 공통 `cliEnv`(API 키·Claude Code 세션 변수 삭제). `CODEX_HOME`은 남긴다(인증).
 - 로그인 점검(preflight): `codex login status`는 결과를 **stderr** 한 줄로 쓴다. `Logged in using ChatGPT`(exit 0)일 때만 통과한다(2026-10-13 이 PC 출력 확인). 그 밖의 문구(소스 기준): `Logged in using an API key - <가린 키>`(exit 0), `Not logged in`(exit 1), `Logged in using access token`·`personal access token`·`Amazon Bedrock …`(exit 0), `Error checking login status: …`(exit 1) — 모두 실패다. API 키 문구의 키 부분은 출력·기록하지 않는다.
+  - 판정 줄: stderr에서 빈 줄이 아닌 첫 줄(앞뒤 공백·CR 제거), stderr가 비어 있으면 stdout의 첫 줄. exit 0이고 그 줄이 정확히 `Logged in using ChatGPT`일 때만 통과한다. 뒤에 무엇이 붙거나 exit code가 0이 아니면 모르는 출력으로 본다.
+  - 점검 이름 `Codex 로그인 (codex login status)`, 실행은 `[...prefixArgs, 'login', 'status']`(stdin 빈 문자열, OS 임시 폴더, `cliEnv` 환경, 30초 제한). 실행 명령을 못 찾거나 실행이 실패해도 throw하지 않고 실패 항목으로 돌려준다.
+  - detail: API 키 문구면 요금이 청구될 수 있다고 알리고 `codex logout` 뒤 `codex login`을 안내한다(` - ` 뒤는 읽지도 않는다). `Not logged in`이면 로그인 안내. 그 밖의 `Logged in using …`은 인증 방식 이름만 보인다 — 알려진 이름(`personal access token`·`access token`·`Amazon Bedrock`)이거나 ` - ` 앞이 영문자·공백 40자 이하일 때만이고, 그 밖은 "표시하지 않는 방식"으로 적는다. 모르는 출력은 내용을 옮기지 않고 exit code와 일반 안내만 쓴다. fixture는 `login-status-*.txt`(합성).
 - 출력(`--json`): stdout에 이벤트 JSON이 한 줄에 하나씩(JSONL) 온다. `type`은 `thread.started`(`thread_id`), `turn.started`, `item.started`·`item.updated`·`item.completed`(`item`: `id` + `type` `agent_message`(`text`)·`reasoning`·`command_execution`·`file_change`·`mcp_tool_call`·`web_search`·`todo_list`·`error` 등), `turn.completed`(`usage`), `turn.failed`(`error.message`), `error`(`message`)다. exec는 턴 하나로 끝난다(`turn.completed`나 `turn.failed` 뒤 종료).
-- 성공: exit code 0 + `turn.completed` + `last-message.txt`가 있을 때뿐이다. `last-message.txt`는 턴이 완료됐을 때만 쓰인다.
+- 성공: exit code 0 + `turn.completed` + `last-message.txt`가 있을 때뿐이다. `last-message.txt`는 턴이 완료됐을 때만 쓰인다. stdout에 JSON 객체가 아닌 줄(`[1,2]` 같은 JSON 배열 포함, 빈 줄은 건너뜀)이 하나라도 있으면 실패다. `last-message.txt`는 임시 폴더가 지워지기 전에 읽는다.
 - 정규화(DATA "정규화 규칙"):
   - 본문 = `last-message.txt` 내용.
   - 사용량 = **마지막** `turn.completed`의 `usage`. 턴별 값이 아니라 스레드 누적 합계라서 더하지 않는다. 값은 OpenAI Responses API usage를 그대로 옮긴 것이다(소스 `codex-api` `From<ResponseCompletedUsage>`).
@@ -198,9 +203,11 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
   - `unexpected status 401|403`·`Not logged in`·`upgrade to Plus` → `auth`
   - `unexpected status 400` → `bad_request`
   - 실행 파일 없음·JSON이 아닌 줄·그 밖 → `unknown`
-- smoke 기록기: Claude Code와 같다. `raw-stdout.txt`(JSONL 그대로)·`raw-stderr.txt`·`raw-exit.json`.
+  - 분류와 message에는 대표 에러 문구 하나만 쓴다: `turn.failed`의 `error.message` → 마지막 `error` 이벤트의 `message` → stderr 순서로 처음 있는 것. 이벤트·stderr 전체를 훑지 않는다. 앞선 재연결 메시지(`stream disconnected`)가 뒤의 401을 `network`로 바꾸지 않게 하려는 것이다. 정상 본문(`agent_message`)은 보지 않는다.
+  - message: 위 문구(없으면 exit code·출력 모양 설명), 500자까지. 한도 문구 `USAGE_LIMIT_RE`는 `claude-code.errors.ts`의 것을 가져다 쓴다. `retryAfterMs`·`usage`는 항상 null이다(실패 출력에 사용량이 없다).
+- smoke 기록기: Claude Code와 같은 공용 기록기(`adapters/cli-recorder.ts`)다. `raw-stdout.txt`(JSONL 그대로, fixture `stdout-*.jsonl`로 그대로 복사)·`raw-stderr.txt`·`raw-exit.json`.
 - 알려진 한계: Codex는 스트림 끊김을 스스로 재시도하고 끌 수 없다. 출력 잘림·필터(`response.incomplete`)도 스트림 에러로 바뀌어 재시도된 뒤 실패하고, 받은 원문은 남지 않는다 → `api_failed`. 출력 상한을 지정할 수 없어(모델 기본값) 실제로 잘릴 가능성은 낮다.
-- ⚠ smoke로 확인: 입력 토큰 규모(도구 정의·샌드박스 안내가 남는다 — 수천 개면 무엇이 남는지 본다). Hello 요청에도 `reasoning_output_tokens`가 나오는가(`model_reasoning_effort` 적용). `output_tokens`가 추론분을 포함하는가(소스상 포함). 모델이 명령 실행·파일 쓰기(item 종류)를 시도하는가. stderr에 무엇이 나오는가. 실제 한도·에러 문구.
+- ⚠ smoke로 확인: 입력 토큰 규모(도구 정의·샌드박스 안내가 남는다 — 수천 개면 무엇이 남는지 본다). Hello 요청에도 `reasoning_output_tokens`가 나오는가(`model_reasoning_effort` 적용). `output_tokens`가 추론분을 포함하는가(소스상 포함). 모델이 명령 실행·파일 쓰기(item 종류)를 시도하는가. stderr에 무엇이 나오는가. 실제 한도·에러 문구. `codex login status`가 실제로 stderr 첫 줄에 결과를 쓰는가(앞에 경고 줄이 오면 지금은 preflight 실패로 멈춘다 — 안전한 쪽). 에러 이벤트가 없을 때는 stderr가 meta.json의 에러 message가 되므로, stderr에 사용자 폴더 경로가 찍히면 공개 기록에 남는다(Claude Code도 같은 방식) — smoke의 `raw-stderr.txt`로 본다.
 
 **Gemini API** (`@google/genai` SDK, `.env`의 GEMINI_API_KEY)
 - `.env`는 `dotenv.parse`로 읽어 설정 객체로만 쓰고 `process.env`에는 넣지 않는다. Claude·Codex 자식 프로세스로 키가 넘어가지 않게 하려는 것이다.
@@ -220,7 +227,7 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 **smoke** (`npm run smoke -- <slug>`): "Hello" HTML 한 장을 요청하는 짧은 프롬프트, 출력 상한 8,000. `results-smoke/<slug>-<timestamp>/`에 meta.json과 함께 **도구의 원본 stdout을 그대로 저장**한다. 사람이 확인한 뒤 어댑터 테스트 fixture로 복사하는 용도다(⚠ 항목을 실제 출력으로 확정).
 - 프롬프트는 `id: smoke`, `version: v1`이다. system은 실제 `season-tree-v1.system.md`(지시문 교체가 적용되는지 보려고), user는 짧은 Hello 요청이다.
 - 재시도 없이 1회 호출하고, 시도당 타임아웃은 5분이다. preflight는 git clean 검사만 빼고 똑같이 한다(HEAD는 읽으므로 커밋이 한 번은 있어야 한다). 폴더 시각은 실행 PC의 로컬 시각 `YYYYMMDD-HHmmss`다.
-- 원본 출력은 core 어댑터 인터페이스를 바꾸지 않고 저장한다. 레지스트리 항목의 `createRecorder`가 어댑터에 주입하는 프로세스 실행 함수·SDK 클라이언트를 기록용 래퍼로 감싸고, Runner가 끝난 뒤 `raw-*` 파일로 쓴다. Gemini는 `raw-stream.jsonl`(청크 한 줄씩)과 `raw-error.json`(`{status, body, …}`)이다. 두 파일은 fixture 형식(`stream-*.jsonl`, `error-*.json`)과 같아서 그대로 복사할 수 있다. Claude Code는 `raw-stdout.txt`·`raw-stderr.txt`·`raw-exit.json`이다(위 "Claude Code CLI"의 smoke 기록기). Codex(phase 4)도 같은 이름을 쓴다.
+- 원본 출력은 core 어댑터 인터페이스를 바꾸지 않고 저장한다. 레지스트리 항목의 `createRecorder`가 어댑터에 주입하는 프로세스 실행 함수·SDK 클라이언트를 기록용 래퍼로 감싸고, Runner가 끝난 뒤 `raw-*` 파일로 쓴다. Gemini는 `raw-stream.jsonl`(청크 한 줄씩)과 `raw-error.json`(`{status, body, …}`)이다. 두 파일은 fixture 형식(`stream-*.jsonl`, `error-*.json`)과 같아서 그대로 복사할 수 있다. Claude Code·Codex는 공용 기록기(`adapters/cli-recorder.ts`)로 `raw-stdout.txt`·`raw-stderr.txt`·`raw-exit.json`을 낸다(위 "Claude Code CLI"의 smoke 기록기).
 - 종료 코드: outcome이 `api_failed`이면 1이다(점검 명령이라서 — batch는 0). 끝에 사용량·rawStopReason·resolvedModelId를 출력하고, 입력 토큰이 2,000을 넘으면 경고한다.
 - 알려진 한계: 타임아웃이면 SDK의 abort 에러가 기록되기 전에 파일을 써서 `raw-error.json`이 빠질 수 있다(그때까지 받은 청크는 남는다). 같은 초에 다시 실행하면 폴더가 비어 있지 않아 모델을 부르기 전에 거부된다.
 
@@ -285,7 +292,7 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
   - 어디에도 `if`·`continue-on-error`가 없고, job에 `permissions`·`uses`가 없어야 한다.
   - 파일 전체 문자열(주석 포함)에 `gen`·`generate`·`smoke`·`validate`·`judge`·`claude`·`codex` 단어와 `API_KEY`·`ANTHROPIC`·`OPENAI`·`GEMINI`·`GITHUB_TOKEN`·`secrets.`가 없어야 한다. 주석에 이 단어를 써도 실패한다.
   - step id는 configure-pages가 `pages`, deploy-pages가 `deployment`다(출력을 참조한다).
-- CI(리눅스)에서만 도는 테스트: 검증기 WebGL 픽스처(위 "검증기"), CLI 실행 모듈의 POSIX 분기(프로세스 그룹 SIGKILL, `findOnPath` 실행 권한), `claude-code-bin`의 POSIX 실행 파일 테스트(Windows에서는 건너뜀). 2026-10-13 첫 배포(run 38334877323)에서 모두 통과했다(테스트 86·275·53개, 실패·건너뜀 0). build 1분 34초, deploy 26초.
+- CI(리눅스)에서만 도는 테스트: 검증기 WebGL 픽스처(위 "검증기"), CLI 실행 모듈의 POSIX 분기(프로세스 그룹 SIGKILL, `findOnPath` 실행 권한), `claude-code-bin`의 POSIX 실행 파일 테스트(Windows에서는 건너뜀). 2026-10-13 첫 배포(run 38334877323)에서 모두 통과했다(테스트 86·275·53개, 실패·건너뜀 0). build 1분 34초, deploy 26초. phase 4가 `codex-bin`의 POSIX 실행 명령 테스트를 더했다(다음 push에서 CI에서 처음 돈다. Windows에서는 pipeline 350개 중 이것까지 3개를 건너뛴다).
 - `ubuntu-latest`는 2026-10-19부터 Ubuntu 26으로 바뀐다(Actions 안내). 그 뒤 첫 배포가 실패하면 `playwright install --with-deps`의 Ubuntu 26 지원부터 본다.
 - CI는 실제 모델을 부르지 않는다 (gen·smoke는 워크플로에 없다).
 - 한도 참고: Pages 사이트 1GB, 대역폭 월 100GB(권장), 배포 10분. 공개 레포의 Actions는 무료.
