@@ -49,7 +49,7 @@ test('AppModule: BatchService의 모든 의존성이 @Inject(TOKEN)으로 들어
     assert.equal(batch.repoRoot, app.get<string>(REPO_ROOT));
     assert.equal(batch.repoRoot, defaultRepoRoot());
     assert.equal(batch.adapters, app.get<AdapterRegistry>(ADAPTERS));
-    assert.deepEqual([...registeredTools(batch.adapters)], ['gemini-api']);
+    assert.deepEqual([...registeredTools(batch.adapters)].sort(), ['claude-code', 'gemini-api']);
     assert.equal(batch.git, app.get<GitClient>(GIT));
     assert.equal(batch.confirm, app.get<Confirm>(CONFIRM));
     assert.equal(batch.validator, app.get<Validator>(VALIDATOR));

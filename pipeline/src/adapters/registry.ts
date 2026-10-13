@@ -1,6 +1,11 @@
 import type { GeneratorTool, ProviderAdapter } from '@opb/core';
 import { GEMINI_API_KEY, type AppConfig } from '../config/config.js';
 import type { PreflightCheck } from '../generation/preflight.js';
+import { runCli, type RunCli } from '../system/cli.js';
+import { ClaudeCodeAdapter } from './claude-code/claude-code.adapter.js';
+import { readClaudeVersion, resolveClaudeBin } from './claude-code/claude-code.bin.js';
+import { claudeAuthPreflight } from './claude-code/claude-code.preflight.js';
+import { createClaudeCodeRecorder } from './claude-code/claude-code.recorder.js';
 import { GeminiAdapter, type GeminiClient } from './gemini/gemini.adapter.js';
 import { createGeminiClient, readGeminiSdkVersion } from './gemini/gemini.client.js';
 import { createGeminiRecorder } from './gemini/gemini.recorder.js';
@@ -8,8 +13,8 @@ import type { RawRecorder, Redact } from './raw-recorder.js';
 
 /* ────────────────────────────────────────────────────────────
  * 생성 도구(GeneratorTool)별 어댑터 레지스트리 (ADAPTERS 토큰).
- * 레지스트리를 만들 때는 아무것도 만들지 않는다. 어댑터는 preflight를 통과한 뒤 실제로 필요할 때 create()로 만든다.
- * phase 1은 gemini-api만 등록. claude-code·codex-cli는 phase 3·4가 등록한다.
+ * 레지스트리를 만들 때는 아무것도 만들거나 실행하지 않는다. 어댑터는 preflight를 통과한 뒤 실제로 필요할 때 create()로 만든다.
+ * gemini-api(phase 1)·claude-code(phase 3) 등록. codex-cli는 phase 4가 등록한다.
  * ──────────────────────────────────────────────────────────── */
 
 export interface CreateAdapterOptions<Client> {
@@ -35,7 +40,7 @@ export interface AdapterEntry<Client = unknown> {
 /** 도구마다 주입하는 클라이언트 모양이 다르다 */
 export interface AdapterRegistry {
   readonly 'gemini-api'?: AdapterEntry<GeminiClient>;
-  readonly 'claude-code'?: AdapterEntry; // phase 3
+  readonly 'claude-code'?: AdapterEntry<RunCli>;
   readonly 'codex-cli'?: AdapterEntry; // phase 4
 }
 
@@ -57,6 +62,41 @@ const geminiEntry: AdapterEntry<GeminiClient> = {
   createRecorder: (redact) => createGeminiRecorder(redact),
 };
 
+/** claude-code 항목의 주입점. 테스트는 가짜로 바꾼다 (기본값은 실제 구현 — 실제 claude를 띄운다) */
+export interface ClaudeCodeEntryDeps {
+  /** 생성·로그인 점검 실행 함수 */
+  runCli: RunCli;
+  /** claude 실행 파일 경로 (PATH 탐색, Windows는 shim 옆 claude.exe). 못 찾으면 throw */
+  resolveBin(): string;
+  /** 동기. `<bin> --version`의 앞 숫자. 못 읽으면 throw */
+  readVersion(bin: string): string;
+  /** 자식 환경의 바탕 (cliEnv가 API 키·Claude Code 세션 변수를 지운다) */
+  env(): Readonly<Record<string, string | undefined>>;
+}
+
+/** 만들 때는 아무것도 실행하지 않는다. PATH 탐색·버전 읽기는 create(), 로그인 점검은 preflight()에서 */
+export function createClaudeCodeEntry(overrides: Partial<ClaudeCodeEntryDeps> = {}): AdapterEntry<RunCli> {
+  const env = overrides.env ?? (() => process.env);
+  const deps: ClaudeCodeEntryDeps = {
+    runCli,
+    resolveBin: () => resolveClaudeBin({ env: env() }),
+    readVersion: (bin) => readClaudeVersion(bin, env()),
+    ...overrides,
+    env,
+  };
+  return {
+    preflight: () => claudeAuthPreflight({ runCli: deps.runCli, resolveBin: () => deps.resolveBin(), env: deps.env() }),
+    // .env(config)는 쓰지 않는다 — 구독 로그인으로 실행하고, 자식 환경에 .env 값을 넣지 않는다
+    create(_config, options) {
+      const bin = deps.resolveBin();
+      const version = deps.readVersion(bin); // 여기서 실패하면 모델을 부르지 않는다
+      const run = options?.wrapClient ? options.wrapClient(deps.runCli) : deps.runCli;
+      return new ClaudeCodeAdapter(run, { bin, version, env: deps.env() });
+    },
+    createRecorder: (redact) => createClaudeCodeRecorder(redact),
+  };
+}
+
 export function createAdapterRegistry(): AdapterRegistry {
-  return { 'gemini-api': geminiEntry };
+  return { 'gemini-api': geminiEntry, 'claude-code': createClaudeCodeEntry() };
 }

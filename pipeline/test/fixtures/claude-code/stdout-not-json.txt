@@ -1,0 +1,1 @@
+unexpected output (합성 fixture: JSON이 아닌 stdout)

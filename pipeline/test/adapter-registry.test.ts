@@ -15,11 +15,12 @@ const req: GenerationRequest = {
   maxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
 };
 
-test('phase 1 레지스트리에는 gemini-api만 등록돼 있다', () => {
+test('레지스트리에는 gemini-api·claude-code가 등록돼 있다 (codex-cli는 phase 4)', () => {
   const registry = createAdapterRegistry();
-  assert.deepEqual([...registeredTools(registry)], ['gemini-api']);
-  assert.equal(registry['claude-code'], undefined);
+  assert.deepEqual([...registeredTools(registry)].sort(), ['claude-code', 'gemini-api']);
   assert.equal(registry['codex-cli'], undefined);
+  assert.equal(typeof registry['claude-code']?.preflight, 'function', 'claude auth status 점검');
+  assert.equal(typeof registry['claude-code']?.createRecorder, 'function', 'smoke 원본 출력 기록기');
 });
 
 test('레지스트리를 만들 때는 어댑터·클라이언트를 만들지 않는다 (키가 없어도 된다)', () => {
