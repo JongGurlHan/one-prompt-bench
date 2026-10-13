@@ -139,3 +139,84 @@ test('validate --help → 실행하지 않고 도움말', () => {
 test('USAGE에 validate 명령이 있다', () => {
   assert.match(USAGE, /validate <slug…> \| --all/);
 });
+
+/* ───────── judge ───────── */
+
+test('judge <slug> → slug 1개, 플래그 없으면 값은 비워 두고(대화형) yes는 false', () => {
+  assert.deepEqual(parseCommand(['judge', 'gpt-6-sol']), { kind: 'judge', slug: 'gpt-6-sol', yes: false });
+});
+
+test('judge 플래그: 요구사항 4개·메모·--yes를 받은 그대로 넘긴다 (값 검사는 명령이 한다)', () => {
+  assert.deepEqual(
+    parseCommand([
+      'judge',
+      '--scene',
+      'pass',
+      'gpt-6-sol',
+      '--cycle=partial',
+      '--look',
+      'fail',
+      '--label',
+      'nope',
+      '--note',
+      '봄에 꽃이 핀다',
+      '--yes',
+    ]),
+    {
+      kind: 'judge',
+      slug: 'gpt-6-sol',
+      scene: 'pass',
+      cycle: 'partial',
+      look: 'fail',
+      label: 'nope',
+      note: '봄에 꽃이 핀다',
+      yes: true,
+    },
+  );
+  // 빈 메모도 그대로 넘긴다 (명령이 거절한다)
+  assert.deepEqual(parseCommand(['judge', 'gpt-6-sol', '--note', '']), { kind: 'judge', slug: 'gpt-6-sol', note: '', yes: false });
+});
+
+test('judge에 slug가 0개·2개 이상이면 사용법 오류 (같은 slug 두 번도)', () => {
+  for (const argv of [['judge'], ['judge', 'a', 'b'], ['judge', 'a', 'a'], ['judge', '--scene', 'pass']]) {
+    const cmd = parseCommand(argv);
+    assert.equal(cmd.kind, 'usage_error', argv.join(' '));
+    assert.match(cmd.kind === 'usage_error' ? cmd.message : '', /judge/);
+  }
+});
+
+test('judge 플래그에 값이 없으면 사용법 오류', () => {
+  assert.equal(parseCommand(['judge', 'gpt-6-sol', '--scene']).kind, 'usage_error');
+  assert.equal(parseCommand(['judge', 'gpt-6-sol', '--note']).kind, 'usage_error');
+});
+
+test('judge에 --all·--force는 쓸 수 없다', () => {
+  for (const argv of [['judge', '--all'], ['judge', 'gpt-6-sol', '--force']]) {
+    const cmd = parseCommand(argv);
+    assert.equal(cmd.kind, 'usage_error', argv.join(' '));
+    assert.match(cmd.kind === 'usage_error' ? cmd.message : '', /judge/);
+  }
+});
+
+test('judge 전용 플래그는 다른 명령에서 쓸 수 없다', () => {
+  for (const argv of [
+    ['gen', 'gpt-6-sol', '--scene', 'pass'],
+    ['smoke', 'gpt-6-sol', '--note', 'x'],
+    ['validate', '--all', '--yes'],
+    ['validate', 'gpt-6-sol', '--label', 'fail'],
+  ]) {
+    const cmd = parseCommand(argv);
+    assert.equal(cmd.kind, 'usage_error', argv.join(' '));
+    assert.match(cmd.kind === 'usage_error' ? cmd.message : '', /judge/);
+  }
+});
+
+test('judge --help → 실행하지 않고 도움말', () => {
+  assert.deepEqual(parseCommand(['judge', 'gpt-6-sol', '--help']), { kind: 'help' });
+});
+
+test('USAGE에 judge 명령과 플래그·값이 있다', () => {
+  assert.match(USAGE, /judge <slug>/);
+  for (const flag of ['--scene', '--cycle', '--look', '--label', '--note', '--yes']) assert.ok(USAGE.includes(flag), flag);
+  assert.match(USAGE, /pass\|partial\|fail/);
+});

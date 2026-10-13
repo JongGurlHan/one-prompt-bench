@@ -9,10 +9,13 @@ import { defaultRepoRoot } from '../src/config/config.js';
 import { BatchService } from '../src/generation/batch.service.js';
 import { GenerationRunner } from '../src/generation/generation-runner.js';
 import { SmokeService } from '../src/generation/smoke.service.js';
+import { JudgeService } from '../src/judging/judge.service.js';
+import type { Ask } from '../src/system/ask.js';
 import type { Confirm } from '../src/system/confirm.js';
 import type { GitClient } from '../src/system/git.js';
 import {
   ADAPTERS,
+  ASK,
   CLOCK,
   CONFIRM,
   GIT,
@@ -86,6 +89,21 @@ test('AppModule: ValidateService가 VALIDATOR(PlaywrightValidator)·REPO_ROOT·O
     const validator = validate.validator as PlaywrightValidator;
     assert.equal(validator.repoRoot, app.get<string>(REPO_ROOT));
     assert.equal(validator.out, app.get<Output>(OUTPUT));
+  } finally {
+    await app.close();
+  }
+});
+
+test('AppModule: JudgeService가 REPO_ROOT·ASK·CONFIRM·CLOCK·OUTPUT을 @Inject(TOKEN)으로 받는다', async () => {
+  const app = await NestFactory.createApplicationContext(AppModule, { logger: false });
+  try {
+    const judge = app.get(JudgeService);
+    assert.equal(judge.repoRoot, app.get<string>(REPO_ROOT));
+    assert.equal(judge.ask, app.get<Ask>(ASK));
+    assert.equal(typeof judge.ask, 'function');
+    assert.equal(judge.confirm, app.get<Confirm>(CONFIRM));
+    assert.equal(judge.clock, app.get<Clock>(CLOCK));
+    assert.equal(judge.out, app.get<Output>(OUTPUT));
   } finally {
     await app.close();
   }

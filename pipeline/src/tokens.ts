@@ -22,6 +22,9 @@ export const GIT = Symbol('GIT');
 /** 사람에게 y/N 확인 — system/confirm.ts Confirm */
 export const CONFIRM = Symbol('CONFIRM');
 
+/** 사람에게 묻고 한 줄 답 받기 — system/ask.ts Ask (judge가 쓴다) */
+export const ASK = Symbol('ASK');
+
 /** 검증기 — validation/validator.ts Validator (gen의 생성 직후 검증과 validate 명령이 함께 쓴다) */
 export const VALIDATOR = Symbol('VALIDATOR');
 

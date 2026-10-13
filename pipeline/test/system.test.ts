@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { PassThrough } from 'node:stream';
 import { test } from 'node:test';
+import { createTerminalAsk } from '../src/system/ask.js';
 import { createTerminalConfirm, isYes } from '../src/system/confirm.js';
 import { createGitClient, type ExecFile } from '../src/system/git.js';
 
@@ -72,4 +73,39 @@ test('터미널 확인: 입력이 끝나면(EOF) 거절', async () => {
   const answer = createTerminalConfirm(s.input, s.output)('지울까요?');
   s.input.end();
   assert.equal(await answer, false);
+});
+
+/* ───────── 한 줄 입력 ───────── */
+
+test('터미널 입력: 질문을 그대로 보여 주고 입력한 한 줄을 돌려준다 (앞뒤 공백 그대로)', async () => {
+  const s = streams();
+  const answer = createTerminalAsk(s.input, s.output)('메모: ');
+  s.input.write('  언덕 위 나무가 자연스럽다 \n');
+  assert.equal(await answer, '  언덕 위 나무가 자연스럽다 ');
+  assert.match(s.printed(), /메모: /);
+});
+
+test('터미널 입력: 같은 입력으로 여러 번 물을 수 있다', async () => {
+  const s = streams();
+  const ask = createTerminalAsk(s.input, s.output);
+  const first = ask('하나: ');
+  s.input.write('p\n');
+  assert.equal(await first, 'p');
+  const second = ask('둘: ');
+  s.input.write('fail\n');
+  assert.equal(await second, 'fail');
+});
+
+test('터미널 입력: 그냥 Enter는 빈 문자열 (취소가 아니다)', async () => {
+  const s = streams();
+  const answer = createTerminalAsk(s.input, s.output)('메모: ');
+  s.input.write('\n');
+  assert.equal(await answer, '');
+});
+
+test('터미널 입력: 입력이 끝나면(EOF) 취소 → null', async () => {
+  const s = streams();
+  const answer = createTerminalAsk(s.input, s.output)('메모: ');
+  s.input.end();
+  assert.equal(await answer, null);
 });
