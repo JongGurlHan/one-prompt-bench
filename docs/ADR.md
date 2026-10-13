@@ -144,3 +144,8 @@
 **결정**: Codex 생성에 `-c include_environment_context=false -c include_apps_instructions=false -c include_collaboration_mode_instructions=false -c skills.include_instructions=false`를 더한다. 읽기 전용 샌드박스 안내(`include_permissions_instructions`)는 켜 둔다.
 **이유**: `--ignore-user-config`는 `config.toml`만 무시해서, 사용자 폴더(`~/.codex/skills`)의 스킬 목록과 실행 환경 정보가 프롬프트 밖에 덧붙는다(Codex 0.157.1 소스로 확인). 이 PC에 무엇이 설치돼 있느냐가 결과에 섞이지 않게 한다(ADR-006). 샌드박스 안내는 모델이 파일 쓰기를 시도하다 실패하는 대신 텍스트로 답하게 돕는다.
 **트레이드오프**: 도구 정의와 샌드박스 안내는 남는다. 프롬프트 밖 내용을 0으로 만들 수는 없다(Claude Code도 약 600토큰을 덧붙인다). 이것을 사이트에 공개할지는 phase 5 계획 때 정한다(OPERATIONS "나중에 정할 것").
+
+### ADR-028: Codex의 웹 검색 도구는 끈다 (2026-10-13)
+**결정**: Codex 생성에 `-c web_search="disabled"`를 더한다.
+**이유**: Codex 0.162.1은 설정이 없으면 모델에게 웹 검색 도구(`cached` 모드)를 준다. OpenAI 서버 쪽 도구라 read-only 샌드박스로 막히지 않는다. Claude Code는 `--tools ""`로 도구를 모두 껐고 Gemini는 도구 없이 부르므로, Codex 모델만 생성 중에 웹을 볼 수 있으면 조건이 달라진다(ADR-006의 격리와 같은 취지 — 도구가 주는 것이 결과에 섞이지 않게). 2026-10-13 smoke 뒤 사용자가 정했다.
+**트레이드오프**: 셸·파일 수정 같은 나머지 도구 정의는 남고(ADR-027), 입력 토큰에 들어간다. 쓰기는 read-only 샌드박스가 막는다. 셸 명령의 네트워크 접근이 이 PC(Windows) 샌드박스에서 막히는지는 확인하지 않았다 — 실제 생성의 `command_execution` item으로 본다.

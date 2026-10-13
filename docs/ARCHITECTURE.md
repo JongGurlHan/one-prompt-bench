@@ -163,23 +163,25 @@ env: CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536
   - 위 목록에 없던 필드: `uuid`, `ttft_stream_ms`, `time_to_request_ms`, `first_content_frame_ms`, `fast_mode_state`(`"off"`), `permission_denials`, `subagent_stats`, `safety_stops`(0), `queued_turn_count`, `result_index`. 어댑터는 쓰지 않는다.
 - ⚠ 아직 실제 출력으로 확인하지 못한 것(합성 fixture 그대로): 출력 상한 도달(`stop_reason: max_tokens`인지, 에러로 끝나는지)·거부(`refusal`인지, `safety_stops`와 관계있는지)가 어떻게 나오는가 — 지금은 `is_error: false` + `stop_reason`으로 가정했고, 모르는 값은 stopReason `other`로 둔다. `--effort high`가 적용되는가 — 첫 실제 생성의 reasoningTokens로 본다. API 키 로그인일 때 `authMethod` 값. 529·401 출력의 `api_error` 값과 `result` 문구(에러는 smoke로 일부러 만들 수 없으니 실제로 만나면 옮긴다). 시스템 프롬프트 끝 줄바꿈이 Windows 인자로 그대로 가는지는 출력으로 확인할 수 없다.
 
-**Codex CLI** (0.157.1. 플래그는 `codex exec --help`, 이벤트 형식·설정 키·에러 문구는 이 버전의 공개 소스 `openai/codex` 태그 `rust-v0.157.1`로 확인, 2026-10-13)
+**Codex CLI** (0.162.1 — 2026-10-13 0.157.1에서 업데이트. 플래그는 `codex exec --help`, 이벤트 형식·설정 키·에러 문구는 공개 소스 `openai/codex` 태그 `rust-v0.157.1`로 확인했고, `rust-v0.162.1`과 비교해 어댑터가 쓰는 부분이 같음을 확인했다 — 아래 "smoke로 확인한 것")
 ```
 codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemeral
            --ignore-user-config --ignore-rules --json
            -o <tmp>/last-message.txt -C <tmp>/work
            -c model_reasoning_effort="high" -c model_instructions_file="<tmp>/instructions.md"
            -c include_environment_context=false -c include_apps_instructions=false
-           -c include_collaboration_mode_instructions=false -c skills.include_instructions=false -
+           -c include_collaboration_mode_instructions=false -c skills.include_instructions=false
+           -c web_search="disabled" -
 ```
 - 구현: `pipeline/src/adapters/codex/`(adapter·errors·bin·preflight), smoke 기록기는 공용 `adapters/cli-recorder.ts`. 레지스트리 항목은 `createCodexEntry(overrides?)`로 만들고, 테스트는 `runCli`·`resolveCommand`·`readVersion`·`env`를 가짜로 바꾼다(가짜 실행 함수 `test/codex-fakes.ts`는 `-o` 경로에 마지막 메시지를 써서 Codex를 흉내 낸다). 항목을 만들 때는 아무것도 실행하지 않는다. `create()`가 실행 명령 찾기(`resolveCodexCommand` → `{ bin, prefixArgs }`) → 버전 읽기를 하고(실패하면 throw, 모델 호출 없음), `preflight()`가 로그인을 점검한다. `.env` 값은 쓰지 않는다.
 - Codex는 에이전트라 응답 대신 파일을 쓸 수 있다. read-only 샌드박스와 빈 디렉토리에서 실행해 답을 텍스트로 받는다. 마지막 `-`는 프롬프트를 stdin에서 읽으라는 뜻이다.
 - 실행 파일: PATH의 `codex`. Windows의 npm 전역 설치는 `codex.cmd` shim → `node <shim 폴더>/node_modules/@openai/codex/bin/codex.js` → 플랫폼 패키지(`@openai/codex-win32-x64`)의 `codex.exe` 순서로 실행된다. shell 없이 띄우려고 shim 옆의 `codex.js`를 지금 실행 중인 Node(`process.execPath`)로 실행한다. 공식 실행기가 넣는 `CODEX_MANAGED_*` 환경 변수와 신호 전달을 그대로 쓰기 위해서다. `codex.js`가 없으면 사람이 읽을 에러로 멈춘다. POSIX는 PATH의 `codex`(`codex.js`로 가는 링크, shebang)를 그대로 띄운다. invocation 기록에는 `codex`라고 적는다.
-- 버전: `codex --version` 출력 `codex-cli 0.157.1`의 숫자. 못 읽으면 에러로 멈춘다.
+- 버전: `codex --version` 출력 `codex-cli 0.162.1`의 숫자. 못 읽으면 에러로 멈춘다. Codex CLI가 대상 모델보다 먼저 나온 버전이면 그 모델을 모른다(아래 "smoke로 확인한 것") — 새 모델을 더할 때는 CLI 버전부터 본다.
 - 작업 폴더: 매 시도 임시 폴더 하나에 빈 작업 폴더(`work/`, `-C`), 지시문 파일(`instructions.md`), 마지막 메시지 파일(`last-message.txt`)을 따로 둔다. 작업 폴더에는 아무것도 두지 않는다.
-- 시스템 프롬프트(ADR-005): `req.system`을 `instructions.md`에 UTF-8로 쓰고 `model_instructions_file`로 넘긴다. 0.157.1 소스에서 이 키가 기본 지시문을 교체함(요청의 `instructions` 필드)을 확인했다. Codex는 파일 내용의 앞뒤 공백을 지워서 보내므로 끝 줄바꿈이 빠진다(도구 차이로 둔다). 빈 파일이면 Codex가 에러로 멈춘다.
+- 시스템 프롬프트(ADR-005): `req.system`을 `instructions.md`에 UTF-8로 쓰고 `model_instructions_file`로 넘긴다. 0.157.1 소스에서 이 키가 기본 지시문을 교체함(요청의 `instructions` 필드)을 확인했다. 0.162.1에서도 같다: `core/src/config/mod.rs`가 파일 내용을 `base_instructions`로 읽고, `models-manager/src/model_info.rs`가 그 값으로 모델별 기본 지시문(`model_messages.instructions_template`, gpt-6.1-sol은 21,769자)을 바꾼다. Codex는 파일 내용의 앞뒤 공백을 지워서 보내므로 끝 줄바꿈이 빠진다(도구 차이로 둔다). 빈 파일이면 Codex가 에러로 멈춘다.
 - `-c` 값은 TOML로 읽힌다. 문자열은 큰따옴표로 감싸고, 경로는 슬래시(`/`)로 바꿔 넘긴다(Windows 역슬래시가 TOML 이스케이프로 읽히지 않게, 업스트림 테스트와 같은 방식). 불리언은 따옴표 없이 쓴다.
 - 덧붙는 블록(ADR-027): `--ignore-user-config`는 `$CODEX_HOME/config.toml`(사용자 기본 모델·추론 강도·personality·service_tier 등)만 무시하고 인증은 `CODEX_HOME`을 그대로 쓴다. 사용자 폴더의 스킬 목록·실행 환경 정보·앱·작업 방식 안내는 위 `include_*=false`·`skills.include_instructions=false`로 끈다. 읽기 전용 샌드박스 안내(`include_permissions_instructions`)와 도구 정의는 남는다.
+- 웹 검색(ADR-028): `-c web_search="disabled"`로 끈다. 0.162.1은 설정이 없으면 `cached` 모드로 모델에게 웹 검색 도구를 준다(아래 "smoke로 확인한 것"). 값은 `disabled`·`cached`·`indexed`·`live`다(`protocol/src/config_types.rs`의 `WebSearchMode`).
 - 출력 상한을 지정할 수 없다 → `maxOutputTokens: null`, 사이트 † 각주. 요청의 `maxOutputTokens`가 null이 아니면 `generate`·`describeInvocation` 모두 던진다. 기록된 상한과 실제 호출이 어긋나지 않게, Runner가 모델을 부르기 전에 멈추려는 것이다(정상 경로는 `maxOutputTokensFor`가 null을 준다).
 - 자식 환경: 공통 `cliEnv`(API 키·Claude Code 세션 변수 삭제). `CODEX_HOME`은 남긴다(인증).
 - 로그인 점검(preflight): `codex login status`는 결과를 **stderr** 한 줄로 쓴다. `Logged in using ChatGPT`(exit 0)일 때만 통과한다(2026-10-13 이 PC 출력 확인). 그 밖의 문구(소스 기준): `Logged in using an API key - <가린 키>`(exit 0), `Not logged in`(exit 1), `Logged in using access token`·`personal access token`·`Amazon Bedrock …`(exit 0), `Error checking login status: …`(exit 1) — 모두 실패다. API 키 문구의 키 부분은 출력·기록하지 않는다.
@@ -213,7 +215,13 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
   - `thread.started` 바로 뒤, `turn.started` 앞에 `item.completed`(`item.type: "error"`)로 경고가 온다: ``Model metadata for `gpt-6.1-sol` not found. Defaulting to fallback metadata; this can degrade performance and cause issues.`` 어댑터는 item을 분류에 쓰지 않으므로 message는 `turn.failed` 쪽이다.
   - 원인: 0.157.1(2026-09-26 배포)은 `gpt-6.1-sol`(2026-09-29 출시)보다 먼저 나와 모델 목록에 이 모델이 없다. 0.162.1(2026-10-09, 2026-10-13 기준 npm 최신)의 목록에는 있다(`available_in_plans`에 `plus`, `minimal_client_version` 0.153.0). 공개 이슈 openai/codex#49396에도 같은 400을 CLI·app-server 업데이트로 해결했다는 보고가 있다(관리자 답변은 없음). `gpt-6-astra`·`gpt-6-sol`·`gpt-6-luna`는 0.157.1 목록에도 있다.
   - 0.157.1 → 0.162.1에서 이 어댑터가 쓰는 부분의 소스 비교(2026-10-13): `exec/src/cli.rs`는 `--cyber-access-program` 옵션 추가뿐, `exec/src/exec_events.rs`는 같다, `cli/src/login.rs`의 상태 문구는 같다(로그아웃 정리만 바뀜), `-c`로 넘기는 설정 키(`model_instructions_file`·`include_*`·`skills.include_instructions`·`model_reasoning_effort`)는 모두 있다.
-- ⚠ smoke로 확인: 입력 토큰 규모(도구 정의·샌드박스 안내가 남는다 — 수천 개면 무엇이 남는지 본다). Hello 요청에도 `reasoning_output_tokens`가 나오는가(`model_reasoning_effort` 적용). `output_tokens`가 추론분을 포함하는가(소스상 포함). 모델이 명령 실행·파일 쓰기(item 종류)를 시도하는가. 성공했을 때 stderr에 무엇이 나오는가(실패 smoke에서는 비어 있었다). 한도·429·5xx·401의 실제 문구(웹소켓 JSON의 `error.type` 값 포함). 에러 이벤트가 없을 때는 stderr가 meta.json의 에러 message가 되므로, stderr에 사용자 폴더 경로가 찍히면 공개 기록에 남는다(Claude Code도 같은 방식).
+- smoke로 확인한 것(2026-10-13, gpt-6.1-sol, Codex 0.162.1로 업데이트한 뒤, 원본은 fixture `stdout-smoke-ok.jsonl`):
+  - outcome ok. exit 0, stderr 비어 있음, 걸린 시간 8.1초. 이벤트는 `thread.started` → `turn.started` → `item.completed`(`agent_message`) → `turn.completed` 뿐이다. 모델 정보 경고 item이 없고, 모델이 명령 실행·파일 쓰기·검색을 시도하지 않았다("Hello" 요청). `last-message.txt` 내용은 `agent_message`의 `text`와 같았다.
+  - 사용량: `input_tokens` 9,418(그중 `cached_input_tokens` 7,296 — 첫 호출인데도 캐시되어 있어, 매 요청 같은 앞부분이 붙는다고 본다), `cache_write_input_tokens` 0, `output_tokens` 21, `reasoning_output_tokens` 0.
+  - 입력 9,418토큰: 같은 smoke 프롬프트가 Gemini에서 35토큰, Claude Code에서 655토큰이었다. 기본 지시문은 위 "시스템 프롬프트"대로 교체되므로(0.162.1 소스로 확인), 나머지 약 9천 토큰은 ADR-027이 남겨 둔 도구 정의·샌드박스 안내 쪽이다. 항목별 크기는 출력으로 알 수 없다(추정). 비용은 ADR-008대로 이 입력 전부를 입력 정가로 계산한다.
+  - 추론 0: Claude Code smoke와 같이 "Hello" 요청이라 추론하지 않은 것인지 `model_reasoning_effort`가 적용되지 않은 것인지 출력으로 구분할 수 없다.
+  - 모델이 쓸 수 있는 웹 검색: 0.162.1 기본값은 `web_search` 모드 `cached`다(`core/src/config/mod.rs`의 `resolve_web_search_mode`, 설정이 없으면 `WebSearchMode::Cached`). 서버 쪽 도구라 read-only 샌드박스로 막히지 않는다. Claude Code(`--tools ""`)·Gemini(도구 없음)와 조건이 달라서 ADR-028로 끈다. 이 smoke는 끄기 전 호출이다.
+- ⚠ 아직 실제 출력으로 확인하지 못한 것: 실제 생성 프롬프트에서 `reasoning_output_tokens`가 나오는가(`model_reasoning_effort` 적용). 모델이 명령 실행·파일 쓰기를 시도하는가(item 종류 — 첫 실제 생성에서 본다). `web_search="disabled"`가 거부되지 않고 입력 토큰이 얼마나 줄어드는가(다음 smoke). 한도·429·5xx·401의 실제 문구(웹소켓 JSON의 `error.type` 값 포함). 에러 이벤트가 없을 때는 stderr가 meta.json의 에러 message가 되므로, stderr에 사용자 폴더 경로가 찍히면 공개 기록에 남는다(Claude Code도 같은 방식, smoke 두 번 모두 stderr는 비어 있었다).
 
 **Gemini API** (`@google/genai` SDK, `.env`의 GEMINI_API_KEY)
 - `.env`는 `dotenv.parse`로 읽어 설정 객체로만 쓰고 `process.env`에는 넣지 않는다. Claude·Codex 자식 프로세스로 키가 넘어가지 않게 하려는 것이다.
