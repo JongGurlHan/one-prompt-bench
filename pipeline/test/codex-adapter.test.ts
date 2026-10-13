@@ -71,7 +71,7 @@ test('generator는 codex-cli + 주입한 CLI 버전, provider openai, 출력 상
 
 /* ───────── 호출: 인자·stdin·작업 폴더·환경 ───────── */
 
-test('호출: node + codex.js(prefixArgs) 뒤 사양 그대로의 인자 배열, -c 6개, stdin은 user 프롬프트, signal은 그대로', async () => {
+test('호출: node + codex.js(prefixArgs) 뒤 사양 그대로의 인자 배열, -c 7개(웹 검색 끔, ADR-028), stdin은 user 프롬프트, signal은 그대로', async () => {
   const { adapter, run } = adapterWith([codexExited(await loadStdout('ok'))]);
   const ac = new AbortController();
   await adapter.generate(req, ac.signal);
@@ -109,6 +109,8 @@ test('호출: node + codex.js(prefixArgs) 뒤 사양 그대로의 인자 배열,
     'include_collaboration_mode_instructions=false',
     '-c',
     'skills.include_instructions=false',
+    '-c',
+    'web_search="disabled"',
     '-',
   ]);
   assert.ok(!configString(r.args, 'model_instructions_file').includes('\\'), 'TOML 값의 경로는 슬래시 (역슬래시 이스케이프 방지)');
@@ -355,7 +357,7 @@ test('describeInvocation: 실제 인자와 같은 명령줄, 실행 파일은 co
       '--ignore-user-config --ignore-rules --json -o <tmp>/last-message.txt -C <tmp>/work ' +
       '-c model_reasoning_effort="high" -c model_instructions_file="<tmp>/instructions.md" ' +
       '-c include_environment_context=false -c include_apps_instructions=false ' +
-      '-c include_collaboration_mode_instructions=false -c skills.include_instructions=false - (stdin: <user prompt>)',
+      '-c include_collaboration_mode_instructions=false -c skills.include_instructions=false -c web_search="disabled" - (stdin: <user prompt>)',
   );
   assert.ok(!invocation.includes('사용자의 요청에 답하세요'), '시스템 프롬프트 내용이 없다');
   assert.ok(!invocation.includes('사계절'), 'user 프롬프트 내용이 없다');

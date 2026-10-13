@@ -11,7 +11,7 @@ import { CodexCallError, classifyCodexError, type CodexEvent, type CodexOutput }
  * - Codex는 에이전트라 읽기 전용 샌드박스·빈 작업 폴더(work/)에서 실행해 답을 텍스트로 받는다 (ADR-006).
  *   매 시도 임시 폴더 하나에 work/·instructions.md·last-message.txt를 따로 두고, work/에는 아무것도 두지 않는다.
  * - user 프롬프트는 stdin(마지막 인자 `-`), 시스템 프롬프트는 instructions.md → model_instructions_file (ADR-005).
- * - 덧붙는 환경·모드 안내는 -c include_*=false로 끈다 (ADR-027). 출력 상한은 지정할 수 없다 (ADR-007).
+ * - 덧붙는 환경·모드 안내는 -c include_*=false로 끈다 (ADR-027). 웹 검색 도구도 끈다 (ADR-028). 출력 상한은 지정할 수 없다 (ADR-007).
  * ⚠ 입력 토큰 규모·추론 강도 적용·모델의 도구 시도·실제 에러 문구는 Codex smoke 원본 출력으로 확인한다.
  * ──────────────────────────────────────────────────────────── */
 
@@ -142,6 +142,8 @@ function codexArgs(req: GenerationRequest, paths: CodexPaths): string[] {
     ...config('include_apps_instructions', false),
     ...config('include_collaboration_mode_instructions', false),
     ...config('skills.include_instructions', false),
+    // ADR-028: 웹 검색 도구를 끈다 (기본 cached는 서버 쪽 도구라 read-only 샌드박스로 막히지 않는다)
+    ...config('web_search', 'disabled'),
     '-', // 프롬프트는 stdin에서
   ];
 }

@@ -77,7 +77,7 @@ const INVOCATION =
   '--ignore-user-config --ignore-rules --json -o <tmp>/last-message.txt -C <tmp>/work ' +
   '-c model_reasoning_effort="high" -c model_instructions_file="<tmp>/instructions.md" ' +
   '-c include_environment_context=false -c include_apps_instructions=false ' +
-  '-c include_collaboration_mode_instructions=false -c skills.include_instructions=false - (stdin: <user prompt>)';
+  '-c include_collaboration_mode_instructions=false -c skills.include_instructions=false -c web_search="disabled" - (stdin: <user prompt>)';
 
 /* ───────── gen ───────── */
 
