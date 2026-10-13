@@ -46,6 +46,10 @@ async function failedWith(message: string): Promise<string> {
 
 const classifyMessage = async (message: string) => classifyOutput(await failedWith(message));
 
+/** 웹소켓 에러 프레임을 Codex가 그대로 message에 담은 모양 (실제 출력 stdout-model-not-supported.jsonl) */
+const wsError = (status: number, type: string, message: string) =>
+  JSON.stringify({ type: 'error', status, error: { type, message } });
+
 /* ───────── fixture별 ───────── */
 
 test('fixture별 분류: 한도 → usage_limit, 401 → auth, 503 → server_error, 스트림 끊김 → network, 잘림 → unknown', async () => {
@@ -62,6 +66,16 @@ test('fixture별 분류: 한도 → usage_limit, 401 → auth, 503 → server_er
     assert.equal(ce.retryAfterMs, null, name);
     assert.equal(ce.usage, null, `${name}: 실패 출력에는 사용량이 없다`);
   }
+});
+
+test('실제 출력(0.157.1, 모델 거부): 웹소켓 에러 JSON의 status 400 → bad_request. 앞선 모델 정보 경고 item은 message가 아니다', async () => {
+  const ce = await classifyOutput(await loadStdout('model-not-supported'));
+  assert.deepEqual([ce.kind, ce.httpStatus], ['bad_request', 400]);
+  assert.equal(
+    ce.message,
+    '{"type":"error","status":400,"error":{"type":"invalid_request_error","message":"The \'gpt-6.1-sol\' model is not supported when using Codex with a ChatGPT account."}}',
+  );
+  assert.equal(ce.usage, null);
 });
 
 test('한도 초과: message는 turn.failed의 error.message (굽은 따옴표 그대로)', async () => {
@@ -109,6 +123,14 @@ test('목록의 각 줄과 httpStatus(unexpected status NNN)', async () => {
     // 그 밖
     ['unexpected status 404 Not Found: x', 'unknown', 404],
     ['something else happened', 'unknown', null],
+    // 웹소켓 에러 JSON (실제 출력 stdout-model-not-supported.jsonl의 모양 — "unexpected status NNN" 대신 "status":NNN)
+    [wsError(400, 'invalid_request_error', 'bad'), 'bad_request', 400],
+    [wsError(401, 'invalid_api_key', 'x'), 'auth', 401],
+    [wsError(403, 'forbidden', 'x'), 'auth', 403],
+    [wsError(429, 'rate_limit_exceeded', 'slow down'), 'rate_limited', 429],
+    [wsError(429, 'usage_limit_reached', 'x'), 'usage_limit', 429],
+    [wsError(503, 'server_error', 'x'), 'server_error', 503],
+    [wsError(404, 'not_found', 'x'), 'unknown', 404],
   ];
   for (const [message, kind, status] of cases) {
     const ce = await classifyMessage(message);

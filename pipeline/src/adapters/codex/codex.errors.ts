@@ -22,19 +22,29 @@ export interface CodexOutput {
 const MESSAGE_MAX = 500;
 
 /**
+ * HTTP 상태가 문구에 드러나는 두 모양: HTTP 응답 실패 `unexpected status NNN`과,
+ * 웹소켓 에러 프레임을 그대로 담은 JSON `{"type":"error","status":NNN,…}` (실제 출력 stdout-model-not-supported.jsonl)
+ */
+const STATUS = String.raw`(?:unexpected status |"status"\s*:\s*)`;
+const status = (code: string) => new RegExp(`${STATUS}${code}\\b`, 'i');
+
+/**
  * 분류 목록. 위에서부터 처음 맞는 것 — 순서가 의미다.
  * 한도 문구 `You’ve hit your usage limit…`는 공통 한도 문구(USAGE_LIMIT_RE의 "usage limit")로도 잡힌다.
  */
 const RULES: readonly (readonly [FailureKind, RegExp])[] = [
-  ['usage_limit', /You['’]ve hit your usage limit|Quota exceeded/i], // 몇 시간 뒤에야 풀린다 → 재시도하지 않는다
+  ['usage_limit', /You['’]ve hit your usage limit|Quota exceeded|usage_limit_reached/i], // 몇 시간 뒤에야 풀린다 → 재시도하지 않는다
   ['usage_limit', USAGE_LIMIT_RE],
   // 출력 잘림·필터(response.incomplete). "stream disconnected"로 감싸여 오지만 재시도해도 같다 → network보다 먼저
   ['unknown', /Incomplete response returned/i],
-  ['rate_limited', /rate limit exceeded|unexpected status 429\b/i],
-  ['server_error', /unexpected status 5\d\d\b|high demand|at capacity/i],
+  ['rate_limited', /rate limit exceeded/i],
+  ['rate_limited', status('429')],
+  ['server_error', /high demand|at capacity/i],
+  ['server_error', status(String.raw`5\d\d`)],
   ['network', /stream disconnected|Connection failed/i],
-  ['auth', /unexpected status 40[13]\b|Not logged in|upgrade to Plus/i],
-  ['bad_request', /unexpected status 400\b/i],
+  ['auth', /Not logged in|upgrade to Plus/i],
+  ['auth', status('40[13]')],
+  ['bad_request', status('400')],
 ];
 
 /** generate가 CLI를 실행한 뒤 실패로 판단했을 때 던진다. 실행 자체의 실패(ENOENT·abort)는 실행 함수의 에러 그대로 */
@@ -116,9 +126,9 @@ function unclassified(kind: FailureKind, err: unknown): ClassifiedError {
 
 /* ───────── 판정 도우미 ───────── */
 
-/** 메시지의 `unexpected status NNN` (Codex가 HTTP 응답 실패를 이렇게 적는다). 없으면 null */
+/** 메시지의 `unexpected status NNN`(HTTP 응답 실패) 또는 `"status":NNN`(웹소켓 에러 JSON). 없으면 null */
 function httpStatusOf(text: string): number | null {
-  const m = /unexpected status (\d{3})\b/i.exec(text);
+  const m = new RegExp(`${STATUS}(\\d{3})\\b`, 'i').exec(text);
   const status = m ? Number(m[1]) : null;
   return status !== null && status >= 100 && status <= 599 ? status : null;
 }
