@@ -47,7 +47,7 @@
     {
       "step": 2,
       "name": "claude-code-adapter",
-      "status": "pending",
+      "status": "completed",
       "ac": [
         "npm run lint",
         "npm run typecheck",
@@ -55,9 +55,13 @@
       ],
       "started_at": "2026-10-13T02:20:15+0900",
       "model": "claude-opus-5-5",
-      "cost_usd": 1.8586,
-      "num_turns": 25,
-      "attempts": 1
+      "cost_usd": 7.6687,
+      "num_turns": 100,
+      "attempts": 1,
+      "session_id": "a5ac1908-06b2-4537-b1e0-149b460cb42b",
+      "summary": "pipeline/src/adapters/claude-code/(adapter·errors·bin·preflight·recorder)로 Claude Code CLI 어댑터를 만들고 registry에 주입점이 있는 claude-code 항목(createClaudeCodeEntry)을 등록했으며, 실제 한도 초과 fixture + 합성 fixture 10개와 가짜 실행 함수로 어댑터·에러 분류·Runner 재시도·preflight·실행 파일 찾기·batch·smoke를 끝까지 검증했다(실제 claude 실행 없음)",
+      "handoff": "- 인터페이스: createClaudeCodeEntry(overrides?: Partial<ClaudeCodeEntryDeps>) — runCli·resolveBin()·readVersion(bin)(동기, spawnSync로 --version)·env(). AdapterRegistry['claude-code'] = AdapterEntry<RunCli>. 항목을 만들 때는 아무것도 실행하지 않고, create()가 실행 파일 찾기→버전 읽기(실패하면 throw, 모델 호출 없음), preflight()가 auth status를 부른다. 기록기는 생성 호출만 감싸 raw-stdout.txt(그대로)·raw-stderr.txt·raw-exit.json을 낸다(실행 함수가 던지면 raw-exit.json에 error{name,message,code}만).\n- 사용량: usage 없음·숫자가 아닌 값 → 입력·출력 0, 추론 null. thinking_tokens 없음 → null. thinking > output_tokens면 추론 null(포함 전제가 깨짐, 스키마 통과용). 실패 출력의 usage는 입력+출력 > 0일 때만 담는다. requestId·firstTokenMs는 null, retryAfterMs는 항상 null.\n- ARCHITECTURE와 다른 점(문서는 안 고침): resolvedModelId — modelUsage 키가 하나면 그 키, 여럿이면 요청 모델(키 또는 canonicalModel)의 키, 못 고르면 null. .cmd·.bat shim 옆에 claude.exe가 없으면 execute.py처럼 shim으로 떨어지지 않고 에러로 멈춘다(shell 없이는 못 띄운다). 한도 문구는 is_error:true의 result와 stderr에서만 찾는다(정상 본문 제외). stdout 전체가 JSON 객체 하나일 때만 파싱한다(앞에 다른 줄이 오면 unknown).\n- invocation: `CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude -p --model <id> --effort high --tools \"\" --system-prompt \"<system prompt>\" --safe-mode --strict-mcp-config --no-session-persistence --output-format json (stdin: <user prompt>)`. 실행 파일 경로(사용자 폴더) 대신 claude라고 적는다. 상한이 null이면 환경변수 부분이 빠진다.\n- 에러 message: is_error 결과의 result → stderr → exit code·출력 모양 설명 순서, 500자 상한. 실행 파일 없음·출력 상한 초과는 실행 함수 에러 그대로 unknown.\n- preflight: 이름 'Claude Code 로그인 (claude auth status)', 30초 제한, OS 임시 폴더, cliEnv 환경. JSON이면 exit code와 관계없이 판정한다. detail에는 authMethod·subscriptionType만 쓰고, 식별자 모양(/^[\\w.-]{1,40}$/)이 아닌 값은 숨긴다. apiProvider 값은 쓰지 않는다. JSON이 아니면 stdout·stderr 내용을 옮기지 않는다.\n- 기존 테스트: adapter-registry·app.module의 '등록 도구 = gemini-api만' 단정을 claude-code 포함으로 바꿨다. claude-code-bin의 POSIX 실행 파일 테스트는 Windows에서 건너뛰고 리눅스 CI에서 처음 돈다.\n- ⚠ smoke로 확인할 것(합성 fixture 가정): 입력 토큰 규모, modelUsage 모델 수, max_tokens·refusal 표시(지금은 is_error:false + stop_reason으로 가정, 모르는 값은 other), API 키 로그인의 authMethod, 529·401 출력의 api_error 값과 result 문구, stdout이 JSON 하나뿐인지, 시스템 프롬프트 끝 줄바꿈이 Windows 인자로 그대로 가는지.",
+      "completed_at": "2026-10-13T10:31:33+0900"
     }
   ],
   "created_at": "2026-10-13T01:58:55+0900"
