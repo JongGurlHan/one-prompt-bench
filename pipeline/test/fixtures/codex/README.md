@@ -2,10 +2,11 @@
 
 `codex exec --json`이 stdout에 쓰는 이벤트 JSON 줄(JSONL)과, `codex login status`가 stderr에 쓰는 한 줄(`login-status-*.txt`)을 담는다.
 
-**`stdout-model-not-supported.jsonl` 하나만 실제이고, 나머지는 모두 합성이다 — Codex 0.157.1 공개 소스 기준(`openai/codex` 태그 `rust-v0.157.1`의 `codex-rs/exec/src/exec_events.rs`).** Codex smoke(`npm run smoke -- <OpenAI 모델 slug>`) 뒤 `results-smoke/<slug>-<시각>/raw-stdout.txt`를 고치지 않고 그대로 복사해 더하고, 이 README에 **실제**라고 적는다.
+**`stdout-smoke-ok.jsonl`·`stdout-model-not-supported.jsonl` 두 개만 실제이고, 나머지는 모두 합성이다 — Codex 0.157.1 공개 소스 기준(`openai/codex` 태그 `rust-v0.157.1`의 `codex-rs/exec/src/exec_events.rs`, 0.162.1에서도 같은 파일).** Codex smoke(`npm run smoke -- <OpenAI 모델 slug>`) 뒤 `results-smoke/<slug>-<시각>/raw-stdout.txt`를 고치지 않고 그대로 복사해 더하고, 이 README에 **실제**라고 적는다.
 
 | 파일 | 내용 |
 |---|---|
+| `stdout-smoke-ok.jsonl` | **실제** — 2026-10-13 `npm run smoke -- gpt-6-1-sol`(Codex 0.162.1, ChatGPT 로그인)의 `raw-stdout.txt`를 그대로 복사(sha256 `e5a99800…b0f46`). exit 0, stderr 비어 있음. `thread.started` → `turn.started` → `agent_message`(```` ```html ```` Hello) → `turn.completed`(`input_tokens` 9,418 · `cached_input_tokens` 7,296 · `cache_write_input_tokens` 0 · `output_tokens` 21 · `reasoning_output_tokens` 0) |
 | `stdout-model-not-supported.jsonl` | **실제** — 2026-10-13 `npm run smoke -- gpt-6-1-sol`(Codex 0.157.1, ChatGPT 로그인)의 `raw-stdout.txt`를 그대로 복사(sha256 `67113a54…910f4`). exit 1, stderr 비어 있음. `thread.started` → `item.completed`(`item.type: "error"`, 0.157.1의 모델 목록에 `gpt-6.1-sol`이 없어 대체 모델 정보를 쓴다는 경고) → `turn.started` → `error` + `turn.failed`(웹소켓 에러 JSON `{"type":"error","status":400,…}` — ChatGPT 계정으로는 이 모델을 쓸 수 없다는 서버 거부). `turn.started` 앞에 오는 경고 item과, HTTP 실패 문구(`unexpected status NNN`)와 다른 에러 모양을 보여 준다 |
 | `stdout-ok.jsonl` | 합성. 정상: `thread.started` → `turn.started` → `reasoning` item → `agent_message` item(```` ```html ```` 블록) → `turn.completed`. `usage`: input 5,200(캐시 읽기 3,072·캐시 쓰기 512 포함) · output 9,800(추론 4,100 포함) |
 | `stdout-command-failed.jsonl` | 합성. 정상인데 모델이 명령 실행을 시도했다: `command_execution` item이 `item.started`(`in_progress`) → `item.completed`(`failed`, exit_code 1) 뒤 `agent_message` → `turn.completed`. ⚠ 실제로 모델이 명령·파일 쓰기를 시도하는지는 모른다 |

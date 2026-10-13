@@ -225,6 +225,17 @@ test('정상 출력 → 본문 = last-message.txt, 입력 = input_tokens(캐시 
   assert.equal(res.firstTokenMs, null, '스트리밍이 아닌 CLI (DATA "정규화 규칙")');
 });
 
+test('실제 smoke 출력(0.162.1, gpt-6.1-sol): 본문·사용량(입력 = input_tokens, 캐시 7,296 포함)·추론 0', async () => {
+  const stdout = await loadStdout('smoke-ok');
+  const res = await generateFrom(stdout);
+
+  assert.equal(res.text, '```html\n<!DOCTYPE html>\n<html><body>Hello</body></html>\n```');
+  assert.equal(res.stopReason, 'other');
+  assert.equal(res.rawStopReason, 'turn.completed');
+  assert.deepEqual(res.usage, { inputTokens: 9_418, outputTokens: 21, reasoningTokens: 0 });
+  assert.equal(res.resolvedModelId, null);
+});
+
 test('본문은 stdout의 agent_message가 아니라 last-message.txt 내용 그대로다', async () => {
   const lastMessage = '파일에서 읽은 본문\r\n```html\n<p>x</p>\n```\n';
   const res = await generateFrom(await loadStdout('ok'), { lastMessage });
