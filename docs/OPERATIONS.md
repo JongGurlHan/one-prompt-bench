@@ -26,7 +26,7 @@ Claude 세션(대화형·무인 모두)은 실제 모델 호출을 하지 않는
 | 도구 | 확인할 것 |
 |---|---|
 | 공통 | 입력 토큰이 수백 개 수준인가 (수천 개 이상이면 도구 기본 지시문·메모리·CLAUDE.md가 섞인 것 → 격리 옵션을 고친다) |
-| Claude Code | `--system-prompt`로 기본 지시문이 교체되는가, `--effort high`가 적용되는가, 잘림·거부를 어느 필드로 알 수 있는가, 추론 토큰을 따로 주는가 |
+| Claude Code | `--system-prompt`로 기본 지시문이 교체되는가, `--effort high`가 적용되는가, 잘림·거부를 어느 필드로 알 수 있는가, 추론 토큰을 따로 주는가, `modelUsage`에 모델이 하나인가(나머지는 ARCHITECTURE "Claude Code CLI"의 ⚠). `raw-stdout.txt`는 `pipeline/test/fixtures/claude-code/`로 그대로 옮긴다 |
 | Codex CLI | `-c model_reasoning_effort="high"`와 `-c model_instructions_file=...`가 적용되는가, `output_tokens`에 추론분이 포함되는가, `codex login status` 출력 형식, 한도 초과 메시지 형식 |
 | Gemini API | thinking level·`maxOutputTokens`·`systemInstruction` 필드 이름(설치한 SDK 버전), 사용량 필드 이름, 무료 티어 429와 일일 할당량 소진의 구분 |
 
@@ -67,7 +67,7 @@ npm run validate -- gpt-6-sol    # 한 모델
 
 1. GitHub에 **공개** 레포를 만들고 push한다(무료 플랜의 Pages는 공개 레포만). `JongGurlHan/one-prompt-bench`는 이미 공개 레포다(2026-10-13 확인, git 기록에 실제 키 없음).
 2. 레포 Settings → Pages → Source를 "GitHub Actions"로 한다.
-3. main에 push하면 `.github/workflows/deploy.yml`이 검사(lint·typecheck·test·check:results)를 통과한 뒤에만 배포한다. Actions 탭의 "Run workflow"로 수동 실행할 수 있다.
+3. main에 push하면 `.github/workflows/deploy.yml`이 검사(lint·typecheck·test·check:results)를 통과한 뒤에만 배포한다. Actions 탭의 "Run workflow"로 수동 실행할 수 있다. 첫 push 때는 Actions 로그를 확인한다. 리눅스에서 처음 도는 테스트가 있다(ARCHITECTURE "배포").
 4. 주소: `https://<사용자>.github.io/<레포 이름>/`
 
 ## 하네스로 개발하기
@@ -96,3 +96,4 @@ python scripts/execute.py <phase> --resume        # 중단된 step 이어받기
 - 다음 버전 검증 항목: 로딩 시간, 빈 화면 판정, FPS
 - 검증 중 멈추는 결과물(무한 루프): 스크린샷이 시간 초과돼 validation이 null로 남고 check:results가 배포를 막는다. 실제로 나오면 기록 방법(스키마 포함)을 정한다(ADR-026).
 - 같은 페이지 에러가 매 프레임 반복되면 `pageErrors`에 그대로 쌓인다(Gemini 3.8 Flash: 2105개, meta.json 110KB). 레포가 너무 커지면 저장 방식을 정한다. 지금은 그대로 둔다.
+- CLI 자식 환경에서 `ANTHROPIC_AUTH_TOKEN`·`ANTHROPIC_BASE_URL`(다른 과금 경로 변수)도 지울지: phase 3 확인 때(2026-10-13) 사용자가 "아직 지우지 않는다"로 미뤘다. 지금은 ADR-001의 두 API 키만 지운다. 이 PC 환경에는 두 변수가 없고, preflight가 `authMethod: claude.ai`·`apiProvider: firstParty`를 확인한다. 이 변수를 쓰게 되거나 preflight가 인증 방식으로 걸러 내지 못하는 경우가 나오면 다시 정한다(정하면 ADR-001과 `system/cli.ts`의 지우는 목록을 함께 고친다).

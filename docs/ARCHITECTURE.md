@@ -33,9 +33,9 @@ npm workspaces 모노레포. 모든 TypeScript는 ESM(`"type": "module"`, NodeNe
 ├── pipeline/                   @opb/pipeline — NestJS 스탠드얼론 CLI
 │   ├── src/main.ts                 진입점 → cli.ts(parseArgs) → createApplicationContext. 토큰은 tokens.ts
 │   ├── src/config/                 레포 루트 + .env(dotenv.parse, process.env에 넣지 않음)
-│   ├── src/adapters/               도구별 어댑터(gemini/ …) + registry.ts(도구 → 생성 함수·도구별 preflight·기록 래퍼)
+│   ├── src/adapters/               도구별 어댑터(gemini/ · claude-code/ …) + registry.ts(도구 → 생성 함수·도구별 preflight·기록 래퍼)
 │   ├── src/generation/             batch(일괄 실행), preflight(추가 결제 차단 점검), smoke
-│   ├── src/system/                 git·터미널 확인(y/N)·CLI 실행(phase 3) 같은 I/O
+│   ├── src/system/                 git·터미널 확인(y/N)·CLI 실행(cli.ts) 같은 I/O
 │   ├── src/validation/             Playwright 검증기(validate-result.ts, `VALIDATOR` 토큰 = PlaywrightValidator)와 validate 명령
 │   ├── src/judging/                (신규) 판정 도우미
 │   └── test/fixtures/              CLI 출력 샘플, 검증용 HTML
@@ -113,7 +113,16 @@ models.json ─▶ Batch ─▶ Runner(재시도·타임아웃·저장·비용) 
 
 ### 도구별 호출 사양
 
-공통: 프롬프트 원문은 **stdin**으로 넘긴다(Windows 셸 인용 문제 방지). 자식 프로세스 환경에서 `ANTHROPIC_API_KEY`·`OPENAI_API_KEY`를 지운다. 작업 디렉토리는 **매 시도 새로 만든 빈 임시 디렉토리**다(끝나면 지운다). 레포 안에서 실행하면 CLAUDE.md·AGENTS.md가 생성 맥락에 섞인다. 타임아웃이면 프로세스 트리 전체를 종료한다(Windows: `taskkill /T /F`, POSIX: 프로세스 그룹). Windows에서 npm 전역 설치 CLI는 `.cmd` shim이라 shell 없이 spawn할 수 없다. 실행 파일 경로를 해석하거나 cross-spawn을 쓴다. 이 공통 부분은 `pipeline/src/system/`의 CLI 실행 모듈 한 곳에 두고 Claude Code·Codex 어댑터가 같이 쓴다(phase 3). 어댑터는 실행 함수를 주입받아, 테스트는 가짜 실행 함수나 가짜 CLI 스크립트(node)를 쓴다.
+공통: 프롬프트 원문은 **stdin**으로 넘긴다(Windows 셸 인용 문제 방지). 자식 프로세스 환경에서 `ANTHROPIC_API_KEY`·`OPENAI_API_KEY`를 지운다. 작업 디렉토리는 **매 시도 새로 만든 빈 임시 디렉토리**다(끝나면 지운다). 레포 안에서 실행하면 CLAUDE.md·AGENTS.md가 생성 맥락에 섞인다. 타임아웃이면 프로세스 트리 전체를 종료한다(Windows: `taskkill /T /F`, POSIX: 프로세스 그룹). Windows에서 npm 전역 설치 CLI는 `.cmd` shim이라 shell 없이 spawn할 수 없다. 실행 파일 경로를 해석하거나 cross-spawn을 쓴다. 이 공통 부분은 `pipeline/src/system/cli.ts` 한 곳에 두고 Claude Code·Codex 어댑터가 같이 쓴다. 어댑터는 실행 함수를 주입받아, 테스트는 가짜 실행 함수나 가짜 CLI 스크립트(`test/fixtures/cli/fake-cli.mjs`)를 쓴다.
+
+CLI 실행 모듈 (`system/cli.ts`, phase 3):
+- `runCli(req)`: 0이 아닌 exit code는 예외가 아니다(해석은 어댑터 몫). 실행 파일이 없으면 spawn 에러(code `ENOENT`)로, abort되면 `CliAbortError`(name `AbortError`, cause = signal.reason)로 끝난다. stdout·stderr는 각각 64MiB(`MAX_OUTPUT_BYTES`, 요청마다 `maxOutputBytes`로 바꿀 수 있다)를 넘으면 트리를 종료하고 `CliOutputLimitError`로 끝난다. 트리를 종료한 뒤 3초(`KILL_GRACE_MS`) 안에 파이프가 닫히지 않으면 더 기다리지 않는다.
+- `cliEnv(base, set)`: 변수 이름은 모든 OS에서 대소문자를 무시하고 비교한다. set의 값은 대소문자만 다른 기존 변수를 대신하고, set에 API 키 변수가 있으면 throw한다. API 키 목록 `FORBIDDEN_ENV_KEYS`는 이 모듈에 있고 preflight가 가져다 쓴다.
+  - 지우는 범위는 ADR-001의 API 키 두 개와 아래 Claude Code 세션 변수다. `ANTHROPIC_AUTH_TOKEN`·`ANTHROPIC_BASE_URL` 같은 다른 과금 경로 변수는 지우지 않는다(OPERATIONS "나중에 정할 것"). Bedrock·Vertex 전환 변수(`CLAUDE_CODE_USE_*`)는 `CLAUDE_CODE_` 접두어 규칙으로 지워진다.
+  - Windows의 libuv는 env에 없는 PATH·SYSTEMROOT·TEMP·USERPROFILE 등 시스템 변수 11개를 부모 환경에서 채운다(비밀값 아님). "준 env만 넘긴다"는 Windows에서 이 변수들을 뺀 기준이다.
+- `findOnPath(name)`: PATH(Windows는 PATHEXT까지)에서 찾고, 현재 디렉토리는 보지 않는다. Windows에서 돌려주는 경로의 확장자는 PATHEXT 표기 그대로다(`claude.CMD`처럼 대문자일 수 있다).
+- `withTempDir(prefix, fn)`: OS 임시 폴더에 mkdtemp로 만들고 끝나면 지운다(재시도 5회). 지우기 실패는 무시한다. 이미 받은 생성 결과를 잃지 않기 위해서다.
+- 알려진 한계: POSIX에서는 자식을 새 프로세스 그룹(detached)으로 띄워서 터미널 Ctrl+C(SIGINT)가 CLI에 가지 않는다. 파이프라인이 SIGINT를 받아 abort하지 않으면 CLI가 고아 프로세스로 남을 수 있다(개발 PC는 Windows라 같은 콘솔에서 함께 받는다). 정상 종료 뒤에도 트리 밖으로 빠져나간 손자 프로세스가 파이프를 쥐고 있으면 Runner 타임아웃(abort)까지 기다린다.
 
 **Claude Code CLI** (2.1.296에서 플래그 확인)
 ```
@@ -121,19 +130,30 @@ claude -p --model <modelId> --effort high --tools "" --system-prompt "<system.md
        --safe-mode --strict-mcp-config --no-session-persistence --output-format json
 env: CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536
 ```
-- shell 없이 인자 배열로 spawn한다(한글 인자 인용 문제 방지). Windows에서는 npm shim(`claude.cmd`) 대신 실제 `claude.exe`(shim 옆 `node_modules/@anthropic-ai/claude-code/bin/claude.exe`)를 찾는다. 하네스 `scripts/execute.py`의 `resolve_claude_bin`과 같은 방식이다.
+- 구현: `pipeline/src/adapters/claude-code/`(adapter·errors·bin·preflight·recorder). 레지스트리 항목은 `createClaudeCodeEntry(overrides?)`로 만들고, 테스트는 `runCli`·`resolveBin`·`readVersion`·`env`를 가짜로 바꾼다. 항목을 만들 때는 아무것도 실행하지 않는다. `create()`가 실행 파일 찾기 → 버전 읽기를 하고(실패하면 throw, 모델 호출 없음), `preflight()`가 로그인을 점검한다.
+- shell 없이 인자 배열로 spawn한다(한글 인자 인용 문제 방지). Windows에서는 npm shim(`claude.cmd`) 대신 실제 `claude.exe`(shim 옆 `node_modules/@anthropic-ai/claude-code/bin/claude.exe`)를 찾는다. 하네스 `scripts/execute.py`의 `resolve_claude_bin`과 같은 방식이다. 다만 shim 옆에 exe가 없으면 execute.py처럼 shim으로 대신하지 않고 에러로 멈춘다(shell 없이는 shim을 띄울 수 없다). `.cmd`·`.bat` 판별은 대소문자를 무시한다.
 - `--safe-mode`: CLAUDE.md·skills·hooks·MCP 등 사용자 설정을 끄고, 구독 인증은 유지한다.
 - **`--bare` 금지**: 인증이 ANTHROPIC_API_KEY로만 돼서 API 요금이 청구된다.
 - 자식 환경: 공통 규칙(API 키 변수 삭제)에 더해, Claude Code 세션이 자식에게 물려주는 변수를 지운다 — `CLAUDECODE`, `CLAUDE_CODE_`로 시작하는 변수(아래 예외 제외), `CLAUDE_EFFORT`, `CLAUDE_PID`, `AI_AGENT`. 사람이 Claude Code 안에서 `! npm run gen`을 실행하면 이 변수들이 넘어와, 중첩 세션으로 보고 실행을 거부하거나(`CLAUDECODE`) 추론 강도가 섞일 수 있다(`CLAUDE_EFFORT`, 2026-10-13 이 PC에서 변수 이름 확인). 사용자 설정 변수 `CLAUDE_CONFIG_DIR`·`CLAUDE_CODE_GIT_BASH_PATH`는 남기고, 어댑터가 `CLAUDE_CODE_MAX_OUTPUT_TOKENS`를 넣는다.
-- 버전: `claude --version` 출력 `2.1.296 (Claude Code)`의 앞 숫자. 로그인 점검(preflight): `claude auth status --json`은 `{ loggedIn, authMethod, apiProvider, subscriptionType, email, orgId, orgName, … }`이다(2.1.296, 이 PC는 `authMethod: "claude.ai"`, `apiProvider: "firstParty"`, `subscriptionType: "pro"`). `loggedIn`이 true이고 `authMethod`가 `claude.ai`, `apiProvider`가 `firstParty`일 때만 통과한다. email·org 값은 출력하지 않는다.
-- 출력(`--output-format json`)은 stdout의 JSON 객체 하나다. 하네스가 같은 CLI(2.1.296)로 받은 실제 출력에서 확인한 필드:
+- 버전: `claude --version` 출력 `2.1.296 (Claude Code)`의 앞 숫자. 레지스트리 `create()`가 동기라서 `spawnSync`로 읽는다(cwd는 OS 임시 폴더, 환경은 `cliEnv`, 30초 제한). 숫자를 못 읽으면 에러로 멈춘다. 지어낸 버전을 기록하지 않기 위해서다.
+- 로그인 점검(preflight): `claude auth status --json`은 `{ loggedIn, authMethod, apiProvider, subscriptionType, email, orgId, orgName, … }`이다(2.1.296, 이 PC는 `authMethod: "claude.ai"`, `apiProvider: "firstParty"`, `subscriptionType: "pro"`). `loggedIn`이 true이고 `authMethod`가 `claude.ai`, `apiProvider`가 `firstParty`일 때만 통과한다.
+  - 점검 이름 `Claude Code 로그인 (claude auth status)`, 30초 제한, OS 임시 폴더, `cliEnv` 환경. 로그아웃 상태는 exit code가 0이 아닐 수 있어서, 출력이 JSON이면 exit code와 관계없이 판정한다.
+  - detail에는 authMethod·subscriptionType만 쓰고, 식별자 모양(`/^[\w.-]{1,40}$/`)이 아닌 값은 숨긴다. email·org·apiProvider 값은 쓰지 않는다. 출력이 JSON이 아니면 내용을 옮기지 않는다. 실행 실패도 throw하지 않고 실패 항목으로 돌려준다.
+- 출력(`--output-format json`)은 stdout의 JSON 객체 하나다. stdout 전체가 JSON 객체 하나일 때만 파싱한다(앞뒤 공백만 허용 — 앞에 다른 줄이 오면 JSON이 아닌 출력 → `unknown`). 성공은 exit code 0 + `is_error: false` + 문자열 `result`일 때뿐이고, 그 밖은 모두 에러다. 하네스가 같은 CLI(2.1.296)로 받은 실제 출력에서 확인한 필드:
   - `type: "result"`, `subtype`, `is_error`, `result`(본문 또는 에러 메시지), `stop_reason`(`end_turn` 등), `terminal_reason`(`completed`·`api_error`), `api_error_status`(HTTP 상태 또는 null), `api_error`(예: `usage_limit_reached`), `num_turns`, `session_id`, `ttft_ms`, `total_cost_usd`
   - `usage`: `input_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens`, `output_tokens`, `output_tokens_details.thinking_tokens`
   - `modelUsage`: 모델 ID를 키로 한 사용량(`canonicalModel` 포함)
   - 구독 한도: exit code 1, `is_error: true`, `subtype: "success"`, `api_error_status: 429`, `api_error: "usage_limit_reached"`, `result: "You've hit your session limit · resets 8pm (Asia/Seoul)"` (fixture `pipeline/test/fixtures/claude-code/stdout-usage-limit.json`)
-- 정규화(DATA "정규화 규칙"): 본문 = `result`. inputTokens = `input_tokens + cache_creation_input_tokens + cache_read_input_tokens`. outputTokens = `output_tokens`, reasoningTokens = `output_tokens_details.thinking_tokens`(없으면 null) — 확인한 두 출력 모두 thinking ≤ output이라 output_tokens에 추론분이 들어 있다고 본다. resolvedModelId는 `modelUsage`의 키, requestId·firstTokenMs는 null(DATA: 스트리밍이 아닌 CLI).
-- 에러 분류: abort → `timeout`. `api_error`가 `usage_limit_reached`이거나 메시지가 사용 한도 문구("usage limit", "hit your session limit" 같은 "hit your … limit", "limit reached" — `rate limit`은 제외, execute.py `USAGE_LIMIT_RE`와 같은 기준)면 `usage_limit`. 그 밖에는 `api_error_status`로: 429 → `rate_limited`, 529·5xx → `server_error`, 401·403 → `auth`, 400 → `bad_request`. 실행 파일 없음·JSON이 아닌 출력·그 밖 → `unknown`.
-- ⚠ smoke로 확인: 입력 토큰이 수백 개 수준인가(수천 개 이상이면 기본 지시문·메모리가 섞인 것). `modelUsage`에 모델이 하나만 있는가. 출력 상한 도달(`stop_reason: max_tokens`인지, 에러로 끝나는지)·거부(`refusal`)가 어떻게 나오는가 — 모르는 값은 stopReason `other`로 둔다. API 키 로그인일 때 `authMethod` 값.
+- 정규화(DATA "정규화 규칙"): 본문 = `result`. inputTokens = `input_tokens + cache_creation_input_tokens + cache_read_input_tokens`. outputTokens = `output_tokens`, reasoningTokens = `output_tokens_details.thinking_tokens`(없으면 null) — 확인한 두 출력 모두 thinking ≤ output이라 output_tokens에 추론분이 들어 있다고 본다. requestId·firstTokenMs는 null(DATA: 스트리밍이 아닌 CLI).
+  - 사용량 필드가 없거나 토큰 수가 아닌 값이면 입력·출력은 0, 추론은 null이다. thinking_tokens가 output_tokens보다 크면(포함 전제가 깨짐) 추론은 null로 둔다.
+  - resolvedModelId: `modelUsage` 키가 하나면 그 키, 여럿이면 요청한 모델 ID와 같은 키 또는 `canonicalModel`이 같은 키, 고를 수 없으면 null.
+  - stopReason: `end_turn` → end, `max_tokens` → max_tokens, `refusal` → refusal, 그 밖·없음 → other. rawStopReason은 원문 그대로.
+- `runtime.generator.invocation`: `CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude -p --model <id> --effort high --tools "" --system-prompt "<system prompt>" --safe-mode --strict-mcp-config --no-session-persistence --output-format json (stdin: <user prompt>)`. 실제 인자를 만드는 같은 함수로 만든다. 실행 파일 경로(사용자 폴더가 들어 있다) 대신 `claude`라고 적고, 출력 상한이 null이면 환경변수 부분이 빠진다.
+- 에러 분류: abort → `timeout`. `api_error`가 `usage_limit_reached`이거나 메시지가 사용 한도 문구("usage limit", "hit your session limit" 같은 "hit your … limit", "limit reached" — `rate limit`은 제외, execute.py `USAGE_LIMIT_RE`와 같은 기준)면 `usage_limit`. 그 밖에는 `api_error_status`로: 429 → `rate_limited`, 529·5xx → `server_error`, 401·403 → `auth`, 400 → `bad_request`. 실행 파일 없음·출력 상한 초과·JSON이 아닌 출력·그 밖 → `unknown`.
+  - 한도 문구는 에러 결과(`is_error: true`)의 `result`와 stderr에서만 찾는다. 정상 결과의 `result`는 모델이 쓴 본문이라 같은 단어가 나올 수 있어서 보지 않는다.
+  - message: 에러 결과의 `result` → stderr → exit code·출력 모양 설명 순서로, 500자까지. `retryAfterMs`는 항상 null이다. `usage`는 실패 출력에 입력+출력 > 0인 사용량이 있을 때만 담는다.
+- smoke 기록기: 생성 호출만 감싸서 `raw-stdout.txt`(stdout 그대로, fixture `stdout-*.json`으로 그대로 복사할 수 있다)·`raw-stderr.txt`(redact)·`raw-exit.json`(`{ exitCode, signal }`, redact)을 낸다. 실행 함수가 던졌으면(실행 파일 없음·abort·출력 상한 초과) `raw-exit.json`에 `error { name, message, code }`만 남는다. 버전 읽기·로그인 점검은 기록하지 않는다.
+- ⚠ smoke로 확인: 입력 토큰이 수백 개 수준인가(수천 개 이상이면 기본 지시문·메모리가 섞인 것). `modelUsage`에 모델이 하나만 있는가. 출력 상한 도달(`stop_reason: max_tokens`인지, 에러로 끝나는지)·거부(`refusal`)가 어떻게 나오는가 — 지금은 `is_error: false` + `stop_reason`으로 가정했고, 모르는 값은 stopReason `other`로 둔다. API 키 로그인일 때 `authMethod` 값. stdout이 정말 JSON 하나뿐인가. 시스템 프롬프트 끝 줄바꿈이 Windows 인자로 그대로 가는가. 529·401 출력의 `api_error` 값과 `result` 문구(합성 fixture는 지어낸 것이다 — 에러는 smoke로 일부러 만들 수 없으니 실제로 만나면 옮긴다).
 
 **Codex CLI** (0.157.1에서 플래그 확인)
 ```
@@ -165,7 +185,7 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 **smoke** (`npm run smoke -- <slug>`): "Hello" HTML 한 장을 요청하는 짧은 프롬프트, 출력 상한 8,000. `results-smoke/<slug>-<timestamp>/`에 meta.json과 함께 **도구의 원본 stdout을 그대로 저장**한다. 사람이 확인한 뒤 어댑터 테스트 fixture로 복사하는 용도다(⚠ 항목을 실제 출력으로 확정).
 - 프롬프트는 `id: smoke`, `version: v1`이다. system은 실제 `season-tree-v1.system.md`(지시문 교체가 적용되는지 보려고), user는 짧은 Hello 요청이다.
 - 재시도 없이 1회 호출하고, 시도당 타임아웃은 5분이다. preflight는 git clean 검사만 빼고 똑같이 한다(HEAD는 읽으므로 커밋이 한 번은 있어야 한다). 폴더 시각은 실행 PC의 로컬 시각 `YYYYMMDD-HHmmss`다.
-- 원본 출력은 core 어댑터 인터페이스를 바꾸지 않고 저장한다. 레지스트리 항목의 `createRecorder`가 어댑터에 주입하는 프로세스 실행 함수·SDK 클라이언트를 기록용 래퍼로 감싸고, Runner가 끝난 뒤 `raw-*` 파일로 쓴다. Gemini는 `raw-stream.jsonl`(청크 한 줄씩)과 `raw-error.json`(`{status, body, …}`)이다. 두 파일은 fixture 형식(`stream-*.jsonl`, `error-*.json`)과 같아서 그대로 복사할 수 있다. CLI 어댑터(phase 3·4)는 `raw-stdout.txt`·`raw-stderr.txt` 같은 이름으로 낸다.
+- 원본 출력은 core 어댑터 인터페이스를 바꾸지 않고 저장한다. 레지스트리 항목의 `createRecorder`가 어댑터에 주입하는 프로세스 실행 함수·SDK 클라이언트를 기록용 래퍼로 감싸고, Runner가 끝난 뒤 `raw-*` 파일로 쓴다. Gemini는 `raw-stream.jsonl`(청크 한 줄씩)과 `raw-error.json`(`{status, body, …}`)이다. 두 파일은 fixture 형식(`stream-*.jsonl`, `error-*.json`)과 같아서 그대로 복사할 수 있다. Claude Code는 `raw-stdout.txt`·`raw-stderr.txt`·`raw-exit.json`이다(위 "Claude Code CLI"의 smoke 기록기). Codex(phase 4)도 같은 이름을 쓴다.
 - 종료 코드: outcome이 `api_failed`이면 1이다(점검 명령이라서 — batch는 0). 끝에 사용량·rawStopReason·resolvedModelId를 출력하고, 입력 토큰이 2,000을 넘으면 경고한다.
 - 알려진 한계: 타임아웃이면 SDK의 abort 에러가 기록되기 전에 파일을 써서 `raw-error.json`이 빠질 수 있다(그때까지 받은 청크는 남는다). 같은 초에 다시 실행하면 폴더가 비어 있지 않아 모델을 부르기 전에 거부된다.
 
@@ -220,11 +240,17 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 ## 배포 (`.github/workflows/deploy.yml`)
 
 - 트리거: main push + `workflow_dispatch`(수동 실행 버튼). 동시 실행은 `concurrency: pages`로 하나만.
-- 순서: `npm ci` → `npx playwright install --with-deps chromium` → `npm run lint` → `npm run typecheck` → `npm test` → `npm run check:results` → `npm run build`(SITE_BASE=`/<레포 이름>/`) → `actions/upload-pages-artifact` → `actions/deploy-pages`. **하나라도 실패하면 배포하지 않는다.**
+- 순서: `npm ci` → `npx playwright install --with-deps chromium` → `npm run lint` → `npm run typecheck` → `npm test` → `npm run check:results` → `actions/configure-pages` → `npm run build` → `actions/upload-pages-artifact` → `actions/deploy-pages`. **하나라도 실패하면 배포하지 않는다.**
+- `SITE_BASE`: configure-pages의 `base_path`는 `/<레포 이름>`(끝 슬래시 없음)이거나, 사용자 사이트·사용자 도메인이면 빈 값이다. `astro.config.mjs`의 `normalizeBase`(export, `site/test/astro-config.test.ts`)가 `/<레포 이름>/`·`/`로 맞춘다. Git Bash에서 손으로 `SITE_BASE=/x`를 넘기면 MSYS가 `C:/Program Files/Git/x`로 바꾸므로 `MSYS2_ENV_CONV_EXCL='*'`를 함께 준다(CI 리눅스는 해당 없음).
 - 워크플로 환경에 `ASTRO_TELEMETRY_DISABLED=1`을 둔다. `astro check`·`astro build`는 기본으로 사용 통계를 보낸다(site 테스트의 빌드 헬퍼는 이미 끈다).
 - 구성: `ubuntu-latest`, Node 24(`actions/setup-node`, npm 캐시). 권한은 `contents: read`, `pages: write`, `id-token: write`만. `SITE_URL`·`SITE_BASE`는 `actions/configure-pages`의 출력(`origin`, `base_path`)에서 채운다. 빌드 job이 `site/dist`를 올리고, 배포 job(`environment: github-pages`)이 `actions/deploy-pages`로 배포한다.
 - 워크플로는 비밀값(`secrets.*`)을 쓰지 않는다. 모델을 부르는 명령(gen·smoke)과 results를 바꾸는 명령(validate·judge)은 넣지 않는다.
-- CI(리눅스)에서 처음 도는 것: 검증기 WebGL 픽스처 테스트(⚠ 위 "검증기"), CLI 실행 모듈의 POSIX 프로세스 종료. 실패하면 배포되지 않으므로 첫 배포 때 Actions 로그를 확인한다.
+- `site/test/deploy-workflow.test.ts`가 워크플로를 yaml 파서로 검사한다. 워크플로를 고치면 이 테스트도 함께 고친다.
+  - 트리거·권한·concurrency·env 값, job 두 개(build·deploy), build 단계 순서, 액션 다섯 개의 메이저 태그를 그대로 검사한다.
+  - 어디에도 `if`·`continue-on-error`가 없고, job에 `permissions`·`uses`가 없어야 한다.
+  - 파일 전체 문자열(주석 포함)에 `gen`·`generate`·`smoke`·`validate`·`judge`·`claude`·`codex` 단어와 `API_KEY`·`ANTHROPIC`·`OPENAI`·`GEMINI`·`GITHUB_TOKEN`·`secrets.`가 없어야 한다. 주석에 이 단어를 써도 실패한다.
+  - step id는 configure-pages가 `pages`, deploy-pages가 `deployment`다(출력을 참조한다).
+- CI(리눅스)에서 처음 도는 것: 검증기 WebGL 픽스처 테스트(⚠ 위 "검증기"), CLI 실행 모듈의 POSIX 분기(프로세스 그룹 SIGKILL, `findOnPath` 실행 권한), `claude-code-bin`의 POSIX 실행 파일 테스트(Windows에서는 건너뜀). 실패하면 배포되지 않으므로 첫 배포 때 Actions 로그를 확인한다.
 - CI는 실제 모델을 부르지 않는다 (gen·smoke는 워크플로에 없다).
 - 한도 참고: Pages 사이트 1GB, 대역폭 월 100GB(권장), 배포 10분. 공개 레포의 Actions는 무료.
 
@@ -256,3 +282,4 @@ phase 2에서 설치한 값: astro ^7.3.8(Vite 8.3.4, Node ≥ 22.12 요구 → 
 - `@opb/core`가 TS 소스를 직접 내보내도 Astro build·dev와 astro check(Bundler 해석)에서 추가 설정 없이 해석된다. `@opb/core/testing`은 tsx와 tsc(NodeNext) 모두에서 해석된다.
 
 phase 3 계획 때(2026-10-13) 확인한 GitHub Actions 최신 메이저: `actions/checkout@v7`, `actions/setup-node@v7`, `actions/configure-pages@v6`, `actions/upload-pages-artifact@v5`, `actions/deploy-pages@v5`. Claude Code CLI 2.1.296.
+phase 3에서 설치한 값: yaml ^2.9.1(site devDependencies, 워크플로 테스트용 — astro가 이미 쓰는 버전이라 lock은 한 줄만 바뀌었다).
