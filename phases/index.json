@@ -20,7 +20,8 @@
     },
     {
       "dir": "04-codex-adapter",
-      "status": "pending"
+      "status": "completed",
+      "completed_at": "2026-10-13T12:00:11+0900"
     }
   ]
 }
