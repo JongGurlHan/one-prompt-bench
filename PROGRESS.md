@@ -1,6 +1,6 @@
 # 작업 인계 (PROGRESS)
 
-> 새 대화형 세션은 이 파일부터 읽는다. 마지막 갱신: 2026-10-14 (나무가 보이는 결과물 원칙 ADR-032 세션)
+> 새 대화형 세션은 이 파일부터 읽는다. 마지막 갱신: 2026-10-14 (ADR-032 1단계 완료·phase 6 계획 세션)
 > 무인 step 세션(execute.py)은 이 파일을 읽을 필요 없다 — 필요한 맥락은 step 파일과 하네스가 준다.
 
 ## 지금 하는 일
@@ -10,23 +10,18 @@ aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. 
 ## 진행 상태
 
 - [x] phase 1~5 완료·main merge, 8개 모델 생성·검증 커밋(마지막 배포 run 38372942894)
-- [x] ADR-031(2026-10-13) → ADR-032(2026-10-14) 결정과 문서 반영: ADR·PRD(개발 순서 6번)·DATA("스키마 변경 예정" — `models.json` `discarded`, `meta.json` `repair`, 불변식, 표시 규칙)·COPY(안내 박스 줄·생성 횟수·각주 ¶·생성 조건 "횟수"·How·Caution·제외 사유)·UI_GUIDE·OPERATIONS("화면에 나무가 그려지지 않을 때")·ARCHITECTURE("다시 생성·수정 요청" — `gen --repair` 사양, 버리기 전 커밋 검사). 수정 요청문 파일 `prompts/season-tree-v1.repair.md`는 사용자가 확정한 문구로 만들었다(프롬프트 탭에는 공개하지 않음 — 사용자 결정)
-- [x] GPT-6 Sol 생성 2회째(2026-10-13 22:28 KST): 같은 버그(`startTime = performance.now()` → 첫 프레임 `elapsed` 음수 → `colors[-1].top`) → `a766e4f`로 커밋
-- [x] Gemini 3.8 Flash `--force`(2026-10-14 02:24 KST): 503 "high demand" 3번 → `api_failed`(표본 아님). 첫 결과물은 `eac58e0`에 있다. **작업 트리에 지워진 Gemini 파일과 `api_failed` meta.json이 커밋 안 된 채 있다**
-- [ ] GPT-6 Sol 생성 3회째(1단계 마지막, 사용자): `npm run gen -- gpt-6-sol --force` → 나무가 보이면 끝, 안 보이면 커밋해 두고 phase 6 뒤 `--repair`
-- [ ] Gemini 생성 2회째(사용자, 503이 풀린 뒤): `npm run gen -- gemini-3-8-flash`(`api_failed`라 `--force` 없이 다시 돈다) → 안 보이면 커밋 후 3회째(`--force`)
-- [ ] phase 6 계획·실행(PRD 개발 순서 6번) → merge
-- [ ] 필요하면 수정 요청(`npm run gen -- <slug> --repair`, 사용자) → 그래도 안 되면 수록 제외 구현
+- [x] ADR-031(2026-10-13) → ADR-032(2026-10-14) 결정과 문서 반영(ADR·PRD·DATA·COPY·UI_GUIDE·OPERATIONS·ARCHITECTURE, 수정 요청문 `prompts/season-tree-v1.repair.md`, `9cee1f5`)
+- [x] ADR-032 1단계(다시 생성) 완료 — 8개 모두 나무가 그려진다(2026-10-14, `7a16e18`): GPT-6 Sol 3회째(앞선 `f0e6988`·`a766e4f`는 첫 프레임 `elapsed` 음수로 멈춤), Gemini 3.8 Flash 2회째(앞선 `eac58e0`은 `addScaledColor`로 검은 화면, 그 사이 `--force` 한 번은 503으로 응답 없음 → 횟수에 안 넣음). 두 결과물 모두 에러 0, 새로 열기 4번씩 멈춤 없음
+- [x] 사용자 결정(2026-10-14): 수정 요청(`gen --repair`)은 실제로 필요해질 때 만든다(ADR-032·PRD·ARCHITECTURE·DATA·OPERATIONS에 기록). 수록 제외도 같음
+- [x] phase 6 계획: `phases/06-regeneration-disclosure`(step 0 `discarded-record` — 스키마·check:results·display·`models.json` 기록 3개·`--force` 버리기 전 커밋 검사 / step 1 `regeneration-disclosure` — 결과 탭 안내 박스·비교표 "생성 횟수" 열·각주 ¶·바뀐 문구)
+- [ ] phase 6 실행(`python scripts/execute.py 06-regeneration-disclosure`, 사용자) → 확인 → main `--no-ff` merge
 - [ ] 8개 판정(`npm run judge -- <slug>`) → 커밋 → push(배포) → 리눅스 CI(phase 5·6 브라우저 테스트가 처음 돈다) 확인
 
 ## 다음 세션이 바로 할 일
 
-1. `git status`·`git log --oneline -5 -- results/`로 GPT-6 Sol 3회째·Gemini 2회째를 했는지 본다. 새 결과물은 `check:results` 뒤 `data:` 커밋한다. 나무가 보이는지는 사용자가 개발 서버로 본다(원인 확인은 `validation.pageErrors`, `results/`는 읽기만). phase 6 실행 전에는 작업 트리가 깨끗해야 한다 — Gemini가 계속 503이면 `api_failed` 상태를 커밋할지 사용자에게 묻는다.
-2. 생성이 정리되면 `/harness`로 phase 6을 계획한다(DATA "스키마 변경 예정", ARCHITECTURE "다시 생성·수정 요청", COPY "다시 생성하거나 고친 결과물"). `models.json` `discarded`에 넣을 기록(오래된 것부터, `at`은 그 단계를 한 KST 날짜):
-   - `gpt-6-sol`: `{ made: "generation", reason: "blank_screen", next: "regenerate", at: "2026-10-13", commit: "f0e698868f321729a36937aca7bca80966c706f9" }`, `{ made: "generation", reason: "blank_screen", next: "regenerate", at: "<3회째 생성 날짜>", commit: "a766e4f00b5a80c4bd1bb1272f5a36f4ed3ae996" }` (+ 3회째도 안 보이면 수정 요청 때 한 줄 더)
-   - `gemini-3-8-flash`: `{ made: "generation", reason: "blank_screen", next: "regenerate", at: "2026-10-14", commit: "eac58e07bb8d3d6ffdb1a4ba7ddc6eabd15d4ff0" }` (+ 이후 단계)
-   - `claude-sonnet-5-5`: `{ made: "generation", reason: "continued_output", next: "regenerate", at: "2026-10-13", commit: null }` (첫 기록은 커밋 전에 버림, ADR-029)
-3. push는 phase 6 merge와 8개 판정 뒤에 한다. 그 전에 push하면 다시 생성한 결과물이 아무 표시 없이 공개된다.
+1. phase 6이 끝났으면 `feat-06-regeneration-disclosure`를 확인한다(step summary·handoff, 이 PC에서 lint·typecheck·test·build·check:results). 사이트에서 GPT-6 Sol(3회)·Gemini(2회)·Sonnet(2회, "기록은 남아 있지 않아요")의 안내 박스와 비교표 열을 본다. handoff의 문서 반영 거리를 `docs/`로 옮기고(특히 DATA "스키마 변경 예정"에서 반영된 `discarded`를 본문으로) merge를 안내한다.
+2. merge 뒤 8개 판정을 안내한다(OPERATIONS "판정"). 판정 값은 사용자가 정한다. 그다음 push.
+3. push는 phase 6 merge와 판정 뒤에 한다. 그 전에 push하면 다시 생성한 결과물이 아무 표시 없이 공개된다.
 
 ## 사용자 결정·답변
 

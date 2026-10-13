@@ -57,6 +57,8 @@ results/<slug>/
 | `GenerationRecordSchema` (meta.json) | 없음 | `repair?: { round: 1 \| 2; previousOutputSha256: Sha256; errors: Array<{ message: string; count: number }> }` — 공개 결과물이 수정본일 때만 파이프라인(`gen --repair`)이 쓴다. `errors`는 수정 요청문에 실제로 넣은 에러 목록이다. `prompt`의 id·version은 원래 프롬프트 그대로이고 `sha256`은 실제로 보낸 `{system, user(채운 수정 요청문)}`의 해시다 | 수정본이라는 사실과 무엇을 전했는지를 생성 기록에 남긴다 |
 | check:results | — | 규칙 추가는 아래 "불변식(phase 6)" | 기록끼리 어긋나지 않게 |
 
+`GenerationRecordSchema`의 `repair`는 `gen --repair`와 함께 실제로 필요해질 때 반영한다(ADR-032). 그 전(phase 6)에는 `discarded`에 수정 요청 관련 항목(`made: 'repair'` 또는 `next: 'repair'`)이 있으면 check:results가 "수정 요청은 아직 구현되지 않았다"로 실패한다.
+
 - 이유 코드: `blank_screen` = 화면에 나무가 그려지지 않음(ADR-032). `continued_output` = 생성 도구가 출력 상한 뒤 이어 쓴 응답을 잘못 기록해 버림(ADR-029, Sonnet). 새 이유가 생기면 코드와 COPY 문구를 함께 더한다.
 - `commit`은 버린 결과물을 처음 커밋한 커밋의 전체 해시다(사이트에는 앞 7자). 커밋하기 전에 버렸으면 null(Sonnet만 — ADR-032부터는 버리기 전에 반드시 커밋한다).
 - 횟수 상한(core 상수 한 곳): 생성본은 첫 생성 포함 총 3회(`MAX_GENERATIONS = 3`), 수정본은 2회(`MAX_REPAIRS = 2`).

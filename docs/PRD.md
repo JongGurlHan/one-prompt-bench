@@ -64,6 +64,6 @@ main에 push하면 GitHub Actions가 검사(lint·typecheck·test·results 검�
 | 3 | GitHub Actions 배포 워크플로, Claude Code 어댑터 | 공개 레포 생성·Pages 설정·push(첫 배포), Claude smoke |
 | 4 | Codex CLI 어댑터 | Codex smoke, 8개 일괄 생성과 검증 |
 | 5 | 판정 도우미, 비교표·프롬프트·소개 탭, 휴대폰 화면, README | 빈 화면 확인 → 나무가 안 그려진 2개(GPT-6 Sol·Gemini 3.8 Flash) 다시 생성(ADR-032 1단계, 총 3회까지) |
-| 6 | 재생성·수정 공개와 수정 요청: `models.json` `discarded`·`meta.json` `repair`(스키마·check:results), `gen --repair`(수정 요청문 `prompts/season-tree-v1.repair.md`), 버리기 전 커밋 검사, 결과 탭 안내 박스, 비교표 "생성 횟수" 열·각주 ¶, 바뀐 문구 | 필요하면 수정 요청(ADR-032 2단계), 8개 판정, push |
+| 6 | 재생성 공개: `models.json` `discarded`(스키마·check:results·기록 3개), 버리기 전 커밋 검사, 결과 탭 안내 박스, 비교표 "생성 횟수" 열·각주 ¶, 바뀐 문구. 수정 요청(`gen --repair`)과 수록 제외는 필요해질 때 | 8개 판정, push |
 
 첫 실제 생성은 검증기가 생긴 2번 뒤에 한다(ADR-022). phase가 끝난 뒤의 절차(merge·사람이 할 일)는 `docs/OPERATIONS.md` "하네스로 개발하기".

@@ -114,7 +114,7 @@ models.json ─▶ Batch ─▶ Runner(재시도·타임아웃·저장·비용) 
   - Google 대상이 있으면 `.env`에 `GEMINI_API_KEY`가 있다 (값은 출력하지 않는다).
   - `packages/`, `pipeline/`, `prompts/`, `models.json`에 커밋 안 된 변경이 없다 — meta.json의 `gitCommit`이 실제 코드를 가리키게.
 
-### 다시 생성·수정 요청 (ADR-032, phase 6에서 구현)
+### 다시 생성·수정 요청 (ADR-032 — 버리기 전 커밋 검사는 phase 6, `--repair`는 필요해질 때 구현)
 
 나무가 그려지지 않은 결과물의 사다리(다시 생성 총 3회 → 수정 요청 2회 → 수록 제외)는 사람이 명령으로 밟는다. 기록 모양과 불변식은 DATA "스키마 변경 예정".
 - **버리기 전 커밋 검사**: `--force`·`--repair`는 버릴 결과 폴더(`results/<slug>/`)에 git HEAD와 다른 변경(수정·삭제·새 파일)이 있으면 아무것도 하지 않고 멈춘다(exit 1). 버린 결과물의 증거가 git에 남아야 하기 때문이다. 예외: 폴더의 meta.json이 `api_failed`이거나 meta.json이 없는 경우(표본이 아님).
