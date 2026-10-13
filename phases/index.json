@@ -25,7 +25,8 @@
     },
     {
       "dir": "05-judge-and-tabs",
-      "status": "pending"
+      "status": "blocked",
+      "blocked_at": "2026-10-13T19:43:03+0900"
     }
   ]
 }
