@@ -58,6 +58,7 @@ phase 1에서 반영한 변경(SDK 방식 → CLI 방식): `runtime.sdkPackage`�
 - `outputTokens` = 추론 토큰을 포함한 전체 출력. 도구가 추론을 따로 주면 더한다. `reasoningTokens`는 그중 추론분이고, 도구가 주지 않으면 null이다.
 - `firstTokenMs`: 스트리밍이 아닌 CLI는 null.
 - `resolvedModelId`·`requestId`: 도구가 주면 기록하고, 없으면 null.
+- `stopReason`: 도구가 출력 상한에 닿은 뒤 스스로 이어 쓴 응답(Claude Code — 출력 합이 요청 상한을 넘음)은 마지막 값과 관계없이 `max_tokens`다. `rawStopReason`은 도구가 준 원문 그대로 둔다(ADR-029, ARCHITECTURE "Claude Code CLI").
 
 ### 불변식 (저장할 때 schema.ts가 검사)
 

@@ -17,12 +17,14 @@ aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. 
 - [x] Codex CLI 0.157.1 → 0.162.1 업데이트(2026-10-13, 사용자) → smoke 2차 성공: 입력 9,418(캐시 7,296)·출력 21·추론 0, 8.1초, 도구 사용 없음. 실제 출력을 fixture `stdout-smoke-ok.jsonl`로 옮기고 테스트를 더했다. ARCHITECTURE "Codex CLI"를 0.162.1 기준으로 고쳤다(기본 지시문 교체를 0.162.1 소스로 확인).
 - [x] 사용자 결정(2026-10-13): Codex 웹 검색 도구를 끈다 → ADR-028, 인자에 `-c web_search="disabled"`(테스트 먼저), 커밋
 - [x] Codex smoke 3차(2026-10-13, 웹 검색 끈 뒤): 설정 거부 없음, 입력 6,962(캐시 0)·출력 21·추론 0, 13.5초. ARCHITECTURE·OPERATIONS에 기록(fixture는 모양이 같아 안 옮김)
-- [ ] 8개 일괄 생성과 검증
+- [x] 일괄 생성(2026-10-13, 7개): check:results 통과. GPT 4개·Claude Haiku·Opus는 ok. **Claude Sonnet은 Claude Code가 출력 상한 뒤 스스로 이어 써서(출력 87,265) `no_html`로 잘못 기록됨** → 사용자 결정 ADR-029: 이어 쓰기는 잘림으로 기록하도록 어댑터 수정(테스트 먼저), Sonnet은 `--force` 1회 재생성. 6개는 `data:` 커밋
+- [ ] Claude Sonnet 5.5 재생성(`--force`) → 확인 → `data:` 커밋
 - [ ] phase 5 `05-…`(PRD "개발 순서" 5번: 판정 도우미, 비교표·프롬프트·소개 탭, 휴대폰 화면, README) → 8개 판정
 
 ## 다음 세션이 바로 할 일
 
-1. 일괄 생성: 사용자가 `! npm run gen -- --all`(Gemini는 이미 있어 건너뛰고 7개). Claude 3개는 Pro 한도, Codex 4개는 ChatGPT 한도를 쓴다 — 한도에 걸린 모델은 `api_failed`로 남고 다시 실행하면 그 모델만 돈다. 끝나면 `npm run check:results` → `data:` 커밋. Claude 생성의 reasoningTokens로 `--effort high` 적용을 확인한다(ARCHITECTURE "Claude Code CLI" ⚠). 그다음 phase 5를 `/harness`로 계획한다.
+1. Sonnet 재생성: 사용자가 별도 터미널에서 `npm run gen -- claude-sonnet-5-5 --force`(지울 폴더를 묻는 y/N 확인이 있다). 끝나면 `npm run check:results`, meta.json의 outcome·출력 토큰(65,536을 넘으면 truncated여야 한다)을 확인하고 `data:` 커밋한다. 결과가 무엇이든 그대로 둔다(ADR-029).
+2. 그다음 push(배포)를 사용자에게 묻고, phase 5를 `/harness`로 계획한다. Codex·Claude의 남은 ⚠는 ARCHITECTURE에 있다.
 
 ## 사용자 결정·답변
 
