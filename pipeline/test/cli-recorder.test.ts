@@ -1,16 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import {
-  RAW_EXIT_FILE,
-  RAW_STDERR_FILE,
-  RAW_STDOUT_FILE,
-  createClaudeCodeRecorder,
-} from '../src/adapters/claude-code/claude-code.recorder.js';
+import { RAW_EXIT_FILE, RAW_STDERR_FILE, RAW_STDOUT_FILE, createCliRecorder } from '../src/adapters/cli-recorder.js';
 import { RAW_FILE_NAME, type RawFile } from '../src/adapters/raw-recorder.js';
 import type { CliRequest } from '../src/system/cli.js';
 import { exited, fakeRunCli, loadFixture } from './claude-code-fakes.js';
 
-/* ───────── smoke용 Claude Code 기록 래퍼: 실행 함수를 감싸 stdout·stderr·exit 정보를 그대로 모은다 ───────── */
+/* ───────── smoke용 CLI 기록 래퍼(Claude Code·Codex 공용): 실행 함수를 감싸 stdout·stderr·exit 정보를 그대로 모은다 ───────── */
 
 const SECRET = 'secret-value-0123456789';
 const redact = (text: string) => text.split(SECRET).join('***');
@@ -22,7 +17,7 @@ const fileNamed = (files: RawFile[], name: string) => files.find((f) => f.name =
 test('정상: 요청·결과를 바꾸지 않고 넘기며 raw-stdout.txt(그대로)·raw-stderr.txt·raw-exit.json을 낸다', async () => {
   const stdout = await loadFixture('stdout-ok.json');
   const inner = fakeRunCli([exited(stdout, 0, 'warn\n')]);
-  const recorder = createClaudeCodeRecorder(redact);
+  const recorder = createCliRecorder(redact);
 
   const result = await recorder.wrap(inner)(request);
 
@@ -38,7 +33,7 @@ test('정상: 요청·결과를 바꾸지 않고 넘기며 raw-stdout.txt(그대
 
 test('stdout은 가리지 않는다(생성된 코드가 바뀌면 안 된다). stderr·exit 정보에는 redact를 적용한다', async () => {
   const inner = fakeRunCli([{ exitCode: 1, signal: `SIG${SECRET}`, stdout: `code ${SECRET}`, stderr: `oops ${SECRET}\n` }]);
-  const recorder = createClaudeCodeRecorder(redact);
+  const recorder = createCliRecorder(redact);
   await recorder.wrap(inner)(request);
 
   const files = recorder.files();
@@ -50,12 +45,12 @@ test('stdout은 가리지 않는다(생성된 코드가 바뀌면 안 된다). s
 });
 
 test('호출이 없었으면 파일이 없다', () => {
-  assert.deepEqual(createClaudeCodeRecorder(redact).files(), []);
+  assert.deepEqual(createCliRecorder(redact).files(), []);
 });
 
 test('실행 함수가 던지면 같은 에러를 다시 던지고 raw-exit.json에 에러 이름·메시지만 남긴다 (redact 적용)', async () => {
   const enoent = Object.assign(new Error(`spawn /fake/claude ENOENT ${SECRET}`), { code: 'ENOENT' });
-  const recorder = createClaudeCodeRecorder(redact);
+  const recorder = createCliRecorder(redact);
   await assert.rejects(recorder.wrap(fakeRunCli([{ reject: enoent }]))(request), (e) => e === enoent);
 
   const files = recorder.files();
@@ -72,7 +67,7 @@ test('실행 함수가 던지면 같은 에러를 다시 던지고 raw-exit.json
 });
 
 test('여러 번 불리면 마지막 호출을 남긴다', async () => {
-  const recorder = createClaudeCodeRecorder(redact);
+  const recorder = createCliRecorder(redact);
   const run = recorder.wrap(fakeRunCli([exited('first', 1), exited('second', 0)]));
   await run(request);
   await run(request);

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { GenerationRequest } from '@opb/core';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code/claude-code.adapter.js';
-import { RAW_STDOUT_FILE } from '../src/adapters/claude-code/claude-code.recorder.js';
+import { RAW_STDOUT_FILE } from '../src/adapters/cli-recorder.js';
 import { createClaudeCodeEntry, type ClaudeCodeEntryDeps } from '../src/adapters/registry.js';
 import {
   FAKE_CLAUDE_BIN,

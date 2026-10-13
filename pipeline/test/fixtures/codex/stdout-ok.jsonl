@@ -1,0 +1,5 @@
+{"type":"thread.started","thread_id":"00000000-0000-0000-0000-000000000000"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"reasoning","text":"**합성 fixture**\n\n요청을 읽고 단일 HTML 한 장으로 답한다."}}
+{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"합성 fixture 본문입니다.\n\n```html\n<!DOCTYPE html>\n<html lang=\"ko\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>합성 fixture</title>\n</head>\n<body>\n  <h1>합성 fixture</h1>\n</body>\n</html>\n```"}}
+{"type":"turn.completed","usage":{"input_tokens":5200,"cached_input_tokens":3072,"cache_write_input_tokens":512,"output_tokens":9800,"reasoning_output_tokens":4100}}

@@ -1,0 +1,50 @@
+{
+  "project": "One Prompt Bench",
+  "phase": "04-codex-adapter",
+  "model": "claude-opus-5-5",
+  "timeout_sec": 3600,
+  "steps": [
+    {
+      "step": 0,
+      "name": "codex-adapter",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ],
+      "started_at": "2026-10-13T11:35:03+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "2838b089-1cae-4164-8e5f-a15614e85f09",
+      "cost_usd": 3.6917,
+      "num_turns": 40,
+      "summary": "Codex CLI 어댑터(pipeline/src/adapters/codex/: codex.bin·codex.adapter·codex.errors)와 합성 JSONL fixture(pipeline/test/fixtures/codex/), 가짜 실행 함수(test/codex-fakes.ts), 테스트 4개(codex-adapter·errors·runner·bin)를 추가했다. 실제 codex는 한 번도 띄우지 않았다",
+      "handoff": "인터페이스: resolveCodexCommand({env,platform,nodePath}) → CodexCommand{bin,prefixArgs}, readCodexVersion(command, env=process.env, run=runSync), new CodexAdapter(runCli, {command, version, env}). 레지스트리의 create()는 resolveCodexCommand → readCodexVersion → new CodexAdapter 순서로 쓰면 된다.\n동기 실행 RunSync·SyncRunResult·runSync(30초, OS 임시 폴더)를 claude-code.bin.ts에서 system/cli.ts로 옮겼다(동작은 같다). claude-code-bin.test.ts는 import만 고쳤다.\n공통 한도 문구 USAGE_LIMIT_RE는 claude-code.errors.ts에 그대로 두고 codex.errors.ts가 import한다.\n가짜 실행 함수: codexExited(stdout, {exitCode, stderr, lastMessage, inspect}) — turn.completed가 있으면 마지막 agent_message를 -o 경로에 쓴다. FAKE_CODEX_COMMAND·FAKE_CODEX_VERSION('0.157.1')·CODEX_PARENT_ENV(PARENT_ENV + CODEX_HOME). fakeRunCli·exited는 claude-code-fakes.ts의 것을 쓴다. Codex fixture 이름은 stdout-<이름>.jsonl이다.\n로그인 상태(codex login status) 합성 fixture는 만들지 않았다 → step 1이 fixtures/codex/에 더하고 README 표에 적는다.\nARCHITECTURE에 없던 결정 1: 분류에는 대표 에러 문구 하나만 쓴다(turn.failed → 마지막 error 이벤트 → stderr, message와 출처가 같다). 이벤트·stderr 전체를 훑지 않는다. 앞선 재연결 메시지(stream disconnected)가 뒤의 401을 network로 바꾸지 않게 하려는 것이다.\n결정 2: maxOutputTokens가 null이 아니면 describeInvocation도 던진다(Runner가 모델을 부르기 전에 멈춘다). JSON이지만 객체가 아닌 줄(예: [1,2])도 'JSON이 아닌 줄'로 본다.\ninvocation은 ARCHITECTURE 명령 모양 그대로다(공백이 든 인자만 따옴표로 감싸므로 -c model_reasoning_effort=\"high\"가 그대로 보인다).\n남은 이슈(⚠): stderr가 message가 될 때 Codex가 경로(사용자 폴더)를 쓰면 그 경로가 meta.json에 남을 수 있다. smoke에서 stderr 내용을 확인한다. ARCHITECTURE의 ⚠ 항목은 바꾸지 않았다.",
+      "completed_at": "2026-10-13T11:48:46+0900",
+      "attempts": 1
+    },
+    {
+      "step": 1,
+      "name": "codex-preflight-smoke",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ],
+      "started_at": "2026-10-13T11:48:47+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "83840411-8bcc-4014-be13-f05fc1dab076",
+      "cost_usd": 3.2438,
+      "num_turns": 50,
+      "summary": "레지스트리에 codex-cli 항목(createCodexEntry: 어댑터 생성·codex login status preflight·공용 smoke 기록기)을 등록하고, Claude Code 기록기를 adapters/cli-recorder.ts(createCliRecorder)로 옮겨 두 CLI가 함께 쓴다. 가짜 실행 함수로 gen·smoke가 gpt-a를 끝까지 도는 테스트(codex-preflight·registry·pipeline)를 더했다. 실제 codex는 한 번도 띄우지 않았다",
+      "handoff": "인터페이스: createCodexEntry(overrides?: Partial<CodexEntryDeps>) — 주입점 runCli·resolveCommand()·readVersion(command)·env(). codexLoginPreflight({runCli, resolveCommand, env}) → PreflightCheck[] (이름 'Codex 로그인 (codex login status)'). createCliRecorder(redact)와 RAW_STDOUT_FILE 등은 pipeline/src/adapters/cli-recorder.ts. claude-code.recorder.ts는 지웠고 기록기 테스트는 cli-recorder.test.ts로 이름만 바꿨다(파일 이름·내용·redact 규칙 그대로).\nARCHITECTURE와 다른 점 1: \"Claude Code CLI\" 구현 목록의 recorder가 adapters/cli-recorder.ts로 옮겨졌다. \"Codex CLI\"에는 구현 줄(adapter·errors·bin·preflight, createCodexEntry 주입점)이 아직 없다 → 문서에 옮겨야 한다.\n결정 2(preflight 판정): 결과 줄 = stderr에서 빈 줄이 아닌 첫 줄(trim, CRLF 허용), stderr가 비면 stdout. exit 0 + 정확히 'Logged in using ChatGPT'만 통과. 'Logged in using ChatGPT'로 시작하지만 뒤에 무엇이 붙거나 exit≠0이면 모르는 출력으로 보고 일반 안내만 쓴다(exit code만 표시).\n결정 3(인증 방식 이름): 알려진 이름(personal access token·access token·Amazon Bedrock)이나 ' - ' 앞이 영문자·공백 40자 이하일 때만 보이고, 그 밖은 '표시하지 않는 방식'. API 키 문구는 ' - ' 뒤를 읽지도 않는다.\nfixture: fixtures/codex/login-status-{chatgpt,api-key,not-logged-in}.txt(합성, stderr 내용, README 표에 기록). 가짜: codex-fakes.ts의 loadLoginStatus(name)·loginStatus(stderr, exitCode)·fakeCodex({login, runs}) — args에 login이 exec보다 먼저 나오면 login 대본.\n남은 이슈(⚠): 실제 Codex smoke는 사람이 `! npm run smoke -- gpt-6-1-sol` 등으로 실행한다. 확인할 것: 실제 login status 출력이 stderr 첫 줄인지(앞에 경고 줄이 오면 지금은 실패로 멈춘다), ARCHITECTURE \"Codex CLI\"의 ⚠ 항목, stderr에 사용자 폴더 경로가 남는지(step 0 이슈). 확인되면 raw-stdout.txt를 fixtures/codex/에 그대로 옮긴다.",
+      "completed_at": "2026-10-13T12:00:10+0900",
+      "attempts": 1
+    }
+  ],
+  "created_at": "2026-10-13T11:35:03+0900",
+  "cost_usd": 6.9355,
+  "num_turns": 90,
+  "completed_at": "2026-10-13T12:00:11+0900"
+}

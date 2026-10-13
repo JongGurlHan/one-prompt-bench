@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { accessSync, constants as fsConstants, statSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -166,6 +166,35 @@ function killTree(child: ChildProcess): void {
     }
   }
 }
+
+/* ───────── 동기 실행 (버전 읽기) ───────── */
+
+/** `--version`처럼 짧은 동기 실행이 끝나기를 기다리는 최대 시간 */
+export const SYNC_TIMEOUT_MS = 30_000;
+
+export interface SyncRunResult {
+  status: number | null;
+  stdout: string;
+  stderr: string;
+  /** 띄우지 못했거나 시간 초과 */
+  error?: Error;
+}
+
+/** 동기 실행 함수. 레지스트리의 create()가 동기라서 버전 읽기에만 쓴다 */
+export type RunSync = (bin: string, args: readonly string[], env: Readonly<Record<string, string>>) => SyncRunResult;
+
+/** shell 없이, OS 임시 폴더(레포 밖)에서, 준 env만으로 실행한다. env는 cliEnv로 만든다 */
+export const runSync: RunSync = (bin, args, env) => {
+  const r = spawnSync(bin, [...args], {
+    cwd: tmpdir(),
+    env: { ...env },
+    encoding: 'utf8',
+    shell: false,
+    windowsHide: true,
+    timeout: SYNC_TIMEOUT_MS,
+  });
+  return { status: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '', ...(r.error ? { error: r.error } : {}) };
+};
 
 /* ───────── 자식 환경 ───────── */
 

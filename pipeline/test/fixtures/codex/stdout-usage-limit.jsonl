@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"00000000-0000-0000-0000-000000000000"}
+{"type":"turn.started"}
+{"type":"error","message":"You’ve hit your usage limit. 합성 fixture — 이 뒤 문구는 실제와 다를 수 있다."}
+{"type":"turn.failed","error":{"message":"You’ve hit your usage limit. 합성 fixture — 이 뒤 문구는 실제와 다를 수 있다."}}

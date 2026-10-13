@@ -5,7 +5,10 @@ import { runCli, type RunCli } from '../system/cli.js';
 import { ClaudeCodeAdapter } from './claude-code/claude-code.adapter.js';
 import { readClaudeVersion, resolveClaudeBin } from './claude-code/claude-code.bin.js';
 import { claudeAuthPreflight } from './claude-code/claude-code.preflight.js';
-import { createClaudeCodeRecorder } from './claude-code/claude-code.recorder.js';
+import { createCliRecorder } from './cli-recorder.js';
+import { CodexAdapter } from './codex/codex.adapter.js';
+import { readCodexVersion, resolveCodexCommand, type CodexCommand } from './codex/codex.bin.js';
+import { codexLoginPreflight } from './codex/codex.preflight.js';
 import { GeminiAdapter, type GeminiClient } from './gemini/gemini.adapter.js';
 import { createGeminiClient, readGeminiSdkVersion } from './gemini/gemini.client.js';
 import { createGeminiRecorder } from './gemini/gemini.recorder.js';
@@ -14,7 +17,7 @@ import type { RawRecorder, Redact } from './raw-recorder.js';
 /* ────────────────────────────────────────────────────────────
  * 생성 도구(GeneratorTool)별 어댑터 레지스트리 (ADAPTERS 토큰).
  * 레지스트리를 만들 때는 아무것도 만들거나 실행하지 않는다. 어댑터는 preflight를 통과한 뒤 실제로 필요할 때 create()로 만든다.
- * gemini-api(phase 1)·claude-code(phase 3) 등록. codex-cli는 phase 4가 등록한다.
+ * gemini-api(phase 1)·claude-code(phase 3)·codex-cli(phase 4) 등록.
  * ──────────────────────────────────────────────────────────── */
 
 export interface CreateAdapterOptions<Client> {
@@ -26,13 +29,13 @@ export interface CreateAdapterOptions<Client> {
 }
 
 export interface AdapterEntry<Client = unknown> {
-  /** 도구별 점검 (예: phase 3의 claude auth status). 대상 모델에 이 도구가 있을 때만 부른다 */
+  /** 도구별 점검 (claude auth status·codex login status). 대상 모델에 이 도구가 있을 때만 부른다 */
   preflight?(): Promise<PreflightCheck[]>;
   /** 설정(.env)에서 필요한 값을 꺼내 어댑터를 만든다 */
   create(config: AppConfig, options?: CreateAdapterOptions<Client>): ProviderAdapter;
   /**
    * smoke용 원본 출력 기록기. smoke는 create(config, { wrapClient: (c) => recorder.wrap(c) })로 어댑터를 만들고,
-   * Runner가 끝난 뒤 recorder.files()를 저장 폴더에 쓴다. CLI 도구(phase 3·4)는 프로세스 실행 함수를 감싸 stdout·stderr를 낸다
+   * Runner가 끝난 뒤 recorder.files()를 저장 폴더에 쓴다. CLI 도구는 공용 기록기(createCliRecorder)로 프로세스 실행 함수를 감싸 stdout·stderr를 낸다
    */
   createRecorder?(redact: Redact): RawRecorder<Client>;
 }
@@ -41,7 +44,7 @@ export interface AdapterEntry<Client = unknown> {
 export interface AdapterRegistry {
   readonly 'gemini-api'?: AdapterEntry<GeminiClient>;
   readonly 'claude-code'?: AdapterEntry<RunCli>;
-  readonly 'codex-cli'?: AdapterEntry; // phase 4
+  readonly 'codex-cli'?: AdapterEntry<RunCli>;
 }
 
 export function registeredTools(registry: AdapterRegistry): Set<GeneratorTool> {
@@ -93,10 +96,46 @@ export function createClaudeCodeEntry(overrides: Partial<ClaudeCodeEntryDeps> = 
       const run = options?.wrapClient ? options.wrapClient(deps.runCli) : deps.runCli;
       return new ClaudeCodeAdapter(run, { bin, version, env: deps.env() });
     },
-    createRecorder: (redact) => createClaudeCodeRecorder(redact),
+    createRecorder: (redact) => createCliRecorder(redact),
+  };
+}
+
+/** codex-cli 항목의 주입점. 테스트는 가짜로 바꾼다 (기본값은 실제 구현 — 실제 codex를 띄운다) */
+export interface CodexEntryDeps {
+  /** 생성·로그인 점검 실행 함수 */
+  runCli: RunCli;
+  /** 실행 명령 (PATH 탐색, Windows npm 설치는 node + shim 옆 codex.js). 못 찾으면 throw */
+  resolveCommand(): CodexCommand;
+  /** 동기. `codex --version`의 숫자. 못 읽으면 throw */
+  readVersion(command: CodexCommand): string;
+  /** 자식 환경의 바탕 (cliEnv가 API 키·Claude Code 세션 변수를 지운다. CODEX_HOME은 인증이라 그대로) */
+  env(): Readonly<Record<string, string | undefined>>;
+}
+
+/** 만들 때는 아무것도 실행하지 않는다. 실행 명령 찾기·버전 읽기는 create(), 로그인 점검은 preflight()에서 */
+export function createCodexEntry(overrides: Partial<CodexEntryDeps> = {}): AdapterEntry<RunCli> {
+  const env = overrides.env ?? (() => process.env);
+  const deps: CodexEntryDeps = {
+    runCli,
+    resolveCommand: () => resolveCodexCommand({ env: env() }),
+    readVersion: (command) => readCodexVersion(command, env()),
+    ...overrides,
+    env,
+  };
+  return {
+    preflight: () =>
+      codexLoginPreflight({ runCli: deps.runCli, resolveCommand: () => deps.resolveCommand(), env: deps.env() }),
+    // .env(config)는 쓰지 않는다 — ChatGPT 로그인으로 실행하고, 자식 환경에 .env 값을 넣지 않는다
+    create(_config, options) {
+      const command = deps.resolveCommand();
+      const version = deps.readVersion(command); // 여기서 실패하면 모델을 부르지 않는다
+      const run = options?.wrapClient ? options.wrapClient(deps.runCli) : deps.runCli;
+      return new CodexAdapter(run, { command, version, env: deps.env() });
+    },
+    createRecorder: (redact) => createCliRecorder(redact),
   };
 }
 
 export function createAdapterRegistry(): AdapterRegistry {
-  return { 'gemini-api': geminiEntry, 'claude-code': createClaudeCodeEntry() };
+  return { 'gemini-api': geminiEntry, 'claude-code': createClaudeCodeEntry(), 'codex-cli': createCodexEntry() };
 }
