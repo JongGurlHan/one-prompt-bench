@@ -3,11 +3,7 @@ import { readFile, readdir, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { after, test } from 'node:test';
 import { GenerationRecordSchema, runGeneration, type GenerationRecord } from '@opb/core';
-import {
-  RAW_EXIT_FILE,
-  RAW_STDERR_FILE,
-  RAW_STDOUT_FILE,
-} from '../src/adapters/claude-code/claude-code.recorder.js';
+import { RAW_EXIT_FILE, RAW_STDERR_FILE, RAW_STDOUT_FILE } from '../src/adapters/cli-recorder.js';
 import { createClaudeCodeEntry, type AdapterRegistry } from '../src/adapters/registry.js';
 import { runBatch } from '../src/generation/batch.js';
 import { SMOKE_MAX_OUTPUT_TOKENS, SMOKE_PROMPT, runSmoke, type SmokeDeps } from '../src/generation/smoke.js';

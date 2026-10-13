@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import type { CodexCommand } from '../src/adapters/codex/codex.bin.js';
 import type { CliRequest, CliResult } from '../src/system/cli.js';
-import { PARENT_ENV, exited, type FakeRun } from './claude-code-fakes.js';
+import { PARENT_ENV, exited, fakeRunCli, type CwdState, type FakeRun, type FakeRunCli } from './claude-code-fakes.js';
 
 /* ───────── Codex 어댑터 테스트용 가짜 실행 함수·fixture 로더 (실제 codex를 띄우지 않는다) ───────── */
 
@@ -14,6 +14,9 @@ export function loadFixture(file: string): Promise<string> {
 
 /** fixtures/codex/stdout-<name>.jsonl 원문 */
 export const loadStdout = (name: string) => loadFixture(`stdout-${name}.jsonl`);
+
+/** fixtures/codex/login-status-<name>.txt 원문 (`codex login status`의 stderr) */
+export const loadLoginStatus = (name: string) => loadFixture(`login-status-${name}.txt`);
 
 /** fixtures/codex/stdout-<name>.jsonl을 이벤트 배열로 (테스트가 줄을 바꿔 변형을 만들 때) */
 export async function loadEvents(name: string): Promise<Record<string, unknown>[]> {
@@ -80,6 +83,30 @@ export function codexExited(stdout: string, opts: CodexExitOptions = {}): FakeRu
     if (message !== null) await writeFile(argAfter(req.args, '-o'), message, 'utf8');
     return exited(stdout, opts.exitCode ?? 0, opts.stderr ?? '');
   };
+}
+
+/** `codex login status`의 결과 한 줄: Codex는 stderr에 쓴다 */
+export function loginStatus(stderr: string, exitCode: number | null = 0): CliResult {
+  return exited('', exitCode, stderr);
+}
+
+/**
+ * preflight·생성을 함께 받는 가짜 codex: `login status`는 login으로 답하고, 나머지(생성)는 대본대로.
+ * batch·smoke·레지스트리 테스트가 codex-cli 항목에 주입한다.
+ */
+export function fakeCodex(opts: { login: FakeRun; runs: FakeRun[] }): FakeRunCli & {
+  login: FakeRunCli;
+  generation: FakeRunCli;
+} {
+  const login = fakeRunCli([opts.login, opts.login, opts.login]);
+  const generation = fakeRunCli(opts.runs);
+  const all: CliRequest[] = [];
+  const cwdStates: CwdState[] = [];
+  const run = (req: CliRequest): Promise<CliResult> => {
+    all.push(req);
+    return req.args.find((a) => a === 'login' || a === 'exec') === 'login' ? login(req) : generation(req);
+  };
+  return Object.assign(run, { requests: all, cwdStates, login, generation });
 }
 
 /** 이 테스트들이 기대하는 버전 (codex --version 출력 `codex-cli 0.157.1`의 숫자) */

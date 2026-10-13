@@ -1,10 +1,10 @@
-import type { CliResult, RunCli } from '../../system/cli.js';
-import type { RawFile, RawRecorder, Redact } from '../raw-recorder.js';
+import type { CliResult, RunCli } from '../system/cli.js';
+import type { RawFile, RawRecorder, Redact } from './raw-recorder.js';
 
 /* ────────────────────────────────────────────────────────────
- * smoke용 Claude Code 기록 래퍼. 어댑터에 주입하는 생성용 실행 함수(RunCli)만 감싼다
+ * smoke용 CLI 기록 래퍼 (Claude Code·Codex 공용). 어댑터에 주입하는 생성용 실행 함수(RunCli)만 감싼다
  * (버전 읽기·로그인 점검은 이 함수를 거치지 않아 기록되지 않는다).
- *   raw-stdout.txt : stdout 그대로 — test/fixtures/claude-code/stdout-*.json으로 그대로 복사할 수 있다
+ *   raw-stdout.txt : stdout 그대로 — test/fixtures/claude-code/stdout-*.json·test/fixtures/codex/stdout-*.jsonl로 그대로 복사할 수 있다
  *   raw-stderr.txt : stderr (redact 적용)
  *   raw-exit.json  : { exitCode, signal } (redact 적용). 실행 함수가 던졌으면 error { name, message, code }도
  * 요청·결과·에러는 바꾸거나 삼키지 않고 그대로 넘긴다. 여러 번 불리면 마지막 호출을 남긴다.
@@ -25,7 +25,7 @@ interface RawExit {
  * redact: .env 값처럼 정확히 아는 비밀값을 가린다. stdout에는 적용하지 않는다 — 생성된 코드가 바뀌면 안 된다
  * (자식 환경에는 .env 값이 없어 stdout에 섞일 경로도 없다).
  */
-export function createClaudeCodeRecorder(redact: Redact): RawRecorder<RunCli> {
+export function createCliRecorder(redact: Redact): RawRecorder<RunCli> {
   let last: { result: CliResult } | { error: unknown } | null = null;
 
   return {
