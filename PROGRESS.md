@@ -12,15 +12,17 @@ aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. 
 - [x] phase 1~5 완료·main merge, 8개 모델 생성·검증 커밋(마지막 배포 run 38372942894, origin/main `17bf737`)
 - [x] 판정 전 확인(2026-10-13): 두 결과물이 모델 코드 버그로 화면을 못 그림(원인은 ADR-031 "이유"). 샌드박스·검증기 탓 아님
 - [x] ADR-031 결정과 문서 반영(2026-10-13): ADR(철학 2·ADR-004·ADR-029 보완), PRD(범위·개발 순서 6번 추가), DATA("스키마 변경 예정" — `models.json` `regenerations`, check:results 규칙, 표시 규칙), COPY(안내 박스·생성 횟수·각주 ¶·칩 "모델당 1회 생성(빈 화면은 다시)"·How·Caution·생성 조건 "횟수"), UI_GUIDE, OPERATIONS("화면이 전혀 나오지 않을 때")
-- [ ] 두 모델 재생성(사용자, OPERATIONS 절차): `npm run gen -- gpt-6-sol --force`, `npm run gen -- gemini-3-8-flash --force` → 개발 서버에서 화면 확인 → 안 나오면 한 번 더(최대 2회) → `results/` `data:` 커밋
+- [x] GPT-6 Sol 재생성 1회째(2026-10-13 22:28 KST, 사용자): 여전히 배경만. 새로 쓴 코드인데 같은 버그(`startTime = performance.now()` → 첫 프레임 `elapsed` 음수 → `colors[-1].top`). 사용자가 "원인부터 고치자"고 물었고, 원인은 모델 코드 안에 있어 우리가 고칠 방법(결과물 수정·프롬프트 힌트·실행 환경 보정)은 모두 벤치마크를 바꾼다고 설명 → 사용자가 규칙대로 마지막 재생성을 골랐다. 2번째 결과물은 `a766e4f`로 커밋(다음 재생성의 previousCommit)
+- [ ] GPT-6 Sol 재생성 2회째(마지막, 사용자): `npm run gen -- gpt-6-sol --force` → 결과가 무엇이든 최종 → `data:` 커밋
+- [ ] Gemini 3.8 Flash 재생성(사용자, 아직 안 함): `npm run gen -- gemini-3-8-flash --force` → 화면 확인 → 안 나오면 그 결과물을 먼저 `data:` 커밋한 뒤 한 번 더(최대 2회)
 - [ ] phase 6 계획·실행(`06-…`, PRD 개발 순서 6번): `ModelEntrySchema.regenerations`·`MAX_REGENERATIONS`, check:results 규칙, `models.json` 기록 3개(아래 사실), display(생성 횟수·안내 줄), 결과 탭 안내 박스, 비교표 열·각주 ¶, 바뀐 COPY 문구 → merge
 - [ ] 8개 판정(`npm run judge -- <slug>`, 사용자) → 커밋 → push(배포) → 리눅스 CI(phase 5·6 브라우저 테스트가 처음 돈다) 확인
 
 ## 다음 세션이 바로 할 일
 
-1. 사용자가 두 모델을 다시 생성했는지 `git log --oneline -5 -- results/`로 본다. 안 했으면 OPERATIONS "화면이 전혀 나오지 않을 때" 절차를 안내한다(실제 생성은 사람이 `! npm run gen -- <slug> --force`). 다시 생성한 결과물도 화면을 못 그리면 상한(2회)까지 한 번 더. 결과물 버그 확인은 `validation.pageErrors`와 개발 서버로(`results/`는 읽기만).
+1. GPT-6 Sol 마지막 재생성과 Gemini 재생성을 했는지 `git status`·`git log --oneline -5 -- results/`로 본다. 재생성 직후 결과는 커밋 전일 수 있다(`check:results` 뒤 `data:` 커밋). 안 했으면 OPERATIONS "화면이 전혀 나오지 않을 때" 절차를 안내한다(실제 생성은 사람이 `! npm run gen -- <slug> --force`). 다시 생성한 결과물도 화면을 못 그리면 상한(2회)까지 한 번 더. 결과물 버그 확인은 `validation.pageErrors`와 개발 서버로(`results/`는 읽기만).
 2. 재생성이 끝나면 `/harness`로 phase 6을 계획한다. `models.json`에 넣을 기록(오래된 것부터):
-   - `gpt-6-sol`: `{ reason: "blank_screen", at: "<재생성 날짜>", previousCommit: "f0e698868f321729a36937aca7bca80966c706f9" }` (+ 2회째가 필요했으면 그 결과물을 커밋한 data 커밋 해시로 한 줄 더)
+   - `gpt-6-sol`: `{ reason: "blank_screen", at: "2026-10-13", previousCommit: "f0e698868f321729a36937aca7bca80966c706f9" }`, `{ reason: "blank_screen", at: "<2회째 재생성 날짜>", previousCommit: "a766e4f00b5a80c4bd1bb1272f5a36f4ed3ae996" }` → 생성 횟수 3회
    - `gemini-3-8-flash`: `{ reason: "blank_screen", at: "<재생성 날짜>", previousCommit: "eac58e07bb8d3d6ffdb1a4ba7ddc6eabd15d4ff0" }` (+ 같음)
    - `claude-sonnet-5-5`: `{ reason: "continued_output", at: "2026-10-13", previousCommit: null }` (첫 기록은 커밋 전에 버림, ADR-029)
 3. push는 phase 6 merge와 8개 판정 뒤에 한다. 그 전에 push하면 다시 생성한 결과물이 아무 표시 없이 공개된다.
