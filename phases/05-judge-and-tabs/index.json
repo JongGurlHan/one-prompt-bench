@@ -68,14 +68,23 @@
     {
       "step": 3,
       "name": "mobile-readme",
-      "status": "pending",
+      "status": "completed",
       "ac": [
         "npm run lint",
         "npm run typecheck",
         "npm test",
         "npm run build",
         "npm run check:results"
-      ]
+      ],
+      "started_at": "2026-10-13T21:09:03+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "f97468b2-6196-4ea4-90e9-20d6d004912a",
+      "cost_usd": 4.8274,
+      "num_turns": 86,
+      "summary": "휴대폰 화면(폭 < 768px)과 README: 결과 탭에 <label for>모델</label><select>(옵션 '표시명 · 상태 라벨', 값 slug, 버튼과 같은 select() 경로·상태 동기화)·범례 결과 아래(aside display: contents + order)·설명 '목록에서' 전환, 헤더·프롬프트·소개 탭 휴대폰 수치, 루트 README.md, 테스트(results-tab dist 3+1, results-tab-browser 휴대폰 4, narrow-screen-browser 6, readme 4)",
+      "handoff": "1) DOM 계약 추가: aside > div.list > div.list-head(h2#models-title + label[for=model-select] + 정렬 안내) + select#model-select[data-field=model-select][autocomplete=off] > option[value=slug](처음 selected = ADR-025 첫 선택) + ul.model-list(버튼, 그대로). 설명은 .intro p > span[data-screen=wide|narrow]. 기존 계약(button[data-slug][aria-pressed] 등)은 그대로다.\n2) 인터페이스 변경: copy.ts RESULTS_TAB.description이 문자열에서 {wide, narrow}로 바뀌었다(COPY 두 문장 그대로). modelOptionLabel(displayName, statusLabel) 추가(상태 라벨은 빌드 때 core display 값). results-tab.ts: 선택기 change → 같은 select(slug)(같은 값이면 아무것도 안 함), select()가 picker.value도 맞추고, 시작할 때 picker.value = 눌린 버튼(뒤로 가기 폼 복원 대비).\n3) 휴대폰 CSS(@media max-width 767px): 결과 탭 .columns를 세로로(gap 16px), aside display: contents로 풀고 범례 order 1(DOM 한 벌), h2·버튼 목록 display none / label·select display block, .result flex none. 데스크톱은 그대로(스크린샷·1280px 테스트로 확인).\n4) 정한 수치(UI_GUIDE 기준값과 다르거나 없던 것): 선택기 min-height 44px·padding 10px 12px·15px·10px 둥글기·1px --border-strong, 라벨 15px/600, 라벨-선택기 간격 8px. 헤더 휴대폰 탭 padding 10px 12px(UI_GUIDE 10px 16px — 320px 폭에서도 탭 4개가 한 줄)·.inner gap 12px. 소개 탭 휴대폰 h1 44px→32px·line-height 1.3·letter-spacing -0.02em·word-break keep-all(375px에서 두 줄), 블록 간격 40→32px, 히어로 padding-top 24→8px. 프롬프트 탭 휴대폰 두 열→한 열 명시(gap 16px), 원문 본문 padding 16px. 생성 기록 값(Mono)에 overflow-wrap anywhere. 비교표는 바꾸지 않았다(표 컨테이너 overflow-x auto로 이미 안에서만 스크롤).\n5) README.md 구성: 소개 문단(순위가 아니라 기록)·공개 주소, 프롬프트와 모델(prompts/ 파일 표, 모델 수 없이 models.json), 사이트(탭 4개·샌드박스), 기술 스택, 디렉토리 구조, 로컬 실행(npm install → npx playwright install chromium → dev·test·build)과 검사 명령 표, docs/ 표, 운영(OPERATIONS 링크, gen·smoke는 사람만·자동화/CI 금지, validate·judge, .env.example의 GEMINI_API_KEY 이름만), 원칙(추가 결제 0원·기록의 정직성·check:results 배포 게이트), 개발 방식(TDD·conventional commits·하네스).\n6) 테스트: site/test/readme.test.ts가 README의 npm 명령이 루트 scripts에 있는지, 상대 링크·백틱 경로가 있는지(site/dist/ 제외), 키 모양(sk-·AIza·gh 토큰)·비밀값 대입·이메일·로컬 절대 경로·모델 수가 없는지 본다. narrow-screen-browser.test.ts는 makeResultsTabDataRoot로 한 번 빌드해 네 탭을 375px로 연다.\n7) 문서 반영 필요(docs 미수정): UI_GUIDE '공통 레이아웃' 헤더 탭 휴대폰 padding, '소개 탭' 휴대폰 제목 32px, '결과 탭' 휴대폰 선택기 수치. ARCHITECTURE '사이트' DOM 계약에 select[data-field=model-select]·span[data-screen] 추가, '디렉토리 구조'에 README.md. results/·prompts/·docs/는 건드리지 않았다.",
+      "completed_at": "2026-10-13T21:25:02+0900",
+      "attempts": 1
     }
   ],
   "created_at": "2026-10-13T19:24:23+0900"
