@@ -80,10 +80,13 @@ export class ClaudeCodeAdapter implements ProviderAdapter {
     const ok = result.exitCode === 0 && output?.is_error === false && typeof output.result === 'string';
     if (!ok || output === null) throw new ClaudeCodeCallError(result, output, chargedUsage(output));
 
+    const usage = normalizeUsage(output.usage);
+    const stop = mapStopReason(output.stop_reason);
     return {
       text: output.result as string,
-      ...mapStopReason(output.stop_reason),
-      usage: normalizeUsage(output.usage),
+      ...stop,
+      ...(continuedPastLimit(usage, req) && { stopReason: 'max_tokens' as const }),
+      usage,
       resolvedModelId: resolvedModelId(output.modelUsage, req.modelId),
       requestId: null,
       firstTokenMs: null, // 스트리밍이 아닌 CLI (DATA "정규화 규칙")
@@ -134,6 +137,16 @@ function parseOutput(stdout: string): ClaudeOutput | null {
     return null;
   }
   return isRecord(value) && !Array.isArray(value) ? value : null;
+}
+
+/**
+ * Claude Code는 출력 상한(max_tokens)에 닿으면 "Output token limit hit. Resume directly…"를 넣고 스스로 이어 쓰기를 요청한다
+ * (max_output_tokens_recovery, 2.1.296 실행 파일에서 확인 — 끄는 설정은 찾지 못했다). 그러면 stop_reason은 마지막 호출의 값(end_turn)이고
+ * result는 마지막 조각뿐이다. 사용량은 호출들의 합이라 출력이 요청 상한을 넘었다면 첫 호출이 상한에 닿은 것이다 → 잘림으로 본다.
+ * rawStopReason은 원문 그대로 둔다 (DATA "정규화 규칙")
+ */
+function continuedPastLimit(usage: Usage, req: GenerationRequest): boolean {
+  return req.maxOutputTokens !== null && usage.outputTokens > req.maxOutputTokens;
 }
 
 function mapStopReason(raw: unknown): Pick<ProviderResponse, 'stopReason' | 'rawStopReason'> {

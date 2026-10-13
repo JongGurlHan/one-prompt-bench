@@ -146,7 +146,8 @@ async function smokeMeta(root: string): Promise<GenerationRecord> {
 
 test('smoke: 상한 8000으로 1회 생성하고 raw-stdout.txt(그대로)·raw-stderr.txt·raw-exit.json을 함께 남긴다', async () => {
   const root = await repo();
-  const stdout = await loadStdout('ok');
+  // 실제 smoke 출력(출력 85토큰). 상한 8,000을 넘는 출력은 이어 쓰기로 보고 잘림이 된다
+  const stdout = await loadStdout('smoke-ok');
   const { cli, registry } = await claudeWorld({ runs: [exited(stdout, 0, 'note\n')] });
   const s = smokeDeps(root, registry);
 
@@ -173,7 +174,7 @@ test('smoke: 상한 8000으로 1회 생성하고 raw-stdout.txt(그대로)·raw-
   assert.equal(sent.args[sent.args.indexOf('--system-prompt') + 1], SYSTEM, 'system은 season-tree-v1.system.md 그대로');
   assert.equal(cli.auth.requests.length, 1);
   assert.match(s.output(), /stopReason end \(end_turn\)/);
-  assert.match(s.output(), /모델 claude-opus-5-5/);
+  assert.match(s.output(), /모델 claude-haiku-5-5/);
 });
 
 test('smoke: 한도 초과면 exit 1, 원본 출력과 api_failed meta.json이 남고 stderr의 .env 값은 가린다', async () => {

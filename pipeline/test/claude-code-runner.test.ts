@@ -125,6 +125,19 @@ test('401 → auth 1회로 api_failed (재시도해도 결과가 같다)', async
   assert.equal(meta.attempts[0]?.result.type === 'error' && meta.attempts[0].result.kind, 'auth');
 });
 
+test('이어 쓰기(출력이 상한을 넘고 end_turn) → truncated, HTML을 꺼내지 않는다 (재시도 없음)', async () => {
+  const stdout = JSON.stringify({
+    ...JSON.parse(await loadStdout('ok')),
+    stop_reason: 'end_turn',
+    result: ' 조각</script>\n</body>\n</html>\n```',
+    usage: { input_tokens: 67_708, output_tokens: 87_265, output_tokens_details: { thinking_tokens: 69_211 } },
+  });
+  const continued = await run([exited(stdout)]);
+  assert.equal(continued.meta.outcome, 'truncated');
+  assert.equal(continued.meta.output, null);
+  assert.equal(continued.cli.requests.length, 1);
+});
+
 test('max_tokens → truncated, refusal → refused (재시도 없음)', async () => {
   const truncated = await run([exited(await loadStdout('max-tokens'))]);
   assert.equal(truncated.meta.outcome, 'truncated');

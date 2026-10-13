@@ -200,6 +200,37 @@ test('stopReason: max_tokens → max_tokens, refusal → refusal, 그 밖·없�
   assert.deepEqual([nullReason.stopReason, nullReason.rawStopReason], ['other', null]);
 });
 
+/**
+ * Claude Code는 출력 상한에 닿으면 스스로 이어 쓰기를 요청하고, 마지막 호출의 stop_reason(end_turn)과 마지막 조각만 result로 준다.
+ * 사용량은 호출들의 합이다. 숫자는 2026-10-13 claude-sonnet-5-5 생성 기록(meta.json) 그대로
+ */
+const CONTINUED_USAGE = {
+  input_tokens: 67_708,
+  cache_creation_input_tokens: 0,
+  cache_read_input_tokens: 0,
+  output_tokens: 87_265,
+  output_tokens_details: { thinking_tokens: 69_211 },
+};
+const CONTINUED_TAIL = ' lerp(1, .35, p), () => 0];\n</script>\n</body>\n</html>\n```\n\n설명 문단';
+
+test('이어 쓰기: 출력이 요청 상한을 넘으면(첫 호출이 상한에 닿음) stopReason max_tokens, rawStopReason은 원문 end_turn', async () => {
+  const res = await generateFrom(await variant('ok', { stop_reason: 'end_turn', result: CONTINUED_TAIL, usage: CONTINUED_USAGE }));
+  assert.deepEqual([res.stopReason, res.rawStopReason], ['max_tokens', 'end_turn']);
+  assert.equal(res.text, CONTINUED_TAIL, '본문은 받은 그대로 (마지막 조각)');
+  assert.deepEqual(res.usage, { inputTokens: 67_708, outputTokens: 87_265, reasoningTokens: 69_211 });
+});
+
+test('이어 쓰기 판단은 상한을 "넘을" 때만: 상한과 같거나 작으면 그대로, 상한이 없으면(null) 보지 않는다', async () => {
+  const atLimit = await generateFrom(
+    await variant('ok', { usage: { ...CONTINUED_USAGE, output_tokens: 65_536, output_tokens_details: { thinking_tokens: 30_000 } } }),
+  );
+  assert.equal(atLimit.stopReason, 'end');
+
+  const { adapter } = adapterWith([exited(await variant('ok', { usage: CONTINUED_USAGE }))]);
+  const noLimit = await adapter.generate({ ...req, maxOutputTokens: null }, signal());
+  assert.equal(noLimit.stopReason, 'end');
+});
+
 test('사용량 필드가 없으면 입력·출력 0, 추론 null로 떨어진다 (숫자를 지어내지 않는다)', async () => {
   const none = await generateFrom(await variant('ok', { usage: undefined }));
   assert.deepEqual(none.usage, { inputTokens: 0, outputTokens: 0, reasoningTokens: null });
