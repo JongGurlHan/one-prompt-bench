@@ -1,0 +1,20 @@
+{
+  "project": "One Prompt Bench",
+  "phase": "06-regeneration-disclosure",
+  "model": "claude-opus-5-5",
+  "timeout_sec": 3600,
+  "steps": [
+    {
+      "step": 0,
+      "name": "discarded-record",
+      "status": "pending",
+      "ac": ["npm run lint", "npm run typecheck", "npm test", "npm run build", "npm run check:results"]
+    },
+    {
+      "step": 1,
+      "name": "regeneration-disclosure",
+      "status": "pending",
+      "ac": ["npm run lint", "npm run typecheck", "npm test", "npm run build", "npm run check:results"]
+    }
+  ]
+}
