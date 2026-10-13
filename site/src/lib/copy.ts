@@ -32,9 +32,13 @@ export const pageTitle = (name?: string) => (name ? `${name} — ${SITE_NAME}` :
 /** 프롬프트 식별자 칩: season-tree-v1 */
 export const PROMPT_LABEL = `${CURRENT_PROMPT.id}-${CURRENT_PROMPT.version}`;
 
+/** 결과 탭 제목·설명. 설명은 넓은 화면(왼쪽 목록)과 휴대폰(드롭다운 화면, "왼쪽에서" → "목록에서") 두 가지다 */
 export const RESULTS_TAB = {
   title: '사계절이 바뀌는 3D 나무',
-  description: '같은 프롬프트로 여러 모델이 한 번씩 만든 결과물이에요. 왼쪽에서 모델을 고르면 그 결과물 하나만 실행돼요.',
+  description: {
+    wide: '같은 프롬프트로 여러 모델이 한 번씩 만든 결과물이에요. 왼쪽에서 모델을 고르면 그 결과물 하나만 실행돼요.',
+    narrow: '같은 프롬프트로 여러 모델이 한 번씩 만든 결과물이에요. 목록에서 모델을 고르면 그 결과물 하나만 실행돼요.',
+  },
 } as const;
 
 /** 결과 탭 칩: season-tree-v1 · 모델 {N}개 · 모델당 1회 생성 */
@@ -48,6 +52,9 @@ export const MODEL_LIST = { title: '모델', sortNote: '출시일 최신순', le
 
 /** 목록 항목 보조 줄: {회사} · {생성 도구} */
 export const modelListMeta = (company: string, generator: string) => `${company} · ${generator}`;
+
+/** 휴대폰 모델 선택기(<label>모델</label><select>)의 옵션: {표시명} · {상태 라벨} (UI_GUIDE "결과 탭") */
+export const modelOptionLabel = (displayName: string, statusLabel: string) => `${displayName} · ${statusLabel}`;
 
 /** 실행 카드 머리: {회사} · {생성 도구}로 생성 · {출시일} 출시 */
 export const runCardMeta = (company: string, generator: string, releasedAt: string) =>

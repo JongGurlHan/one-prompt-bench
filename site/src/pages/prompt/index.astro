@@ -295,4 +295,22 @@ const MARKS = ['pass', 'partial', 'fail'] as const;
     font-weight: 600;
     white-space: nowrap;
   }
+
+  /* ───────── 휴대폰 (폭 < 768px): 원문 · 생성 조건을 한 열로, 카드 간격 16px ───────── */
+  @media (max-width: 767px) {
+    .columns {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 16px;
+    }
+
+    .source,
+    .conditions {
+      flex: none;
+    }
+
+    .prompt-body {
+      padding: 16px;
+    }
+  }
 </style>

@@ -260,4 +260,22 @@ const ACTIONS = [
   .reason {
     color: var(--text-body);
   }
+
+  /* ───────── 휴대폰 (폭 < 768px): 44px 제목은 화면 폭 안에서 두 줄로 줄바꿈되는 크기로 ───────── */
+  @media (max-width: 767px) {
+    .page {
+      gap: 32px;
+    }
+
+    .hero {
+      padding-top: 8px;
+    }
+
+    h1 {
+      font-size: 32px;
+      line-height: 1.3;
+      letter-spacing: -0.02em;
+      word-break: keep-all; /* 한국어는 낱말(띄어쓰기) 단위로 줄을 바꾼다 */
+    }
+  }
 </style>
