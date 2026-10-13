@@ -50,6 +50,7 @@ export function resultView(d: ModelDisplay): ResultView {
     record: {
       status: d.status.label,
       requestCheck: d.requestCheck,
+      errorCount: d.errorCount,
       tokens: d.tokens,
       cost: d.cost,
       duration: d.duration,

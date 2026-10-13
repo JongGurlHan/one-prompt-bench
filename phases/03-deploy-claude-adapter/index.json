@@ -1,0 +1,71 @@
+{
+  "project": "One Prompt Bench",
+  "phase": "03-deploy-claude-adapter",
+  "model": "claude-opus-5-5",
+  "timeout_sec": 3600,
+  "steps": [
+    {
+      "step": 0,
+      "name": "public-deploy",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test",
+        "npm run build",
+        "npm run check:results"
+      ],
+      "started_at": "2026-10-13T01:58:55+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "50da8b78-c3ed-4c3a-897c-9545f1377bcc",
+      "cost_usd": 2.0929,
+      "num_turns": 47,
+      "summary": "결과 탭 '생성 기록'에 '에러 수' 행(core displayModel.errorCount 그대로, dist·브라우저 테스트)과 .github/workflows/deploy.yml(main push·수동 실행, 검사 전부 통과 뒤 Pages 배포)을 더하고, 워크플로를 yaml 파서로 검사하는 site/test/deploy-workflow.test.ts를 만들었다",
+      "handoff": "- RECORD_CARD.rows·ResultView.record에 errorCount 키를 더했다(순서: status·requestCheck·errorCount·tokens·cost·duration). DOM은 dd[data-record=errorCount]. 클라이언트 results-tab.ts는 record를 키로 옮기므로 바꾸지 않았다.\n- 결과 탭 테스트 데이터: model-fail-mark에 콘솔 에러 2 + 페이지 에러 1을 넣었다(정상 배지 + 에러 수 3). 모델별 기대값은 results-data.ts EXPECTED_ERROR_COUNT.\n- site devDependencies에 yaml ^2.9.1(이미 astro가 쓰는 버전, lock은 한 줄만 바뀜). docs/ARCHITECTURE '버전 참고'에는 아직 안 적었다 — F 절차에서 옮긴다.\n- astro.config.mjs의 normalizeBase를 export하고 site/test/astro-config.test.ts로 '/one-prompt-bench'·''·undefined를 확인했다(로직은 그대로). 손으로도 SITE_BASE=/one-prompt-bench 빌드에서 링크가 /one-prompt-bench/로 시작함을 확인. Git Bash에서 SITE_BASE=/x를 넘기면 MSYS가 'C:/Program Files/Git/x'로 바꾸니 수동 확인 때는 MSYS2_ENV_CONV_EXCL='*'를 쓴다(CI 리눅스는 무관).\n- 워크플로 주석에도 gen·smoke·validate·judge·claude·codex·API_KEY 같은 단어를 쓰면 테스트가 실패한다(파일 전체 문자열 검사). step id는 configure-pages=pages, deploy-pages=deployment. job·step에 if·continue-on-error·permissions를 두면 실패한다.\n- 실제 실행(push, Pages Source=GitHub Actions)은 사람이 한다. 리눅스 CI에서 처음 도는 테스트(WebGL 픽스처, POSIX 프로세스 종료)는 아직 미확인.",
+      "completed_at": "2026-10-13T02:09:29+0900",
+      "attempts": 1
+    },
+    {
+      "step": 1,
+      "name": "cli-process",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ],
+      "started_at": "2026-10-13T02:09:29+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "f4f7fcc1-adc0-4f8a-9444-eab899d96730",
+      "cost_usd": 2.1584,
+      "num_turns": 28,
+      "summary": "pipeline/src/system/cli.ts에 도구 중립 CLI 실행 모듈(runCli·cliEnv·findOnPath·withTempDir, CliAbortError·CliOutputLimitError)을 만들고, node 가짜 CLI(test/fixtures/cli/fake-cli.mjs)를 실제로 띄우는 cli-process.test.ts와 cli-env.test.ts로 stdin/stdout UTF-8·인자 배열·EPIPE·ENOENT·abort 트리 종료(자식·손자 ESRCH)·환경 정리를 확인했다",
+      "handoff": "- 시그니처는 step 문서 그대로. 더한 것: CliRequest.maxOutputBytes?(기본 MAX_OUTPUT_BYTES=64MiB, stdout·stderr 각각, 넘으면 트리 종료 후 CliOutputLimitError), abort 에러는 CliAbortError(name 'AbortError', cause=signal.reason), KILL_GRACE_MS=3000(트리 종료 뒤 파이프가 안 닫혀도 이 시간 뒤 reject — 매달림 방지).\n- FORBIDDEN_ENV_KEYS를 system/cli.ts로 옮겼다. preflight.ts는 거기서 import(재수출 안 함). system이 generation을 import하지 않게 하려는 방향.\n- cliEnv: 이름 비교는 모든 플랫폼에서 대소문자 무시(platform 인자 없음). set은 대소문자만 다른 기존 키를 대신하고, set에 API 키 변수가 있으면 throw. ANTHROPIC_AUTH_TOKEN·ANTHROPIC_BASE_URL 등 다른 과금 경로 변수는 스펙대로 지우지 않는다(필요하면 사람이 결정).\n- findOnPath: 현재 디렉토리는 보지 않음. Windows 반환 경로의 확장자는 PATHEXT 표기(예: claude.CMD)라 step 2의 .cmd shim 판별은 대소문자 무시로 비교할 것. 이름에 경로 구분자가 든 경우는 따로 처리하지 않는다.\n- withTempDir: os.tmpdir()에 mkdtemp, finally에서 rm(재시도 5회). 지우기 실패는 삼킨다(받은 생성 결과를 잃지 않게).\n- Windows의 libuv는 env에 없으면 PATH·SYSTEMROOT·TEMP·USERPROFILE 등 11개를 부모 환경에서 채운다(비밀값 아님). 그래서 'env만 준다'는 Windows에서 그 목록을 뺀 기준이다(테스트도 그렇게 검사).\n- 알려진 한계: POSIX는 detached(새 세션)라 터미널 Ctrl+C(SIGINT)가 CLI에 가지 않는다 — 파이프라인이 SIGINT에서 abort하지 않으면 고아로 남을 수 있다(사람 PC는 Windows라 같은 콘솔로 함께 받음). 정상 종료 후 트리 밖 손자가 파이프를 쥐면 close가 안 와서 Runner 타임아웃(abort)까지 기다린다.\n- POSIX 분기(프로세스 그룹 SIGKILL, findOnPath 실행 권한 테스트)는 Windows에서만 돌려 봤고 리눅스 CI에서 처음 돈다.",
+      "completed_at": "2026-10-13T02:20:14+0900",
+      "attempts": 1
+    },
+    {
+      "step": 2,
+      "name": "claude-code-adapter",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ],
+      "started_at": "2026-10-13T02:20:15+0900",
+      "model": "claude-opus-5-5",
+      "cost_usd": 7.6687,
+      "num_turns": 100,
+      "attempts": 1,
+      "session_id": "a5ac1908-06b2-4537-b1e0-149b460cb42b",
+      "summary": "pipeline/src/adapters/claude-code/(adapter·errors·bin·preflight·recorder)로 Claude Code CLI 어댑터를 만들고 registry에 주입점이 있는 claude-code 항목(createClaudeCodeEntry)을 등록했으며, 실제 한도 초과 fixture + 합성 fixture 10개와 가짜 실행 함수로 어댑터·에러 분류·Runner 재시도·preflight·실행 파일 찾기·batch·smoke를 끝까지 검증했다(실제 claude 실행 없음)",
+      "handoff": "- 인터페이스: createClaudeCodeEntry(overrides?: Partial<ClaudeCodeEntryDeps>) — runCli·resolveBin()·readVersion(bin)(동기, spawnSync로 --version)·env(). AdapterRegistry['claude-code'] = AdapterEntry<RunCli>. 항목을 만들 때는 아무것도 실행하지 않고, create()가 실행 파일 찾기→버전 읽기(실패하면 throw, 모델 호출 없음), preflight()가 auth status를 부른다. 기록기는 생성 호출만 감싸 raw-stdout.txt(그대로)·raw-stderr.txt·raw-exit.json을 낸다(실행 함수가 던지면 raw-exit.json에 error{name,message,code}만).\n- 사용량: usage 없음·숫자가 아닌 값 → 입력·출력 0, 추론 null. thinking_tokens 없음 → null. thinking > output_tokens면 추론 null(포함 전제가 깨짐, 스키마 통과용). 실패 출력의 usage는 입력+출력 > 0일 때만 담는다. requestId·firstTokenMs는 null, retryAfterMs는 항상 null.\n- ARCHITECTURE와 다른 점(문서는 안 고침): resolvedModelId — modelUsage 키가 하나면 그 키, 여럿이면 요청 모델(키 또는 canonicalModel)의 키, 못 고르면 null. .cmd·.bat shim 옆에 claude.exe가 없으면 execute.py처럼 shim으로 떨어지지 않고 에러로 멈춘다(shell 없이는 못 띄운다). 한도 문구는 is_error:true의 result와 stderr에서만 찾는다(정상 본문 제외). stdout 전체가 JSON 객체 하나일 때만 파싱한다(앞에 다른 줄이 오면 unknown).\n- invocation: `CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude -p --model <id> --effort high --tools \"\" --system-prompt \"<system prompt>\" --safe-mode --strict-mcp-config --no-session-persistence --output-format json (stdin: <user prompt>)`. 실행 파일 경로(사용자 폴더) 대신 claude라고 적는다. 상한이 null이면 환경변수 부분이 빠진다.\n- 에러 message: is_error 결과의 result → stderr → exit code·출력 모양 설명 순서, 500자 상한. 실행 파일 없음·출력 상한 초과는 실행 함수 에러 그대로 unknown.\n- preflight: 이름 'Claude Code 로그인 (claude auth status)', 30초 제한, OS 임시 폴더, cliEnv 환경. JSON이면 exit code와 관계없이 판정한다. detail에는 authMethod·subscriptionType만 쓰고, 식별자 모양(/^[\\w.-]{1,40}$/)이 아닌 값은 숨긴다. apiProvider 값은 쓰지 않는다. JSON이 아니면 stdout·stderr 내용을 옮기지 않는다.\n- 기존 테스트: adapter-registry·app.module의 '등록 도구 = gemini-api만' 단정을 claude-code 포함으로 바꿨다. claude-code-bin의 POSIX 실행 파일 테스트는 Windows에서 건너뛰고 리눅스 CI에서 처음 돈다.\n- ⚠ smoke로 확인할 것(합성 fixture 가정): 입력 토큰 규모, modelUsage 모델 수, max_tokens·refusal 표시(지금은 is_error:false + stop_reason으로 가정, 모르는 값은 other), API 키 로그인의 authMethod, 529·401 출력의 api_error 값과 result 문구, stdout이 JSON 하나뿐인지, 시스템 프롬프트 끝 줄바꿈이 Windows 인자로 그대로 가는지.",
+      "completed_at": "2026-10-13T10:31:33+0900"
+    }
+  ],
+  "created_at": "2026-10-13T01:58:55+0900",
+  "cost_usd": 11.92,
+  "num_turns": 175,
+  "completed_at": "2026-10-13T10:31:34+0900"
+}

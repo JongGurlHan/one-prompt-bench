@@ -1,6 +1,7 @@
 import { GENERATOR_BY_PROVIDER, type GeneratorTool, type ModelEntry } from '@opb/core';
 import { registeredTools, type AdapterRegistry } from '../adapters/registry.js';
 import { GEMINI_API_KEY, type AppConfig } from '../config/config.js';
+import { FORBIDDEN_ENV_KEYS } from '../system/cli.js';
 import type { GitClient } from '../system/git.js';
 
 /* ────────────────────────────────────────────────────────────
@@ -17,9 +18,6 @@ export interface PreflightCheck {
   /** 사람이 읽을 결과·사유 (여러 줄 가능, 비밀값 없음) */
   detail: string;
 }
-
-/** 환경에 있으면 CLI가 구독 대신 API 키로 과금할 수 있는 변수 (ADR-001) */
-export const FORBIDDEN_ENV_KEYS = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY'] as const;
 
 /** 커밋 안 된 변경이 없어야 하는 경로 — meta.json의 gitCommit이 실제 코드를 가리키게 */
 export const GIT_CLEAN_PATHS: readonly string[] = ['packages', 'pipeline', 'prompts', 'models.json'];
