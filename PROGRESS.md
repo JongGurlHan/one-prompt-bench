@@ -1,11 +1,11 @@
 # 작업 인계 (PROGRESS)
 
-> 새 대화형 세션은 이 파일부터 읽는다. 마지막 갱신: 2026-10-13 (phase 5 확인·문서 반영 세션)
+> 새 대화형 세션은 이 파일부터 읽는다. 마지막 갱신: 2026-10-13 (phase 5 merge 세션)
 > 무인 step 세션(execute.py)은 이 파일을 읽을 필요 없다 — 필요한 맥락은 step 파일과 하네스가 준다.
 
 ## 지금 하는 일
 
-aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. **phase 5(`05-judge-and-tabs`: 판정 도우미, 비교표·프롬프트·소개 탭, 휴대폰 화면, README)가 끝났고 `feat-05-judge-and-tabs` 브랜치에 있다. 아직 main에 merge하지 않았다.** 8개 모델 생성·검증은 끝나 공개 사이트(https://jonggurlhan.github.io/one-prompt-bench/)에 올라가 있다. 남은 일은 merge → 8개 판정(사람) → push다. 설계는 전부 `docs/`에 있다(CLAUDE.md "문서" 절).
+aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. **phase 5(`05-judge-and-tabs`: 판정 도우미, 비교표·프롬프트·소개 탭, 휴대폰 화면, README)가 끝나 main에 merge됐다(`2bcbdee`, 아직 push 전).** 8개 모델 생성·검증은 끝나 공개 사이트(https://jonggurlhan.github.io/one-prompt-bench/)에 올라가 있다. 남은 일은 8개 판정(사람) → push다. 설계는 전부 `docs/`에 있다(CLAUDE.md "문서" 절).
 
 ## 진행 상태
 
@@ -13,13 +13,13 @@ aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. 
 - [x] phase 5 계획(2026-10-13, ADR-030: 도구가 덧붙이는 내용은 비교표 각주 §로 공개) → 실행(step 4개 모두 첫 시도 완료, 정가 환산 $18.5·295턴. step 1은 첫 시도가 사용 한도로 중단돼 wip 커밋을 이어받음)
 - [x] phase 5 확인(이 PC): lint·typecheck·test(core 100 / pipeline 394+건너뜀 3 / site 108)·build·check:results(8개) 통과. 첫 `npm test`에서 복사 버튼 브라우저 테스트가 흔들려(느린 환경에서 가짜 시계가 실제 시간으로 흘러 2초 타이머가 먼저 끝남) 시계를 `pauseAt`으로 멈추고 쓰기 완료를 기다리게 고침(`bc8a709`)
 - [x] phase 5 handoff → `docs/ARCHITECTURE.md`(판정 도우미 실제 동작, 디렉토리 구조, 사이트 DOM 계약·복사 테스트 시계), `docs/UI_GUIDE.md`(§·각주 세 줄·생성 조건 6행·휴대폰 수치), `docs/OPERATIONS.md`(판정). 이 PROGRESS 갱신과 함께 `docs:` 커밋(브랜치 위)
-- [ ] main에서 `git merge --no-ff feat-05-judge-and-tabs` (사용자)
+- [x] main에서 `git merge --no-ff feat-05-judge-and-tabs`(사용자, 2026-10-13, `2bcbdee`). 병합 뒤 `check:results` 통과, `results/` 변경 없음
 - [ ] 8개 모델 판정(`npm run judge -- <slug>`, 사용자) → 커밋 → push(배포)
 - [ ] 리눅스 CI 확인: phase 5가 더한 브라우저 테스트(복사·휴대폰 375px)가 CI에서 처음 돈다. push 뒤 Actions 결과를 본다
 
 ## 다음 세션이 바로 할 일
 
-1. 사용자가 phase 5 브랜치를 merge했는지 `git log --oneline -5`·`git branch`로 확인한다. 안 했으면 `git merge --no-ff feat-05-judge-and-tabs`를 안내한다(브랜치 이름 필수, squash 금지).
+1. origin/main은 `17bf737`이고 main은 phase 5 merge·문서 커밋만큼 앞서 있다. 판정 전에 push하면 판정 없는 상태로 배포되니, 판정 뒤에 push하도록 안내한다(판정 전 상태도 배포 게이트는 통과한다).
 2. 판정 전에 `npm run dev`로 각 모델을 50초 이상 지켜보게 안내한다(OPERATIONS "판정"). 판정 때 Gemini 3.8 Flash는 ✗ 예정(화면 검음, 에러 2105). 결과물이 있는 모델만 판정한다(8개 모두 ok). 판정 값은 사용자가 정한다 — 대신 정하지 마라.
 3. 판정 커밋·push 뒤 Actions run을 확인하고, 사이트에서 4개 탭·휴대폰 화면을 눈으로 본다. 이상이 없으면 MVP 성공 기준(PRD)을 점검한다: 8개 모두 기록 있음, 판정 끝, 공개 URL에서 탭 4개 동작.
 
