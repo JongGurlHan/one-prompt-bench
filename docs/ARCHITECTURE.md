@@ -12,7 +12,8 @@ npm workspaces 모노레포. 모든 TypeScript는 ESM(`"type": "module"`, NodeNe
 ├── prompts/
 │   ├── season-tree-v1.md           프롬프트 원문 (user 메시지, 한 글자도 바꾸지 않음)
 │   ├── season-tree-v1.system.md    공통 최소 시스템 프롬프트 (세 도구 동일)
-│   └── season-tree-v1.judging.md   판정 기준표 (사람용 + 프롬프트 탭 표시)
+│   ├── season-tree-v1.judging.md   판정 기준표 (사람용 + 프롬프트 탭 표시)
+│   └── season-tree-v1.repair.md    수정 요청문 (ADR-032, 나무가 안 그려진 결과물에 에러를 알려 주고 고치게 할 때. 사이트에 공개하지 않음)
 ├── results/<slug>/             생성 결과 (커밋 대상. 사람·세션 모두 손으로 고치지 않음)
 ├── results-smoke/              smoke 실행 결과 (gitignore)
 ├── packages/core/              @opb/core — 프레임워크 없는 도메인 로직
@@ -112,6 +113,17 @@ models.json ─▶ Batch ─▶ Runner(재시도·타임아웃·저장·비용) 
   - OpenAI 대상이 있으면 `codex login status`가 ChatGPT 로그인이다(stderr `Logged in using ChatGPT`, 아래 "Codex CLI").
   - Google 대상이 있으면 `.env`에 `GEMINI_API_KEY`가 있다 (값은 출력하지 않는다).
   - `packages/`, `pipeline/`, `prompts/`, `models.json`에 커밋 안 된 변경이 없다 — meta.json의 `gitCommit`이 실제 코드를 가리키게.
+
+### 다시 생성·수정 요청 (ADR-032, phase 6에서 구현)
+
+나무가 그려지지 않은 결과물의 사다리(다시 생성 총 3회 → 수정 요청 2회 → 수록 제외)는 사람이 명령으로 밟는다. 기록 모양과 불변식은 DATA "스키마 변경 예정".
+- **버리기 전 커밋 검사**: `--force`·`--repair`는 버릴 결과 폴더(`results/<slug>/`)에 git HEAD와 다른 변경(수정·삭제·새 파일)이 있으면 아무것도 하지 않고 멈춘다(exit 1). 버린 결과물의 증거가 git에 남아야 하기 때문이다. 예외: 폴더의 meta.json이 `api_failed`이거나 meta.json이 없는 경우(표본이 아님).
+- **`gen <slug> --repair`**: slug 정확히 1개, `--all`·`--force`와 함께 쓸 수 없다. 대상은 meta.json이 스키마를 통과하고 outcome `ok`, `output`·`validation`이 있는 모델이다. 지금 결과물이 수정본이면 `repair.round`가 상한(2)이면 거절한다. 생성본 횟수 상한(3)을 다 썼는지는 `models.json` `discarded`로 알 수 있지만, 사다리 순서를 지키는 것은 사람 몫이고 명령은 수정 횟수만 막는다.
+  - 요청문: `prompts/<id>-<version>.repair.md`(지금 `season-tree-v1.repair.md`, 프롬프트 파일과 같은 읽기 규칙 — LF·BOM 없음·UTF-8)의 자리표시를 채운다. `{{PROMPT}}` = 원래 user 프롬프트 파일 내용 그대로, `{{HTML}}` = 지금 `results/<slug>/index.html` 내용 그대로, `{{ERRORS}}` = 에러 목록. 자리표시가 정확히 한 번씩 있지 않으면 에러로 멈춘다(모델을 부르지 않는다).
+  - 에러 목록: `validation.pageErrors` 다음 `consoleErrors`를 등장 순서대로, 같은 문구는 한 번만 `{문구} ({N}번)` 한 줄씩. 서로 다른 문구는 최대 20개, 문구는 500자까지(넘으면 자르고 `…`). 하나도 없으면 `기록된 에러는 없어요.`. 실제로 넣은 목록을 meta.json `repair.errors`에 남긴다.
+  - system은 `season-tree-v1.system.md` 그대로, 출력 상한·추론 강도·재시도 정책·preflight·폴더 비우기 확인(y/N, 판정도 지워짐)은 `gen --force`와 같다. meta.json `prompt`는 id·version이 원래 프롬프트와 같고 sha256은 실제로 보낸 `{system, 채운 요청문}`의 해시다. `repair: { round, previousOutputSha256, errors }`를 함께 쓴다. outcome이 `ok`면 바로 검증한다.
+  - 테스트는 가짜 어댑터로만 한다(요청문 채우기·에러 목록·거절 조건·커밋 검사·meta.json 모양).
+- **수록 제외**: 실제로 필요해질 때 모양과 구현을 정한다.
 
 ### 도구별 호출 사양
 

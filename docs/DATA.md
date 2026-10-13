@@ -26,7 +26,7 @@ results/<slug>/
 | `displayName` | 표시명 |
 | `releasedAt` | 출시일 (YYYY-MM-DD). 정렬 기준 |
 | `pricing` | `inputPer1M`·`outputPer1M`(USD, 추론 토큰도 출력 단가), `asOf`, `sourceUrl` |
-| `regenerations` | (선택, phase 6에서 추가 — 아래 "스키마 변경 예정") 다시 생성한 기록. 없으면 1회 생성 |
+| `discarded` | (선택, phase 6에서 추가 — 아래 "스키마 변경 예정") 버린 결과물 기록(ADR-032). 없으면 첫 생성 결과물을 그대로 공개한 모델 |
 
 | provider | 생성 도구 (`generator.tool`) | 표시 이름 | 회사 표시 |
 |---|---|---|---|
@@ -53,12 +53,19 @@ results/<slug>/
 
 | 대상 | 지금 | 바꿀 모양 | 이유 |
 |---|---|---|---|
-| `ModelEntrySchema` (models.json) | 없음 | `regenerations?: Array<{ reason: 'blank_screen' \| 'continued_output'; at: YYYY-MM-DD; previousCommit: string(40자 hex) \| null }>`, 최대 2개(`MAX_REGENERATIONS = 2`, core 상수 하나). 없으면 빈 배열과 같다. 순서는 오래된 것부터 | ADR-031: 다시 생성한 사실·이유·버린 결과물이 남은 커밋을 공개한다. `results/`는 파이프라인만 쓰고 `--force`가 폴더를 비우므로, 사람이 관리하는 레지스트리에 둔다. 이미 다시 생성한 Sonnet(ADR-029)도 결과물을 건드리지 않고 기록할 수 있다 |
-| check:results | — | 규칙 추가: `regenerations`가 있는 모델은 `results/<slug>/meta.json`이 있어야 한다(생성 기록 없이 재생성 기록만 있으면 실패). 개수·이유·해시 모양은 스키마가 막는다. 커밋이 실제로 있는지는 보지 않는다(CI는 얕은 clone) | 기록끼리 어긋나지 않게 |
+| `ModelEntrySchema` (models.json) | 없음 | `discarded?: Array<{ made: 'generation' \| 'repair'; reason: 'blank_screen' \| 'continued_output'; next: 'regenerate' \| 'repair'; at: YYYY-MM-DD; commit: string(40자 hex) \| null }>`, 오래된 것부터 | ADR-032: 버린 결과물(만든 방법·버린 이유·다음에 한 일·날짜·커밋)을 공개한다. `results/`는 파이프라인만 쓰고 `--force`가 폴더를 비우므로 사람이 관리하는 레지스트리에 둔다. 이미 다시 생성한 Sonnet(ADR-029)도 결과물을 건드리지 않고 기록할 수 있다 |
+| `GenerationRecordSchema` (meta.json) | 없음 | `repair?: { round: 1 \| 2; previousOutputSha256: Sha256; errors: Array<{ message: string; count: number }> }` — 공개 결과물이 수정본일 때만 파이프라인(`gen --repair`)이 쓴다. `errors`는 수정 요청문에 실제로 넣은 에러 목록이다. `prompt`의 id·version은 원래 프롬프트 그대로이고 `sha256`은 실제로 보낸 `{system, user(채운 수정 요청문)}`의 해시다 | 수정본이라는 사실과 무엇을 전했는지를 생성 기록에 남긴다 |
+| check:results | — | 규칙 추가는 아래 "불변식(phase 6)" | 기록끼리 어긋나지 않게 |
 
-- 이유 코드: `blank_screen` = 결과물이 화면을 전혀 그리지 못함(ADR-031). `continued_output` = 생성 도구가 출력 상한 뒤 이어 쓴 응답을 잘못 기록해 버림(ADR-029, Sonnet). 새 이유가 생기면 코드와 COPY 문구를 함께 더한다.
-- `previousCommit`은 버린 결과물을 처음 커밋한 커밋의 전체 해시다(사이트에는 앞 7자). 커밋하기 전에 버렸으면 null(Sonnet).
-- `regenerations`를 바꾸는 것은 `models.json`을 바꾸는 것이라, 생성 전 git clean 검사(preflight) 대상이다. 다시 생성한 뒤 기록을 더하고 `results/`와 같은 `data:` 커밋에 넣는다.
+- 이유 코드: `blank_screen` = 화면에 나무가 그려지지 않음(ADR-032). `continued_output` = 생성 도구가 출력 상한 뒤 이어 쓴 응답을 잘못 기록해 버림(ADR-029, Sonnet). 새 이유가 생기면 코드와 COPY 문구를 함께 더한다.
+- `commit`은 버린 결과물을 처음 커밋한 커밋의 전체 해시다(사이트에는 앞 7자). 커밋하기 전에 버렸으면 null(Sonnet만 — ADR-032부터는 버리기 전에 반드시 커밋한다).
+- 횟수 상한(core 상수 한 곳): 생성본은 첫 생성 포함 총 3회(`MAX_GENERATIONS = 3`), 수정본은 2회(`MAX_REPAIRS = 2`).
+- 불변식(phase 6, 스키마 + check:results):
+  - `discarded`의 `made: 'generation'` 항목 수 + (공개 결과물이 생성본이면 1) ≤ 3, `made: 'repair'` 항목 수 + (공개 결과물이 수정본이면 1) ≤ 2.
+  - 순서: 생성본 항목이 모두 앞, 수정본 항목이 뒤다. `next: 'repair'`는 마지막 생성본 항목과 수정본 항목에만, 그 앞의 생성본 항목은 `next: 'regenerate'`다. 수정본 항목의 `next`는 `repair`뿐이다.
+  - `meta.json`에 `repair`가 있으면 `discarded`의 마지막 항목이 `next: 'repair'`이고, `repair.round` = 수정본 항목 수 + 1이다. `repair`가 없으면 `discarded`의 마지막 항목(있다면)은 `next: 'regenerate'`다.
+  - `discarded`가 있는 모델은 `results/<slug>/meta.json`이 있어야 한다. 커밋이 실제로 있는지는 보지 않는다(CI는 얕은 clone).
+- 수록 제외(ADR-032 3단계)는 실제로 생기면 모양을 정한다(예: `excluded?: { at }`). 지금은 정하지 않는다.
 
 phase 1에서 반영한 변경(SDK 방식 → CLI 방식): `runtime.sdkPackage`·`sdkVersion` → `runtime.generator`, `params.maxOutputTokens`에 null 허용, `PromptSpec.system` = system.md 내용, 스크린샷 경로 `.webp` → `.jpg`. 실제 데이터가 없던 때라 `schemaVersion`은 1을 유지했다.
 
@@ -156,6 +163,6 @@ phase 1에서 반영한 변경(SDK 방식 → CLI 방식): `runtime.sdkPackage`�
 | 그중 추론 ‡ | 회사가 Google인 행 | 값 옆에 ‡ (†와 같음) |
 | 입력 토큰 § | 생성 도구가 Claude Code 또는 Codex CLI인 행 | 값 옆에 § (`inputTokensMark`, ADR-030). 값이 —이어도 붙는다. 결과 탭의 토큰 값에는 붙이지 않는다 |
 | 모델 수 `{N}` | models.json의 모델 수 | 문구의 `{N}` 치환 |
-| 생성 횟수 | `regenerations.length + 1` (ADR-031) | `1회`·`2회`, 다시 생성한 모델(2회 이상)은 값 옆에 ¶. 비교표 표 1. 생성 전 모델도 `1회`가 아니라 —(meta.json 없음) |
-| 재생성 안내 | `regenerations` 각 항목 → COPY "다시 생성한 결과물"의 줄 | 다시 생성한 모델에만 결과 탭 안내 박스. 커밋은 앞 7자, null이면 "기록은 남아 있지 않아요" |
+| 생성 횟수 | 생성본 = `discarded`의 `made: 'generation'` 수 + (공개 결과물이 생성본이면 1), 수정본 = `made: 'repair'` 수 + (수정본이면 1) (ADR-032) | `1회`, `3회 · 수정 1회`. 버린 결과물이 있으면 값 옆에 ¶. 비교표 표 1. meta.json이 없으면 — |
+| 재생성 안내 | 첫 줄(생성본/수정본) + `discarded` 각 항목 → COPY "다시 생성하거나 고친 결과물"의 줄 | `discarded`가 있는 모델에만 결과 탭 안내 박스. 커밋은 앞 7자, null이면 "기록은 남아 있지 않아요" |
 | 정렬 | `sortByRelease`: 출시일 최신순, 같은 날은 표시명 알파벳순(숫자는 크기순) | 모든 목록·표 공통 |
