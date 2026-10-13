@@ -27,6 +27,7 @@ npm workspaces 모노레포. 모든 TypeScript는 ESM(`"type": "module"`, NodeNe
 │   ├── src/results.ts              results/ 읽기·검증·조인 (loadResults·checkResults) — 사이트와 check:results가 공유
 │   ├── src/display.ts              상태 라벨·숫자 포맷 등 표시 규칙 (DATA.md "표시 규칙", displayModel)
 │   ├── src/sandbox.ts              RESULT_IFRAME_SANDBOX (사이트·검증기가 같이 쓰는 iframe sandbox 값)
+│   ├── src/judging.ts              판정 기준표(prompts/*.judging.md) 읽기 — parseJudgingCriteria·loadJudgingCriteria (판정 도우미와 프롬프트 탭이 공유)
 │   ├── scripts/check-results.ts    `npm run check:results` — Nest 없이 core만 쓴다
 │   ├── test/support/testing.ts     `@opb/core/testing` — 테스트용 가짜 데이터 루트 빌더 (pipeline·site 테스트도 씀)
 │   ├── test/  examples/  scripts/check-samples.ts
@@ -37,14 +38,15 @@ npm workspaces 모노레포. 모든 TypeScript는 ESM(`"type": "module"`, NodeNe
 │   ├── src/generation/             batch(일괄 실행), preflight(추가 결제 차단 점검), smoke
 │   ├── src/system/                 git·터미널 확인(y/N)·CLI 실행(cli.ts) 같은 I/O
 │   ├── src/validation/             Playwright 검증기(validate-result.ts, `VALIDATOR` 토큰 = PlaywrightValidator)와 validate 명령
-│   ├── src/judging/                (신규) 판정 도우미
+│   ├── src/judging/                판정 도우미 (judgment.ts 순수 변환 · judge.ts 명령 · judge.service.ts). 입력 함수 Ask는 system/ask.ts
 │   └── test/fixtures/              CLI 출력 샘플, 검증용 HTML
 ├── site/                       @opb/site — Astro 정적 사이트
-│   ├── src/lib/                    data.ts(데이터 읽기) · paths.ts(BASE_URL 기준 주소) · copy.ts(COPY 문구) · tabs.ts · results-view.ts
-│   ├── src/pages/                  index.astro(결과 탭) · view/[slug].astro(새 창 래퍼) · r/[slug]/*.ts(결과물 사본 endpoint)
-│   ├── src/scripts/                클라이언트 동작 (results-tab.ts)
+│   ├── src/lib/                    data.ts(데이터 읽기, 프롬프트·판정 기준표 포함) · paths.ts(BASE_URL 기준 주소) · copy.ts(COPY 문구) · tabs.ts · results-view.ts · prompt-body.ts(프롬프트 본문 렌더링)
+│   ├── src/pages/                  index.astro(결과 탭) · compare/ · prompt/ · intro/ · view/[slug].astro(새 창 래퍼) · r/[slug]/*.ts(결과물 사본 endpoint)
+│   ├── src/scripts/                클라이언트 동작 (results-tab.ts · prompt-copy.ts)
 │   ├── src/layouts/ components/ styles/   공통 레이아웃 · 배지 · 토큰(tokens.css)·바탕(base.css)
 │   └── test/support/               빌드 헬퍼(build.ts) · 정적 서버 · HTML 검사 · 결과 탭 데이터
+├── README.md                   프로젝트 소개·로컬 실행·문서 안내 (site/test/readme.test.ts가 명령·링크·비밀값을 검사)
 ├── docs/                       설계 문서 (design/은 시안 원본)
 ├── phases/                     하네스 phase 계획·상태
 ├── scripts/                    하네스 (Python: execute.py, 테스트)
@@ -277,14 +279,17 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 ## 판정 도우미 (`npm run judge -- <slug>`)
 
 - `outcome`이 `ok`이고 결과물이 있는 모델만 판정할 수 있다.
-- 결과물 경로·스크린샷 경로·판정 기준 요약을 보여 주고, 요구사항 4개(pass/partial/fail)와 메모(1~200자)를 입력받는다.
+- 결과물 경로·스크린샷 경로·판정 기준 요약(`loadJudgingCriteria`)을 보여 주고, 요구사항 4개(pass/partial/fail)와 메모(1~200자)를 입력받는다. 판정 기준 요약은 물을 것이 있을 때만 보인다. 검증 전(`validation` null) 결과물은 거절하지 않고 "스크린샷 없음 — npm run validate"를 안내한 뒤 받는다.
 - `modelSlug`, `prompt`(id·version), `outputSha256`(meta.json의 `output.sha256`), `judgedAt`(KST 오프셋)은 자동으로 채운다. 저장 전에 `JudgmentSchema`로 검사한다.
-- 기존 판정이 있으면 내용을 보여 주고 덮어쓸지 확인받는다.
-- 테스트용으로 같은 값을 플래그로도 받는다: `--scene --cycle --look --label --note --yes`.
+- 기존 판정(깨진 파일 포함)이 있으면 **값 입력보다 먼저** 내용을 보여 주고 덮어쓸지 확인받는다(`--yes`면 확인 없이 덮어쓴다). 입력을 다 하고 거절하는 낭비를 막으려는 순서다.
+- 같은 값을 플래그로도 받는다: `--scene --cycle --look --label --note --yes`. 플래그 값은 `pass`·`partial`·`fail`만 받고, 대화형 입력은 `p`·`a`·`f`도 받는다. 이 플래그를 다른 명령에 쓰면 사용법 오류다.
+- 거절(저장 없이 exit 1): 모르는 slug, meta.json 없음, outcome이 `ok`가 아님, `output` null, 메모가 비었거나 200자 초과, 플래그 값 오류, 덮어쓰기 거절, 입력 취소(EOF·Ctrl+C·잘못된 입력 3회). 저장은 `judgment.json`(2칸 들여쓰기 + 끝 줄바꿈), `judgedAt`은 `+09:00` 초 단위.
+- 대화형 입력(`createTerminalAsk`)은 질문마다 readline을 열고 닫는다. 여러 답을 stdin 파이프로 한꺼번에 넣는 방식은 지원하지 않는다 — 자동화는 플래그를 쓴다.
+- 실행 예: `npm run judge -- <slug>`(대화형), `npm run judge -- <slug> --scene pass --cycle partial --look pass --label fail --note "메모" [--yes]`.
 
 ## 사이트 (Astro, `site/`)
 
-- 정적 출력(`output: 'static'`). 페이지: `/`(결과 탭, 첫 화면), `/compare/`, `/prompt/`, `/intro/`, `/view/<slug>/`(새 창용 전체 화면 래퍼). 헤더에는 페이지가 있는 탭만 둔다(ADR-024 — phase 2~4는 결과 탭 하나).
+- 정적 출력(`output: 'static'`). 페이지: `/`(결과 탭, 첫 화면), `/compare/`, `/prompt/`, `/intro/`, `/view/<slug>/`(새 창용 전체 화면 래퍼). 헤더 탭은 소개 · 결과 · 비교표 · 프롬프트 4개다(ADR-024의 "페이지가 있는 탭만" 규칙은 phase 5에서 4개가 모두 생겨 더 이상 걸러 낼 게 없다).
 - **데이터는 빌드 때만 읽는다**: `core/src/results.ts`로 `models.json`·`results/`·`prompts/`를 읽고 검증·조인해서, 표시 값은 `core/src/display.ts`로 만든다. 빌드 때 검사하는 범위는 DATA.md "사이트 빌드의 데이터 검사".
   - 데이터 위치는 `site/src/lib/data.ts` 한 곳에서 정한다: `OPB_DATA_ROOT`(빈 문자열은 미설정) 또는 레포 루트. 테스트는 OS 임시 디렉토리에 만든 데이터를 가리킨다. 번들 뒤에는 `import.meta.url`이 바뀌므로, 레포 루트는 `astro.config.mjs`가 `vite.define`의 `__OPB_REPO_ROOT__`로 넘긴다.
   - 빌드는 `loadResults`를 한 번만 부르고(로그 `[opb] data: N models from <root>`), dev는 요청마다 다시 읽는다.
@@ -296,7 +301,10 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
   - 첫 선택 모델(ADR-025)은 빌드 때 HTML로 그린다. 모델 전부의 표시 값(`ResultView`)은 `<script type="application/json" id="result-views">`로 넣고(`<`는 `<`로 이스케이프), 클라이언트는 그 값을 그대로 옮긴다. 라벨·포맷을 클라이언트에서 다시 계산하지 않는다.
   - 결과물 iframe은 페이지에 하나다. 결과물이 없는 모델을 고르면 iframe을 문서에서 떼어 내서 앞의 결과물이 멈추게 하고, 결과물이 있는 모델을 고르면 src를 먼저 바꾼 뒤 다시 붙인다(한 번만 로드). "다시 시작"은 같은 src를 다시 설정한다. 이미 고른 모델을 다시 누르면 아무것도 하지 않는다.
   - 결과물이 없는 모델은 이유를 보여 주고, 응답 원문(response.txt)은 그 모델을 고를 때 `fetch`로 불러온다(첫 화면 용량을 줄이기 위해). 늦게 온 앞 모델의 원문은 버리고, 받은 원문은 캐시한다.
-- site 테스트가 쓰는 DOM 계약(바꾸면 테스트도 함께 바꾼다): `[data-results-tab]`, `button[data-slug][aria-pressed]`, `[data-field=…]`, `dd[data-req=<key>][data-mark]`, `dd[data-record=<key>]`, `[data-action=restart|open]`.
+- site 테스트가 쓰는 DOM 계약(바꾸면 테스트도 함께 바꾼다): `[data-results-tab]`, `button[data-slug][aria-pressed]`, `[data-field=…]`, `dd[data-req=<key>][data-mark]`, `dd[data-record=<key>]`, `[data-action=restart|open]`, 휴대폰 선택기 `select[data-field=model-select]`(`label[for=model-select]`)와 설명 문구 `span[data-screen=wide|narrow]`.
+  - 비교표(`/compare/`): `table[data-table=models|record|checks]`, 행 `tr[data-slug]`, 칸 `td[data-col=<ModelDisplay 키>]`, 판정 칸 `td[data-col=<RequirementKey>][data-mark=pass|partial|fail|none]`, `p[data-field=notice]`, `ul[data-field=footnotes]`, `div[data-field=legend]`. 표 컨테이너는 `div.table-wrap[role=region][tabindex=0]`.
+  - 프롬프트(`/prompt/`): `section[data-field=prompt-card]`, `button[data-action=copy][data-copied-label]`, `script#prompt-source`(원문 JSON), `dd[data-condition=count|reasoning|outputLimit|generators|retry|systemPrompt]`, `section#judge`, `table[data-table=criteria]`. 소개(`/intro/`): `div[data-field=cards]`의 `section[data-card=what|how|caution]`, `section[data-field=inclusion]`.
+  - 테스트: 복사 버튼은 Playwright `page.clock.pauseAt`으로 시계를 멈추고 `runFor`로만 흐르게 한다(`install()`만 하면 가짜 시계도 실제 시간대로 흘러 느린 환경에서 흔들린다). 헤더 탭 목록이 바뀌면 `build-output`·`compare-tab`·`prompt-intro-tabs` 테스트의 기대값을 함께 고친다.
 - 클라이언트 동작(모델 전환, 다시 시작, 복사 버튼, 휴대폰 드롭다운)은 Astro `<script>`의 순수 TypeScript로 만든다. UI 프레임워크(React 등)는 쓰지 않는다.
 - 스타일: Astro 컴포넌트 scoped CSS + `:root` CSS 변수(토큰은 UI_GUIDE.md). Tailwind는 쓰지 않는다.
 - GitHub Pages 프로젝트 경로: `astro.config`의 `site`·`base`를 환경변수(`SITE_URL`, `SITE_BASE`)에서 읽는다. 워크플로가 레포 이름으로 채운다. 모든 내부 링크·에셋은 `import.meta.env.BASE_URL` 기준으로 만든다.

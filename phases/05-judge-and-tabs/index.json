@@ -1,0 +1,94 @@
+{
+  "project": "One Prompt Bench",
+  "phase": "05-judge-and-tabs",
+  "model": "claude-opus-5-5",
+  "timeout_sec": 3600,
+  "steps": [
+    {
+      "step": 0,
+      "name": "judge-cli",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ],
+      "started_at": "2026-10-13T19:24:23+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "19177216-9bc5-4729-abbb-e259b29bc24f",
+      "cost_usd": 3.9857,
+      "num_turns": 59,
+      "summary": "npm run judge -- <slug> 구현: core judging.ts(parseJudgingCriteria·loadJudgingCriteria, prompt.ts의 readPromptFile 공유) + pipeline judging/(buildJudgment·runJudge·JudgeService, system/ask.ts의 Ask·createTerminalAsk, ASK 토큰, cli·main·루트 script 등록)와 테스트(core 12, pipeline judge 31·cli 8·ask 4·module 1)",
+      "handoff": "1) core: parseJudgingCriteria(markdown, source?)에 에러용 출처 인자를 더했고 judgingCriteriaPath(repoRoot,id,version)도 내보낸다. rows는 항상 REQUIREMENT_LABEL 순서, 열은 열 이름의 (`pass`)·(`partial`)·(`fail`)로 찾는다. intro는 표 위의 비어 있지 않은 줄 중 '#' 제목 줄을 뺀 것(레포 파일 기준 문단 2줄) — step 문서의 '비어 있지 않은 줄'에서 제목만 뺐다.\n2) prompt.ts의 readPromptFile을 export해서 기준표도 같은 규칙(UTF-8·BOM·CRLF 거부)으로 읽는다.\n3) pipeline: judging/judgment.ts(buildJudgment, toKstIsoString → 초 단위 '2026-10-13T19:24:23+09:00', parseMarkAnswer: pass·partial·fail 또는 p·a·f, noteProblem은 JudgmentSchema.shape.note로 검사), judging/judge.ts(runJudge, MARK_OPTION, JudgeOptions), JudgeService(REPO_ROOT·ASK·CONFIRM·CLOCK·OUTPUT). Ask = (질문) => Promise<string|null>, null = 취소.\n4) ARCHITECTURE '판정 도우미'와 다른 점(문서 반영 필요): 기존 판정 덮어쓰기 확인을 값 입력보다 먼저 한다(입력 다 하고 거절하는 낭비 방지). 판정 기준표 요약은 물을 것이 있을 때만 보인다. 검증 전(validation null) 결과물은 거절하지 않고 '스크린샷 없음 — npm run validate' 안내 후 받는다. 플래그 값은 pass·partial·fail만(p·a·f는 대화형만). judge 전용 플래그(--scene 등·--yes)를 다른 명령에 쓰면 사용법 오류.\n5) createTerminalAsk는 Confirm처럼 질문마다 readline을 열고 닫는다(터미널용). 여러 답을 stdin 파이프로 한꺼번에 넣는 방식은 지원하지 않는다 — 자동화는 플래그를 쓴다.\n6) 실행 예시: 대화형 `npm run judge -- claude-opus-5-5` / 플래그 `npm run judge -- claude-opus-5-5 --scene pass --cycle partial --look pass --label fail --note \"봄꽃과 단풍이 뚜렷하다\" [--yes]`.\n7) results/는 테스트·실행 모두 건드리지 않았다(실제 판정은 사람이 OPERATIONS '판정' 순서로).",
+      "completed_at": "2026-10-13T19:37:41+0900",
+      "attempts": 1
+    },
+    {
+      "step": 1,
+      "name": "compare-tab",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test",
+        "npm run build",
+        "npm run check:results"
+      ],
+      "started_at": "2026-10-13T19:37:41+0900",
+      "model": "claude-opus-5-5",
+      "cost_usd": 4.3875,
+      "num_turns": 67,
+      "attempts": 1,
+      "session_id": "42284062-fd7b-48b3-88e4-731414f583bd",
+      "summary": "비교표 탭 /compare/ 구현: core ModelDisplay.inputTokensMark(§, Claude Code·Codex CLI 행) + 헤더 탭 결과·비교표 + copy.ts 비교표 문구(COMPARE_TAB·MODELS_TABLE·RECORD_TABLE·CHECKS_TABLE) + pages/compare/index.astro(표 3개·안내 박스·각주 †‡§·범례·판정 기준 링크) + StatusBadge size='table'(12px) + paths.judgingCriteriaHref, 테스트(core display §, site compare-tab 13개, build-output 헤더 탭 갱신)",
+      "handoff": "1) DOM 계약(compare-tab.test.ts): table[data-table=models|record|checks][aria-labelledby=<h2 id: models-table-title·record-table-title·checks-table-title>], 감싸는 div.table-wrap[role=region][tabindex=0][aria-labelledby 같은 id]. 행 tr[data-slug], 모델명 th[scope=row][data-col=displayName], 칸 td[data-col=<ModelDisplay 키>], 표 3 판정 칸 td[data-col=<RequirementKey>][data-mark=pass|partial|fail|none]. 각주 기호는 칸 안 <sup>(값이 없으면 sup 없음). p[data-field=notice], ul[data-field=footnotes]>li>sup, div[data-field=legend](span 2개 + a 1개).\n2) 인터페이스: copy.ts COMPARE_TAB·MODELS_TABLE·RECORD_TABLE(notice·columns·footnotes[{mark,text}])·CHECKS_TABLE(columns·legend·criteriaLink)·FootnoteMark 타입. 열 키 순서 = 화면 순서. 범례 두 줄은 core MARK_LABEL·VERDICT_LABEL로 만든다. paths.ts judgingCriteriaHref() = withBase('prompt/#judge'). StatusBadge에 size?: 'list'(11px, 기본)|'table'(12px).\n3) step 2가 할 일: /prompt/에 id=\"judge\" 섹션을 만들어 링크를 살린다. TABS에 소개·프롬프트를 더하면 build-output.test.ts와 compare-tab.test.ts의 헤더 탭 기대값(지금 결과·비교표 2개)을 함께 고친다. build-output 테스트는 헤더 탭이 가리키는 페이지가 dist에 있는지도 본다.\n4) UI_GUIDE와 다르게 정한 수치(시안 Compare.dc.html 기준): 표 컨테이너는 카드 스타일이지만 padding 0, 마지막 행 아래 구분선 없음(컨테이너 테두리가 맡음). 섹션 안 간격 12px(h2·안내 박스·표·각주), 섹션 사이는 레이아웃 main gap 24px. 각주 13px --text-muted·gap 4px, 범례 줄 13px --text-body·gap 8px 20px. 판정 전·— 판정 칸은 --text-muted. Mono 13px 칸: 표1 출시일·파일 크기·three.js 버전, 표2 값 전부, 표3 에러 수(모두 nowrap). 표 칸 sup은 margin-left 2px·line-height 0.\n5) 접근성: 표마다 section은 랜드마크가 아닌 일반 section이다(스크롤 컨테이너 region과 같은 이름의 랜드마크가 겹치지 않게).\n6) 문서 반영 필요(docs 미수정): UI_GUIDE '비교표 탭'의 '각주 두 줄'→세 줄(§ 추가, 입력 토큰 칸), '헤더'의 'phase 2~4는 결과 하나'→지금 결과·비교표, 안티패턴 표의 각주 기호 '(† ‡)'에 § 추가.\n7) 이전 시도(attempt 1)는 사용 한도로 중단됐고 wip 커밋의 core·copy·tabs·테스트를 그대로 이어받아 페이지만 새로 만들었다. results/는 건드리지 않았다.",
+      "completed_at": "2026-10-13T20:49:44+0900"
+    },
+    {
+      "step": 2,
+      "name": "prompt-intro-tabs",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test",
+        "npm run build",
+        "npm run check:results"
+      ],
+      "started_at": "2026-10-13T20:49:45+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "4f46e84f-a030-4cbb-b306-819aa10ec8ea",
+      "cost_usd": 5.3326,
+      "num_turns": 83,
+      "summary": "프롬프트 탭 /prompt/(원문 카드·복사 버튼·생성 조건 6행·판정 기준 #judge 표)과 소개 탭 /intro/(히어로·카드 3개·수록 기준) 구현, 헤더 탭 소개·결과·비교표·프롬프트 4개: lib/prompt-body.ts(문단·목록·<br>, 전부 이스케이프)·data.ts loadPromptData·scripts/prompt-copy.ts·copy.ts 두 탭 문구·core formatInt export, 테스트(core 1, site prompt-body 5·prompt-intro-tabs 15·prompt-tab-browser 5, build-output·compare-tab 헤더 탭 기대값 갱신)",
+      "handoff": "1) DOM 계약: 프롬프트 탭 section[data-field=prompt-card] > span.chip[data-field=prompt-id] + button[type=button][data-action=copy][data-copied-label=복사됨] + div[data-field=prompt-body] + script#prompt-source[type=application/json](원문 그대로, results-view의 scriptJson). 생성 조건 section[aria-labelledby=conditions-title] > dl[data-field=conditions] > div > dt + dd[data-condition=count|reasoning|outputLimit|generators|retry|systemPrompt]. 판정 기준 section#judge > h2#judge-title + p[data-field=judge-description] + div.table-wrap[role=region][tabindex=0][aria-labelledby=judge-title] > table[data-table=criteria] > tr[data-key=<RequirementKey>] > th[scope=row] + td[data-mark=pass|partial|fail]. 소개 탭 p[data-field=eyebrow]·h1·p[data-field=lead]·div[data-field=actions] > a.button(.primary)[data-link=results|compare|prompt]·ul[data-field=chips]·div[data-field=cards] > section.card[data-card=what|how|caution](p.eyebrow + h2 + p)·section[data-field=inclusion](h2·p·h3·ul[data-field=excluded] > li > span.name + span.reason).\n2) 인터페이스: tabs.ts TABS 4개(intro·results·compare·prompt, 결과 탭 path ''). copy.ts PROMPT_TAB·PROMPT_COPY{idle,copied}·CONDITIONS_CARD·ConditionKey·conditionValues(system)(출력 상한 = formatInt(DEFAULT_MAX_OUTPUT_TOKENS), 생성 도구 = GENERATOR_LABEL, 시스템 프롬프트는 끝 줄바꿈만 지우고 큰따옴표)·JUDGE_SECTION(columns = 요구사항 + MARK_LABEL)·INTRO_TAB(name '소개' = <title>, description = SITE_DESCRIPTION)·introChips(n)·INTRO_CARDS·INCLUSION. data.ts loadPromptData() → {prompt, criteria}(DATA_ROOT/prompts, 빌드 1회 캐시·dev는 매 요청). prompt-body.ts promptBlocks·renderPromptBody. scripts/prompt-copy.ts setupPromptCopy(doc)·COPIED_MS=2000. core display.ts formatInt를 export했다(포맷 규칙 단일 출처 유지).\n3) step 문서와 다른 점: 실제 prompts/season-tree-v1.md는 마지막 두 줄 사이에 빈 줄이 없어 규칙(빈 줄 = 문단, 줄바꿈 = <br>)대로면 문단 2개(둘째 문단에 <br> 1개)·목록 1개(4항목)다. step의 '문단 3개'는 시안(두 줄을 p 둘로 그림) 기준이라 파일과 규칙을 따랐다. 복사 2초 복원은 지연 주입 대신 Playwright page.clock으로 시험한다(2초는 마지막 성공한 복사부터).\n4) Windows Chromium은 시스템 클립보드에 쓸 때 LF를 CRLF로 바꾼다(Blink SystemClipboard::WritePlainText). 스크립트는 원문을 그대로 writeText에 넘긴다. 테스트는 writeText 인자를 원문과 바이트 비교하고, 클립보드에서 다시 읽은 값은 그 OS 줄바꿈으로 비교한다(리눅스 CI는 원문 바이트 그대로).\n5) OPB_DATA_ROOT 테스트의 prompts/: makeDataRoot가 이미 레포 prompts/season-tree-v1*.md를 임시 루트에 복사해서 빌더는 고치지 않았다. prompt-intro-tabs.test.ts는 임시 루트의 .md·.system.md·.judging.md를 HTML 같은 글자가 든 내용으로 덮어써 사이트가 그 폴더를 읽고 이스케이프하는지 본다. 레포 prompts/는 그대로다.\n6) UI_GUIDE와 다른 수치(시안 기준): 생성 조건 행 6개(COPY에 시스템 프롬프트가 있음, UI_GUIDE는 5개)·카드 제목 h2 15px·padding 16px·라벨 12px --text-muted / 값 14px·마지막 행 구분선 없음. 원문 본문 padding 20px 24px·gap 14px·line-height 1.75, 칩은 UI_GUIDE 칩 스타일(시안은 테두리 없는 글자). 판정 기준표는 비교표 표 스타일 + vertical-align top. 소개 탭: 블록 간격 40px(레이아웃 24px 대신), 히어로 padding-top 24px·max-width 760px·gap 16px, 문장 17px --text-strong, 큰 버튼 15px/500(주 버튼 hover --accent-hover), 카드 padding 24px·라벨 12px(히어로 라벨 13px)·본문 --text-body, 수록 기준 위 1px --border + padding-top 32px, 뺀 모델 행은 10px 둥글기 상자.\n7) 휴대폰 수치(44px 제목 축소 등)는 step 3 몫이라 넣지 않았다. 문서 반영 필요(docs 미수정): UI_GUIDE '프롬프트 탭' 생성 조건 행 5개→6개, '헤더' phase 2~4 문구, ARCHITECTURE '사이트'의 DOM 계약에 위 계약 추가·ADR-024 괄호 문구. results/·prompts/·docs/는 건드리지 않았다.",
+      "completed_at": "2026-10-13T21:09:03+0900",
+      "attempts": 1
+    },
+    {
+      "step": 3,
+      "name": "mobile-readme",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test",
+        "npm run build",
+        "npm run check:results"
+      ],
+      "started_at": "2026-10-13T21:09:03+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "f97468b2-6196-4ea4-90e9-20d6d004912a",
+      "cost_usd": 4.8274,
+      "num_turns": 86,
+      "summary": "휴대폰 화면(폭 < 768px)과 README: 결과 탭에 <label for>모델</label><select>(옵션 '표시명 · 상태 라벨', 값 slug, 버튼과 같은 select() 경로·상태 동기화)·범례 결과 아래(aside display: contents + order)·설명 '목록에서' 전환, 헤더·프롬프트·소개 탭 휴대폰 수치, 루트 README.md, 테스트(results-tab dist 3+1, results-tab-browser 휴대폰 4, narrow-screen-browser 6, readme 4)",
+      "handoff": "1) DOM 계약 추가: aside > div.list > div.list-head(h2#models-title + label[for=model-select] + 정렬 안내) + select#model-select[data-field=model-select][autocomplete=off] > option[value=slug](처음 selected = ADR-025 첫 선택) + ul.model-list(버튼, 그대로). 설명은 .intro p > span[data-screen=wide|narrow]. 기존 계약(button[data-slug][aria-pressed] 등)은 그대로다.\n2) 인터페이스 변경: copy.ts RESULTS_TAB.description이 문자열에서 {wide, narrow}로 바뀌었다(COPY 두 문장 그대로). modelOptionLabel(displayName, statusLabel) 추가(상태 라벨은 빌드 때 core display 값). results-tab.ts: 선택기 change → 같은 select(slug)(같은 값이면 아무것도 안 함), select()가 picker.value도 맞추고, 시작할 때 picker.value = 눌린 버튼(뒤로 가기 폼 복원 대비).\n3) 휴대폰 CSS(@media max-width 767px): 결과 탭 .columns를 세로로(gap 16px), aside display: contents로 풀고 범례 order 1(DOM 한 벌), h2·버튼 목록 display none / label·select display block, .result flex none. 데스크톱은 그대로(스크린샷·1280px 테스트로 확인).\n4) 정한 수치(UI_GUIDE 기준값과 다르거나 없던 것): 선택기 min-height 44px·padding 10px 12px·15px·10px 둥글기·1px --border-strong, 라벨 15px/600, 라벨-선택기 간격 8px. 헤더 휴대폰 탭 padding 10px 12px(UI_GUIDE 10px 16px — 320px 폭에서도 탭 4개가 한 줄)·.inner gap 12px. 소개 탭 휴대폰 h1 44px→32px·line-height 1.3·letter-spacing -0.02em·word-break keep-all(375px에서 두 줄), 블록 간격 40→32px, 히어로 padding-top 24→8px. 프롬프트 탭 휴대폰 두 열→한 열 명시(gap 16px), 원문 본문 padding 16px. 생성 기록 값(Mono)에 overflow-wrap anywhere. 비교표는 바꾸지 않았다(표 컨테이너 overflow-x auto로 이미 안에서만 스크롤).\n5) README.md 구성: 소개 문단(순위가 아니라 기록)·공개 주소, 프롬프트와 모델(prompts/ 파일 표, 모델 수 없이 models.json), 사이트(탭 4개·샌드박스), 기술 스택, 디렉토리 구조, 로컬 실행(npm install → npx playwright install chromium → dev·test·build)과 검사 명령 표, docs/ 표, 운영(OPERATIONS 링크, gen·smoke는 사람만·자동화/CI 금지, validate·judge, .env.example의 GEMINI_API_KEY 이름만), 원칙(추가 결제 0원·기록의 정직성·check:results 배포 게이트), 개발 방식(TDD·conventional commits·하네스).\n6) 테스트: site/test/readme.test.ts가 README의 npm 명령이 루트 scripts에 있는지, 상대 링크·백틱 경로가 있는지(site/dist/ 제외), 키 모양(sk-·AIza·gh 토큰)·비밀값 대입·이메일·로컬 절대 경로·모델 수가 없는지 본다. narrow-screen-browser.test.ts는 makeResultsTabDataRoot로 한 번 빌드해 네 탭을 375px로 연다.\n7) 문서 반영 필요(docs 미수정): UI_GUIDE '공통 레이아웃' 헤더 탭 휴대폰 padding, '소개 탭' 휴대폰 제목 32px, '결과 탭' 휴대폰 선택기 수치. ARCHITECTURE '사이트' DOM 계약에 select[data-field=model-select]·span[data-screen] 추가, '디렉토리 구조'에 README.md. results/·prompts/·docs/는 건드리지 않았다.",
+      "completed_at": "2026-10-13T21:25:02+0900",
+      "attempts": 1
+    }
+  ],
+  "created_at": "2026-10-13T19:24:23+0900",
+  "cost_usd": 18.5332,
+  "num_turns": 295,
+  "completed_at": "2026-10-13T21:25:03+0900"
+}

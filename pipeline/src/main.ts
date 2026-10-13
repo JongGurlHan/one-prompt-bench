@@ -5,6 +5,7 @@ import { AppModule } from './app.module.js';
 import { parseCommand, USAGE, type Command } from './cli.js';
 import { BatchService } from './generation/batch.service.js';
 import { SmokeService } from './generation/smoke.service.js';
+import { JudgeService } from './judging/judge.service.js';
 import { ValidateService } from './validation/validate.service.js';
 
 /* ────────────────────────────────────────────────────────────
@@ -23,6 +24,8 @@ async function execute(app: INestApplicationContext, command: RunCommand): Promi
       return app.get(SmokeService).smoke(command);
     case 'validate':
       return app.get(ValidateService).validate(command);
+    case 'judge':
+      return app.get(JudgeService).judge(command);
     default: {
       const unhandled: never = command;
       throw new Error(`처리하지 않은 명령: ${JSON.stringify(unhandled)}`);

@@ -26,7 +26,8 @@ export async function loadPrompt(repoRoot: string, id: string, version: string):
 // fatal: 잘못된 바이트를 U+FFFD로 바꾸지 않고 throw. ignoreBOM: BOM을 지우지 않고 남겨서 아래에서 거부
 const utf8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 
-async function readPromptFile(file: string): Promise<string> {
+/** prompts/의 파일 하나를 위 규칙(UTF-8, BOM·CR 거부, 내용 그대로)으로 읽는다. 판정 기준표(judging.ts)도 이것을 쓴다 */
+export async function readPromptFile(file: string): Promise<string> {
   let bytes: Buffer;
   try {
     bytes = await readFile(file);

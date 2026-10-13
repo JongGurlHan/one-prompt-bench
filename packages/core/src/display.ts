@@ -211,6 +211,8 @@ export interface ModelDisplay {
   /** 결과 탭 "토큰 (입력 / 출력)": 1,200 / 18,500 */
   tokens: string;
   reasoningTokens: string;
+  /** 입력 토큰 옆 각주 기호: 생성 도구가 Claude Code 또는 Codex CLI인 행이면 § (ADR-030). 비교표에만 쓴다 */
+  inputTokensMark: '' | '§';
   /** 출력 토큰 옆 각주 기호: 생성 도구가 Codex CLI인 행이면 † */
   outputTokensMark: '' | '†';
   /** 그중 추론 옆 각주 기호: 회사가 Google인 행이면 ‡ */
@@ -259,6 +261,7 @@ export function displayModel(entry: ResultEntry): ModelDisplay {
     outputTokens,
     tokens: usage ? `${inputTokens} / ${outputTokens}` : NO_VALUE,
     reasoningTokens: usage && usage.reasoningTokens !== null ? formatInt(usage.reasoningTokens) : NO_VALUE,
+    inputTokensMark: tool === 'claude-code' || tool === 'codex-cli' ? '§' : '',
     outputTokensMark: tool === 'codex-cli' ? '†' : '',
     reasoningTokensMark: model.provider === 'google' ? '‡' : '',
     cost: record ? formatUsd(record.cost.totalUsd) : NO_VALUE,
@@ -295,7 +298,8 @@ function threeVersionOf(requests: readonly ExternalRequest[]): string {
 }
 
 const intFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
-const formatInt = (n: number) => intFormat.format(n);
+/** 천 단위 쉼표 정수: 토큰 수, 프롬프트 탭 "생성 조건"의 출력 상한 (65,536) */
+export const formatInt = (n: number) => intFormat.format(n);
 
 /** 1024 기준 소수 1자리 KB */
 const formatKb = (bytes: number) => `${(bytes / 1024).toFixed(1)} KB`;

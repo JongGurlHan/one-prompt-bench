@@ -19,7 +19,8 @@
     "check:results": "tsx packages/core/scripts/check-results.ts",
     "gen": "tsx --tsconfig pipeline/tsconfig.json pipeline/src/main.ts gen",
     "smoke": "tsx --tsconfig pipeline/tsconfig.json pipeline/src/main.ts smoke",
-    "validate": "tsx --tsconfig pipeline/tsconfig.json pipeline/src/main.ts validate"
+    "validate": "tsx --tsconfig pipeline/tsconfig.json pipeline/src/main.ts validate",
+    "judge": "tsx --tsconfig pipeline/tsconfig.json pipeline/src/main.ts judge"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

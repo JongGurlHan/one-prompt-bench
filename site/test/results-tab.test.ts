@@ -103,6 +103,61 @@ test('목록 제목·정렬 안내와 범례 상자 "상태 표시"의 배지 �
   for (const b of badges) assert.equal(b.attrs.get('data-tone'), EXPECTED_TONE[text(b.inner) as keyof typeof EXPECTED_TONE]);
 });
 
+/* ───────── 휴대폰: 모델 선택기·설명 문구 ───────── */
+
+/** docs/COPY.md "결과 탭"의 설명 (휴대폰 드롭다운 화면에서는 "왼쪽에서" → "목록에서") */
+const DESCRIPTION = {
+  wide: '같은 프롬프트로 여러 모델이 한 번씩 만든 결과물이에요. 왼쪽에서 모델을 고르면 그 결과물 하나만 실행돼요.',
+  narrow: '같은 프롬프트로 여러 모델이 한 번씩 만든 결과물이에요. 목록에서 모델을 고르면 그 결과물 하나만 실행돼요.',
+};
+const modelSelect = (html: string) => find(html, 'select', hasAttr('data-field', 'model-select'));
+const selectOptions = (html: string) => findAll(modelSelect(html).inner, 'option');
+const selectedOptions = (html: string) => selectOptions(html).filter((o) => o.attrs.has('selected')).map((o) => o.attrs.get('value'));
+
+test('휴대폰 선택기: <label for> "모델" + select, 옵션은 목록 순서대로 "표시명 · 상태 라벨"이고 값은 slug다', () => {
+  const select = modelSelect(full.html);
+  const id = select.attrs.get('id');
+  assert.ok(id, 'select has an id');
+  assert.equal(findAll(full.html, 'label', hasAttr('for', id)).length, 1);
+  assert.equal(text(find(full.html, 'label', hasAttr('for', id)).inner), '모델');
+  assert.ok(element(full.html, 'aside').inner.includes(select.tag), '선택기는 목록 자리(aside)에 있다');
+
+  const options = selectOptions(full.html);
+  assert.equal(options.length, TAB_CASES.length, '옵션 수 = 모델 수');
+  assert.deepEqual(options.map((o) => o.attrs.get('value')), EXPECTED_ORDER);
+  assert.deepEqual(
+    options.map((o) => text(o.inner)),
+    EXPECTED_ORDER.map((slug) => `${full.displays.get(slug)!.displayName} · ${label(slug)}`),
+  );
+  assert.equal(text(options[1]!.inner), 'Model Ok · 정상');
+  assert.equal(text(options[0]!.inner), 'Model Newest · 생성 전');
+
+  // 처음 선택된 옵션 = 첫 선택 모델 = 눌린 버튼 (ADR-025)
+  assert.deepEqual(selectedOptions(full.html), [FIRST_WITH_OUTPUT]);
+  assert.deepEqual(selectedOptions(full.html), pressed(full.html));
+  // 목록 DOM은 한 벌이다 (모델마다 버튼 하나)
+  assert.equal(modelButtons(full.html).length, TAB_CASES.length);
+});
+
+test('결과물이 하나도 없으면 선택기도 맨 위 모델이 처음 선택돼 있다', () => {
+  assert.deepEqual(selectOptions(noOutput.html).map((o) => o.attrs.get('value')), NO_OUTPUT_SLUGS);
+  assert.deepEqual(selectedOptions(noOutput.html), [NO_OUTPUT_SLUGS[0]]);
+});
+
+test('설명 문구: 넓은 화면은 "왼쪽에서", 휴대폰은 "목록에서" 문장이 COPY 그대로 하나씩 있다', () => {
+  const intro = find(full.html, 'section', hasClass('intro'));
+  const description = element(intro.inner, 'p');
+  const spans = findAll(description.inner, 'span', hasAttr('data-screen'));
+  assert.deepEqual(
+    spans.map((s) => [s.attrs.get('data-screen'), text(s.inner)]),
+    [
+      ['wide', DESCRIPTION.wide],
+      ['narrow', DESCRIPTION.narrow],
+    ],
+  );
+  assert.equal(text(description.inner), `${DESCRIPTION.wide} ${DESCRIPTION.narrow}`, '다른 글자는 없다');
+});
+
 /* ───────── 첫 선택 (ADR-025) ───────── */
 
 test('처음에는 결과물이 있는 첫 모델이 선택돼 있고, 그 결과물 iframe 하나만 있다', () => {
@@ -297,5 +352,6 @@ test('모델이 하나도 없어도 빌드되고 목록·실행 카드가 없다
   assert.equal(text(element(html, 'h1').inner), '사계절이 바뀌는 3D 나무');
   assert.ok(text(element(html, 'main').inner).includes('모델 0개'));
   assert.deepEqual(modelButtons(html), []);
+  assert.deepEqual(elements(html, 'select'), []);
   assert.deepEqual(elements(html, 'iframe'), []);
 });

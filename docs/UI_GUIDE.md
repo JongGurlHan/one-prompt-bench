@@ -22,7 +22,7 @@
 | 배경 gradient orb (blur-3xl 원형) | 모든 AI 랜딩 페이지에 있는 장식 |
 | 순위 배지·트로피·1위 강조·점수 합계 | "순위가 아니라 기록"이라는 사이트 성격과 반대 |
 | 숫자 카운트업·스크롤 등장 애니메이션 | 장식. 결과물 iframe 외에는 움직임이 없다 |
-| 이모지 아이콘 | 판정 기호(✓ △ ✗)와 각주 기호(† ‡) 외에는 쓰지 않는다 |
+| 이모지 아이콘 | 판정 기호(✓ △ ✗)와 각주 기호(† ‡ §) 외에는 쓰지 않는다 |
 
 ## 토큰 (`:root` CSS 변수)
 
@@ -46,7 +46,7 @@
 | `--divider-soft` | #EEF0EC | 생성 조건 목록 구분선 |
 | `--accent` / `--accent-hover` | #2F5D46 / #1F4232 | 링크, 선택 테두리, 주 버튼, 작은 라벨 |
 | `--nav-active-bg` / `--nav-active-text` | #16181D / #FFFFFF | 현재 탭 |
-| `--footnote-mark` | #6B4A0B | † ‡ 위첨자 |
+| `--footnote-mark` | #6B4A0B | † ‡ § 위첨자 |
 
 ### 상태 배지 (바탕 / 글자)
 | 라벨 | 바탕 | 글자 |
@@ -89,7 +89,7 @@ Mono 글꼴 스택은 `'IBM Plex Mono', 'IBM Plex Sans KR', monospace`다. Plex 
 
 - 콘텐츠 최대 폭 1200px, 좌우 여백 32px(휴대폰 16px). 정렬은 왼쪽 정렬이다.
 - 섹션 간격 24px, 카드 간 16px, 목록 항목 간 6px.
-- **헤더**: 흰 바탕에 아래쪽 1px `--border`. 왼쪽에 사이트 이름과 부제(Mono 13px `--text-muted`), 오른쪽에 탭 4개(소개·결과·비교표·프롬프트). 페이지가 있는 탭만 둔다(ADR-024 — phase 2~4는 "결과" 하나). 탭은 `padding 10px 16px`, 현재 탭은 `--nav-active-bg` 바탕에 `aria-current="page"`. 좁으면 줄바꿈한다.
+- **헤더**: 흰 바탕에 아래쪽 1px `--border`. 왼쪽에 사이트 이름과 부제(Mono 13px `--text-muted`), 오른쪽에 탭 4개(소개·결과·비교표·프롬프트). 페이지가 있는 탭만 둔다(ADR-024 — phase 5에서 4개가 모두 생겼다). 탭은 `padding 10px 16px`(휴대폰은 `10px 12px`, 폭 320px에서도 탭 4개가 한 줄), 현재 탭은 `--nav-active-bg` 바탕에 `aria-current="page"`. 좁으면 줄바꿈한다.
 - **카드**: `--surface` 바탕, 1px `--border`, 14px 둥글기, `padding 16px`. 그림자는 없다.
 - **버튼**: 작은 버튼은 13px/500, `padding 8px 12px`, `min-height 36px`, 1px `--border-strong`, 흰 바탕, `--accent` 글자다. 주 버튼(소개 탭 "결과 보러 가기")은 `--accent` 바탕에 흰 글자, `padding 12px 20px`, 10px 둥글기다. 보조 큰 버튼은 흰 바탕에 `--border-strong`.
 - **칩**: Mono 12px, `padding 4px 10px`, 1px `--border-strong`, 999px.
@@ -109,23 +109,24 @@ Mono 글꼴 스택은 `'IBM Plex Mono', 'IBM Plex Sans KR', monospace`다. Plex 
 - **아래 카드 두 개**(`grid auto-fit minmax(260px, 1fr)`, gap 16px):
   - "요구사항 판정": 장면·계절 순환·계절 모습·계절 이름 행(왼쪽 이름, 오른쪽 ✓ 충족 / △ 부분 충족 / ✗ 미충족 / 판정 전 / —). 아래 구분선 다음에 판정 메모(13px `--text-body`). 메모가 없으면 줄을 생략한다.
   - "생성 기록": 결과, 조건 검사, 에러 수(ADR-026), 토큰 (입력 / 출력), 비용 (정가 기준), 걸린 시간. 값은 Mono 13px `--text-strong`.
-- **휴대폰(폭 < 768px)**: 모델 목록을 `<label>모델</label><select>`(옵션: "표시명 · 상태")로 바꾸고 범례 상자는 결과 아래로 보낸다. 실행 영역은 폭 100%를 유지한다.
+- **휴대폰(폭 < 768px)**: 모델 목록을 `<label>모델</label><select>`(옵션: "표시명 · 상태")로 바꾸고 범례 상자는 결과 아래로 보낸다. 실행 영역은 폭 100%를 유지한다. 선택기는 `min-height 44px`, `padding 10px 12px`, 15px, 10px 둥글기, 1px `--border-strong`, 라벨 15px/600, 라벨과 선택기 간격 8px. 목록(버튼)과 선택기는 HTML에 둘 다 있고 CSS로 전환한다(`aside`를 `display: contents`로 풀어 범례 상자만 `order`로 결과 아래에 보낸다). 설명 문구는 `span[data-screen]` 두 벌 중 하나만 보인다(COPY).
 
 ### 비교표 탭 (`/compare/`, 시안 Compare.dc.html)
 - h1 "비교표" + 설명.
 - 표 1 "수록 모델": 모델, 회사, 출시일, 생성 도구, 결과(배지), 파일 크기, three.js 버전.
-- 표 2 "생성 기록": 표 위에 안내 박스(`--notice-bg`, 10px 둥글기, `padding 12px 16px`, 14px)로 비용 안내를 둔다. 열은 모델, 입력 토큰, 출력 토큰(Codex 행에 †), 그중 추론(Google 행에 ‡), 비용 (정가 기준), 걸린 시간, 재시도. 표 아래 각주 두 줄(12~13px `--text-muted`, 기호는 `--footnote-mark`).
+- 표 2 "생성 기록": 표 위에 안내 박스(`--notice-bg`, 10px 둥글기, `padding 12px 16px`, 14px)로 비용 안내를 둔다. 열은 모델, 입력 토큰(Claude Code·Codex 행에 §), 출력 토큰(Codex 행에 †), 그중 추론(Google 행에 ‡), 비용 (정가 기준), 걸린 시간, 재시도. 표 아래 각주 세 줄(†‡§ 순서, 12~13px `--text-muted`, 기호는 `--footnote-mark`).
 - 표 3 "요구사항과 검증": 모델, 장면, 계절 순환, 계절 모습, 계절 이름, 조건 검사, 에러 수. 아래 범례 줄과 "판정 기준 보기" 링크(`/prompt/#judge`).
 
 ### 프롬프트 탭 (`/prompt/`, 시안 Prompt.dc.html)
 - h1 "프롬프트" + 설명.
-- 두 열: 왼쪽 원문 카드(머리에 `season-tree-v1` 칩과 [복사] 버튼 → 클립보드에 원문 그대로, 복사 후 2초간 "복사됨"). 본문은 `prompts/season-tree-v1.md`를 렌더링한다(목록은 `ul`, `padding-left 20px`, gap 6px). 오른쪽 "생성 조건" 카드에는 라벨/값 행 5개를 `--divider-soft` 구분선으로 나눈다.
+- 두 열: 왼쪽 원문 카드(머리에 `season-tree-v1` 칩과 [복사] 버튼 → 클립보드에 원문 그대로, 복사 후 2초간 "복사됨"). 본문은 `prompts/season-tree-v1.md`를 렌더링한다(목록은 `ul`, `padding-left 20px`, gap 6px). 오른쪽 "생성 조건" 카드에는 라벨/값 행 6개(횟수·추론 강도·출력 상한·생성 도구·재시도·시스템 프롬프트, COPY)를 `--divider-soft` 구분선으로 나눈다.
 - 아래 "판정 기준"(`id="judge"`): 설명 + 표(요구사항, ✓ 충족, △ 부분 충족, ✗ 미충족). 내용은 `prompts/season-tree-v1.judging.md`의 표.
 
 ### 소개 탭 (`/intro/`, 시안 Intro.dc.html)
 - 히어로: 작은 라벨, 44px 제목, 문단, 버튼 3개(주 버튼 "결과 보러 가기", 보조 "비교표 보기"·"프롬프트 전문"), 칩 3개.
 - 카드 3개(`grid auto-fit minmax(280px, 1fr)`): 작은 라벨(What / How / Caution) + h2 18px + 본문.
 - 수록 기준: 기준 문단 + "대상에서 뺀 모델" 목록(모델명 / 사유).
+- phase 5 구현 수치(시안 기준): 블록 사이 40px, 히어로 위 여백 24px·`max-width 760px`·gap 16px, 주 버튼 15px/500, 카드 `padding 24px`. 휴대폰은 44px 제목을 32px(`line-height 1.3`, `word-break: keep-all`), 블록 간격 32px, 히어로 위 여백 8px로 줄인다. 프롬프트 탭은 두 열이 한 열로 쌓이고 원문 본문 `padding 16px`, 생성 조건 값은 `overflow-wrap: anywhere`. 비교표 표 컨테이너는 카드 스타일에 `padding 0`이고 마지막 행 아래 구분선이 없다.
 
 ### 새 창 래퍼 (`/view/<slug>/`)
 - 화면 전체(`100vw × 100vh`, 여백 없음, 바탕 `--viewer-bg`)를 결과물 iframe 하나로 채운다(샌드박스는 결과 탭과 같다, ARCHITECTURE "사이트"). 다른 UI는 없고, `<title>`만 "<표시명> — One Prompt Bench"로 한다.

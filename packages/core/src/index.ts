@@ -2,6 +2,7 @@
 export * from './adapter.js';
 export * from './display.js';
 export * from './extract-html.js';
+export * from './judging.js';
 export * from './prompt.js';
 export * from './request-rules.js';
 export * from './results.js';

@@ -87,9 +87,15 @@ const { current } = Astro.props;
     color: var(--nav-active-text);
   }
 
+  /* 휴대폰: 좌우 여백 16px, 부제·탭은 줄바꿈된다. 탭 좌우 여백을 줄여 320px 폭에서도 탭 네 개가 한 줄에 든다 */
   @media (max-width: 767px) {
     .inner {
       padding: 14px 16px;
+      gap: 12px;
+    }
+
+    nav a {
+      padding: 10px 12px;
     }
   }
 </style>

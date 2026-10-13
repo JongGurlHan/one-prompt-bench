@@ -5,9 +5,11 @@ import { defaultRepoRoot } from './config/config.js';
 import { BatchService } from './generation/batch.service.js';
 import { GenerationRunner } from './generation/generation-runner.js';
 import { SmokeService } from './generation/smoke.service.js';
+import { JudgeService } from './judging/judge.service.js';
+import { createTerminalAsk } from './system/ask.js';
 import { createTerminalConfirm } from './system/confirm.js';
 import { createGitClient } from './system/git.js';
-import { ADAPTERS, CLOCK, CONFIRM, GIT, OUTPUT, REPO_ROOT, VALIDATOR, type Clock, type Output } from './tokens.js';
+import { ADAPTERS, ASK, CLOCK, CONFIRM, GIT, OUTPUT, REPO_ROOT, VALIDATOR, type Clock, type Output } from './tokens.js';
 import { ValidateService } from './validation/validate.service.js';
 import { PlaywrightValidator } from './validation/validator.js';
 
@@ -32,12 +34,14 @@ const consoleOutput: Output = {
     { provide: ADAPTERS, useFactory: createAdapterRegistry },
     { provide: GIT, useFactory: (repoRoot: string) => createGitClient(repoRoot), inject: [REPO_ROOT] },
     { provide: CONFIRM, useFactory: () => createTerminalConfirm() },
+    { provide: ASK, useFactory: () => createTerminalAsk() },
     { provide: OUTPUT, useValue: consoleOutput },
     { provide: VALIDATOR, useClass: PlaywrightValidator },
     GenerationRunner,
     BatchService,
     SmokeService,
     ValidateService,
+    JudgeService,
   ],
 })
 export class AppModule {}

@@ -1,6 +1,16 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { displayModel, loadResults, type ModelDisplay, type ResultEntry } from '@opb/core';
+import {
+  CURRENT_PROMPT,
+  displayModel,
+  loadJudgingCriteria,
+  loadPrompt,
+  loadResults,
+  type JudgingCriteria,
+  type ModelDisplay,
+  type PromptSpec,
+  type ResultEntry,
+} from '@opb/core';
 
 /* ────────────────────────────────────────────────────────────
  * 사이트 데이터 (빌드 때만 읽는다, ADR-002)
@@ -36,6 +46,32 @@ async function readSiteData(): Promise<SiteData> {
   const entries = await loadResults(DATA_ROOT);
   console.info(`[opb] data: ${entries.length} models from ${DATA_ROOT}`);
   return { models: entries.map((entry) => ({ entry, display: displayModel(entry) })) };
+}
+
+/* ───────── 프롬프트 (프롬프트 탭) ───────── */
+
+export interface PromptData {
+  /** DATA_ROOT/prompts/의 지금 프롬프트. user·system은 파일 내용 그대로다 (끝 줄바꿈 포함) */
+  prompt: PromptSpec;
+  /** 같은 폴더의 판정 기준표 (.judging.md) */
+  criteria: JudgingCriteria;
+}
+
+let cachedPrompt: Promise<PromptData> | undefined;
+
+/**
+ * 프롬프트 탭이 쓰는 원문·시스템 프롬프트·판정 기준표. loadSiteData처럼 빌드에서는 한 번만 읽고 dev는 요청마다 읽는다.
+ * 파일이 없거나 core 로더의 규칙(UTF-8, BOM·CRLF 거부, 기준표 형식)에 맞지 않으면 경로를 담아 던져서 빌드가 실패한다.
+ */
+export function loadPromptData(): Promise<PromptData> {
+  if (import.meta.env.DEV) return readPromptData();
+  return (cachedPrompt ??= readPromptData());
+}
+
+async function readPromptData(): Promise<PromptData> {
+  const { id, version } = CURRENT_PROMPT;
+  const [prompt, criteria] = await Promise.all([loadPrompt(DATA_ROOT, id, version), loadJudgingCriteria(DATA_ROOT, id, version)]);
+  return { prompt, criteria };
 }
 
 /* ───────── 결과물 사본 (dist/r/<slug>/) ───────── */

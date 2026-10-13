@@ -123,7 +123,7 @@ test('결과물 파일로 가는 직접 링크가 없다', async () => {
   }
 });
 
-test('헤더 탭은 "결과" 하나이고 현재 탭에 aria-current="page"가 있다', async () => {
+test('헤더 탭은 COPY 순서의 소개·결과·비교표·프롬프트이고 현재 탭에 aria-current="page"가 있다 (ADR-024)', async () => {
   const html = await site.readText('index.html');
   const header = element(html, 'header');
   assert.equal(text(header.inner).startsWith('One Prompt Bench 하나의 프롬프트, 모델마다 다른 나무'), true, text(header.inner));
@@ -133,8 +133,15 @@ test('헤더 탭은 "결과" 하나이고 현재 탭에 aria-current="page"가 �
   const tabs = elements(nav.inner, 'a');
   assert.deepEqual(
     tabs.map((a) => ({ label: text(a.inner), href: a.attrs.get('href'), current: a.attrs.get('aria-current') })),
-    [{ label: '결과', href: TEST_BASE, current: 'page' }],
+    [
+      { label: '소개', href: `${TEST_BASE}intro/`, current: undefined },
+      { label: '결과', href: TEST_BASE, current: 'page' },
+      { label: '비교표', href: `${TEST_BASE}compare/`, current: undefined },
+      { label: '프롬프트', href: `${TEST_BASE}prompt/`, current: undefined },
+    ],
   );
+  // 헤더 탭이 가리키는 페이지는 모두 있다
+  for (const a of tabs) assert.ok(site.has(`${a.attrs.get('href')!.slice(TEST_BASE.length)}index.html`), a.tag);
 });
 
 test('내부 링크·에셋은 base로 시작하고, 외부 주소는 Google Fonts뿐이다', async () => {

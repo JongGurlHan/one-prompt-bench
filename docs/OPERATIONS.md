@@ -54,11 +54,11 @@ npm run validate -- gpt-6-sol    # 한 모델
 ```
 `meta.json`의 `validation`과 스크린샷만 바뀌고 결과물은 그대로다. 판정은 유지된다.
 
-## 판정 (판정 도우미가 생긴 뒤, 이후 새 모델마다)
+## 판정 (모델마다. 도우미는 phase 5에서 생김)
 
 1. `npm run dev`로 로컬 사이트를 열고 결과 탭에서 그 모델을 50초 이상(한 바퀴 넘게) 지켜본다. 사이트와 같은 샌드박스 조건이다.
 2. `results/<slug>/`의 스크린샷 4장(spring·summer·autumn·winter `.jpg`)을 본다. 보는 방법은 `prompts/season-tree-v1.judging.md` 머리말.
-3. `prompts/season-tree-v1.judging.md` 기준으로 `npm run judge -- <slug>`를 실행해 요구사항 4개(pass/partial/fail)와 메모(1~200자, 사이트에 공개)를 입력한다. sha256·시각은 자동으로 채워진다.
+3. `prompts/season-tree-v1.judging.md` 기준으로 `npm run judge -- <slug>`를 실행해 요구사항 4개(pass/partial/fail)와 메모(1~200자, 사이트에 공개)를 입력한다. sha256·시각은 자동으로 채워진다. 플래그로도 줄 수 있다: `npm run judge -- <slug> --scene pass --cycle partial --look pass --label fail --note "메모" [--yes]`. 기존 판정이 있으면 먼저 덮어쓸지 묻는다.
 4. 커밋하고 push하면 배포된다. `--force`로 결과물을 다시 만들면 판정도 함께 지워지므로 다시 판정한다.
 
 결과물이 없는 모델(HTML 없음·잘림·거부·생성 실패·한도 초과)은 판정하지 않는다.
