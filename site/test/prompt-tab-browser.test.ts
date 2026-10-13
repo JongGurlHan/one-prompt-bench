@@ -82,16 +82,24 @@ async function eventually(check: () => boolean | Promise<boolean>, what: string)
 async function allowClipboard({ context, page }: Tab) {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: server.origin });
   await page.addInitScript(() => {
-    const w = window as unknown as { clipboardWrites: string[] };
+    const w = window as unknown as { clipboardWrites: string[]; clipboardDone: number };
     w.clipboardWrites = [];
+    w.clipboardDone = 0;
     const writeText = Clipboard.prototype.writeText;
     Clipboard.prototype.writeText = function (this: Clipboard, data: string) {
       w.clipboardWrites.push(data);
-      return writeText.call(this, data);
+      const done = writeText.call(this, data);
+      // 스크립트의 then보다 먼저 등록되므로, 이 값이 올라가면 스크립트의 후속 처리(타이머 시작)도 곧 끝난다
+      done.then(
+        () => void w.clipboardDone++,
+        () => {},
+      );
+      return done;
     };
   });
 }
 
+const clipboardDone = (page: Page) => page.evaluate(() => (window as unknown as { clipboardDone: number }).clipboardDone);
 const clipboardWrites = (page: Page) => page.evaluate(() => (window as unknown as { clipboardWrites: string[] }).clipboardWrites);
 const readClipboard = async (page: Page) => Buffer.from(await page.evaluate(() => navigator.clipboard.readText()), 'utf8');
 
@@ -104,6 +112,8 @@ test('복사: 클립보드에 프롬프트 파일 원문(끝 줄바꿈 포함)�
     await t.page.clock.install();
   });
   const { page } = tab;
+  // install()만 하면 가짜 시계도 실제 시간대로 흐른다 → 느린 환경(전체 스위트)에서 2초 타이머가 먼저 끝난다. 시계를 멈추고 runFor로만 흐르게 한다
+  await page.clock.pauseAt(Date.now() + 1_000);
   assert.equal(await buttonText(page), '복사');
 
   await copyButton(page).click();
@@ -126,6 +136,8 @@ test('복사: 클립보드에 프롬프트 파일 원문(끝 줄바꿈 포함)�
   await eventually(async () => (await buttonText(page)) === '복사됨', 'button shows 복사됨 again');
   await page.clock.runFor(1_000);
   await copyButton(page).click();
+  // 이미 "복사됨"이라 글자로는 알 수 없다: writeText가 끝나 2초 타이머가 다시 시작된 뒤에 시계를 흐르게 한다
+  await eventually(async () => (await clipboardDone(page)) === 3, 'third writeText finished');
   await page.clock.runFor(1_500);
   assert.equal(await buttonText(page), '복사됨', '두 번째 복사부터 2초가 아직 안 됐다');
   await page.clock.runFor(500);
