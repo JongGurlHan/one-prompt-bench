@@ -47,14 +47,23 @@
     {
       "step": 2,
       "name": "prompt-intro-tabs",
-      "status": "pending",
+      "status": "completed",
       "ac": [
         "npm run lint",
         "npm run typecheck",
         "npm test",
         "npm run build",
         "npm run check:results"
-      ]
+      ],
+      "started_at": "2026-10-13T20:49:45+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "4f46e84f-a030-4cbb-b306-819aa10ec8ea",
+      "cost_usd": 5.3326,
+      "num_turns": 83,
+      "summary": "프롬프트 탭 /prompt/(원문 카드·복사 버튼·생성 조건 6행·판정 기준 #judge 표)과 소개 탭 /intro/(히어로·카드 3개·수록 기준) 구현, 헤더 탭 소개·결과·비교표·프롬프트 4개: lib/prompt-body.ts(문단·목록·<br>, 전부 이스케이프)·data.ts loadPromptData·scripts/prompt-copy.ts·copy.ts 두 탭 문구·core formatInt export, 테스트(core 1, site prompt-body 5·prompt-intro-tabs 15·prompt-tab-browser 5, build-output·compare-tab 헤더 탭 기대값 갱신)",
+      "handoff": "1) DOM 계약: 프롬프트 탭 section[data-field=prompt-card] > span.chip[data-field=prompt-id] + button[type=button][data-action=copy][data-copied-label=복사됨] + div[data-field=prompt-body] + script#prompt-source[type=application/json](원문 그대로, results-view의 scriptJson). 생성 조건 section[aria-labelledby=conditions-title] > dl[data-field=conditions] > div > dt + dd[data-condition=count|reasoning|outputLimit|generators|retry|systemPrompt]. 판정 기준 section#judge > h2#judge-title + p[data-field=judge-description] + div.table-wrap[role=region][tabindex=0][aria-labelledby=judge-title] > table[data-table=criteria] > tr[data-key=<RequirementKey>] > th[scope=row] + td[data-mark=pass|partial|fail]. 소개 탭 p[data-field=eyebrow]·h1·p[data-field=lead]·div[data-field=actions] > a.button(.primary)[data-link=results|compare|prompt]·ul[data-field=chips]·div[data-field=cards] > section.card[data-card=what|how|caution](p.eyebrow + h2 + p)·section[data-field=inclusion](h2·p·h3·ul[data-field=excluded] > li > span.name + span.reason).\n2) 인터페이스: tabs.ts TABS 4개(intro·results·compare·prompt, 결과 탭 path ''). copy.ts PROMPT_TAB·PROMPT_COPY{idle,copied}·CONDITIONS_CARD·ConditionKey·conditionValues(system)(출력 상한 = formatInt(DEFAULT_MAX_OUTPUT_TOKENS), 생성 도구 = GENERATOR_LABEL, 시스템 프롬프트는 끝 줄바꿈만 지우고 큰따옴표)·JUDGE_SECTION(columns = 요구사항 + MARK_LABEL)·INTRO_TAB(name '소개' = <title>, description = SITE_DESCRIPTION)·introChips(n)·INTRO_CARDS·INCLUSION. data.ts loadPromptData() → {prompt, criteria}(DATA_ROOT/prompts, 빌드 1회 캐시·dev는 매 요청). prompt-body.ts promptBlocks·renderPromptBody. scripts/prompt-copy.ts setupPromptCopy(doc)·COPIED_MS=2000. core display.ts formatInt를 export했다(포맷 규칙 단일 출처 유지).\n3) step 문서와 다른 점: 실제 prompts/season-tree-v1.md는 마지막 두 줄 사이에 빈 줄이 없어 규칙(빈 줄 = 문단, 줄바꿈 = <br>)대로면 문단 2개(둘째 문단에 <br> 1개)·목록 1개(4항목)다. step의 '문단 3개'는 시안(두 줄을 p 둘로 그림) 기준이라 파일과 규칙을 따랐다. 복사 2초 복원은 지연 주입 대신 Playwright page.clock으로 시험한다(2초는 마지막 성공한 복사부터).\n4) Windows Chromium은 시스템 클립보드에 쓸 때 LF를 CRLF로 바꾼다(Blink SystemClipboard::WritePlainText). 스크립트는 원문을 그대로 writeText에 넘긴다. 테스트는 writeText 인자를 원문과 바이트 비교하고, 클립보드에서 다시 읽은 값은 그 OS 줄바꿈으로 비교한다(리눅스 CI는 원문 바이트 그대로).\n5) OPB_DATA_ROOT 테스트의 prompts/: makeDataRoot가 이미 레포 prompts/season-tree-v1*.md를 임시 루트에 복사해서 빌더는 고치지 않았다. prompt-intro-tabs.test.ts는 임시 루트의 .md·.system.md·.judging.md를 HTML 같은 글자가 든 내용으로 덮어써 사이트가 그 폴더를 읽고 이스케이프하는지 본다. 레포 prompts/는 그대로다.\n6) UI_GUIDE와 다른 수치(시안 기준): 생성 조건 행 6개(COPY에 시스템 프롬프트가 있음, UI_GUIDE는 5개)·카드 제목 h2 15px·padding 16px·라벨 12px --text-muted / 값 14px·마지막 행 구분선 없음. 원문 본문 padding 20px 24px·gap 14px·line-height 1.75, 칩은 UI_GUIDE 칩 스타일(시안은 테두리 없는 글자). 판정 기준표는 비교표 표 스타일 + vertical-align top. 소개 탭: 블록 간격 40px(레이아웃 24px 대신), 히어로 padding-top 24px·max-width 760px·gap 16px, 문장 17px --text-strong, 큰 버튼 15px/500(주 버튼 hover --accent-hover), 카드 padding 24px·라벨 12px(히어로 라벨 13px)·본문 --text-body, 수록 기준 위 1px --border + padding-top 32px, 뺀 모델 행은 10px 둥글기 상자.\n7) 휴대폰 수치(44px 제목 축소 등)는 step 3 몫이라 넣지 않았다. 문서 반영 필요(docs 미수정): UI_GUIDE '프롬프트 탭' 생성 조건 행 5개→6개, '헤더' phase 2~4 문구, ARCHITECTURE '사이트'의 DOM 계약에 위 계약 추가·ADR-024 괄호 문구. results/·prompts/·docs/는 건드리지 않았다.",
+      "completed_at": "2026-10-13T21:09:03+0900",
+      "attempts": 1
     },
     {
       "step": 3,
