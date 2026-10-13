@@ -1,0 +1,670 @@
+3D 나무가 사계절을 계속 도는 애니메이션을 하나의 HTML 파일로 만들었습니다. 실행하거나 화면을 직접 확인해 보지는 못했습니다. three.js는 r160 고정 주소로 불러오고, 이미지 파일은 쓰지 않았습니다. 눈송이 질감은 canvas로 그렸습니다.
+
+- **계절 주기**: 계절마다 정확히 10초이고, 한 바퀴는 40초입니다. 화면 구석의 계절 이름은 10초 경계에서 바뀝니다.
+- **전환**: 경계 앞뒤 2초씩 총 4초 동안 하늘, 땅, 햇빛, 잎과 꽃의 양, 낙엽, 눈이 함께 서서히 섞입니다. 페이지를 처음 열 때는 전환 없이 봄으로 시작합니다.
+- **계절별 모습**:
+  - 봄: 분홍 꽃과 연둣빛 새잎, 떨어지는 꽃잎
+  - 여름: 무성한 초록 잎
+  - 가을: 붉은색, 주황색, 노란색 단풍과 떨어지는 낙엽
+  - 겨울: 앙상한 가지와 쌓인 눈, 내리는 눈
+- **추가 기능**: 카메라가 나무 주위를 천천히 돌고, 마우스나 터치로 드래그하면 시점을 돌릴 수 있습니다.
+
+```html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>사계절 나무</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe6f3; }
+  canvas { display: block; touch-action: none; }
+  #hud {
+    position: fixed; left: 20px; top: 20px; display: flex; flex-direction: column; gap: 10px;
+    padding: 12px 18px; border-radius: 14px; background: rgba(18, 28, 38, .38);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    color: #fff; font-family: "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, .35); user-select: none; pointer-events: none;
+  }
+  #name { font-size: 34px; font-weight: 700; letter-spacing: .04em; line-height: 1.1; }
+  #en { font-size: 12px; letter-spacing: .32em; opacity: .85; margin-top: 2px; }
+  #bar { display: flex; gap: 4px; }
+  #bar i { display: block; width: 34px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .28); overflow: hidden; }
+  #bar b { display: block; height: 100%; width: 0; background: #fff; }
+  .pop { animation: pop .9s ease-out; }
+  @keyframes pop { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+  #err {
+    display: none; position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    padding: 16px 22px; border-radius: 12px; background: rgba(0, 0, 0, .75); color: #fff;
+    font-family: system-ui, sans-serif; text-align: center;
+  }
+</style>
+</head>
+<body>
+<div id="hud">
+  <div id="label"><div id="name">봄</div><div id="en">SPRING</div></div>
+  <div id="bar"><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i></div>
+</div>
+<div id="err"></div>
+
+<script type="module">
+const THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+const $ = id => document.getElementById(id);
+function showError(m) { const e = $('err'); e.textContent = m; e.style.display = 'block'; }
+
+let THREE;
+try { THREE = await import(THREE_URL); }
+catch (err) { showError('three.js(r160)를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.'); throw err; }
+
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ antialias: true }); }
+catch (err) { showError('이 환경에서는 WebGL을 사용할 수 없습니다.'); throw err; }
+
+/* ---------- 유틸 ---------- */
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const DEG = Math.PI / 180;
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const rng = mulberry32(20240607);
+const dummy = new THREE.Object3D();
+const tmpC = new THREE.Color();
+const WHITE = new THREE.Color(1, 1, 1);
+const C = h => new THREE.Color(h);
+function samplePalette(pal, v) {
+  const x = clamp(v, 0, 0.9999) * (pal.length - 1);
+  const k = Math.floor(x);
+  return tmpC.copy(pal[k]).lerp(pal[k + 1], x - k);
+}
+
+/* ---------- 렌더러 / 장면 / 카메라 ---------- */
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xdfeef5, 40, 130);
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 1000);
+
+/* ---------- 계절 데이터 ---------- */
+const S = [
+  { name: '봄', en: 'SPRING',
+    skyTop: C('#5eb0ee'), skyBot: C('#d9eef5'), ground: C('#86d05a'), grass: C('#72c64c'), bark: C('#6e4d36'),
+    sun: C('#fff2d8'), hemiS: C('#cfe6ff'), hemiG: C('#7fa65c'), cloud: C('#ffffff'),
+    sunI: 2.4, hemiI: 1.4, el: 50,
+    leaf: 0.42, leafSize: 0.75, blossom: 1, gflower: 1, grassAmt: 1, fall: 0, petal: 1, snow: 0,
+    pal: [C('#a9dd6e'), C('#c4ec8c'), C('#92d160')] },
+  { name: '여름', en: 'SUMMER',
+    skyTop: C('#1f7fe0'), skyBot: C('#b2e1f6'), ground: C('#4fa83d'), grass: C('#3f9a30'), bark: C('#5f4232'),
+    sun: C('#fffbe8'), hemiS: C('#c4e0ff'), hemiG: C('#5f8a45'), cloud: C('#ffffff'),
+    sunI: 2.8, hemiI: 1.4, el: 66,
+    leaf: 1, leafSize: 1, blossom: 0, gflower: 0.25, grassAmt: 1, fall: 0, petal: 0, snow: 0,
+    pal: [C('#2e8b3d'), C('#3fa34d'), C('#22703a')] },
+  { name: '가을', en: 'AUTUMN',
+    skyTop: C('#6f8fb8'), skyBot: C('#f3cfa0'), ground: C('#b0a040'), grass: C('#9a8a2c'), bark: C('#5a3e2c'),
+    sun: C('#ffd9a6'), hemiS: C('#ffe4c4'), hemiG: C('#8a7040'), cloud: C('#f0e3d6'),
+    sunI: 2.2, hemiI: 1.4, el: 34,
+    leaf: 0.8, leafSize: 0.95, blossom: 0, gflower: 0, grassAmt: 0.85, fall: 1, petal: 0, snow: 0,
+    pal: [C('#d9381e'), C('#f08a1c'), C('#f2c230'), C('#b8501a')] },
+  { name: '겨울', en: 'WINTER',
+    skyTop: C('#8e9fb4'), skyBot: C('#dde6ee'), ground: C('#eef3f8'), grass: C('#dfe8f0'), bark: C('#4f3d33'),
+    sun: C('#dfe9ff'), hemiS: C('#d6e2f2'), hemiG: C('#b8c4d0'), cloud: C('#c9d1da'),
+    sunI: 2.2, hemiI: 2.0, el: 22,
+    leaf: 0, leafSize: 0.9, blossom: 0, gflower: 0, grassAmt: 0, fall: 0, petal: 0, snow: 1,
+    pal: [C('#8a5a2b'), C('#7a4a22'), C('#9a6a30')] },
+];
+const COLOR_KEYS = ['skyTop', 'skyBot', 'ground', 'grass', 'bark', 'sun', 'hemiS', 'hemiG', 'cloud'];
+const NUM_KEYS = ['sunI', 'hemiI', 'el', 'leaf', 'leafSize', 'blossom', 'gflower', 'grassAmt', 'fall', 'petal', 'snow'];
+const cur = {};
+COLOR_KEYS.forEach(k => cur[k] = new THREE.Color());
+function blendState(A, B, f) {
+  for (const k of COLOR_KEYS) cur[k].copy(A[k]).lerp(B[k], f);
+  for (const k of NUM_KEYS) cur[k] = A[k] + (B[k] - A[k]) * f;
+}
+
+/* 계절 시간표: 계절당 10초, 경계 앞뒤 2초씩(총 4초) 부드럽게 섞는다 */
+const SEASON_SEC = 10, HALF = 0.2;
+function seasonState(e) {
+  const s = e / SEASON_SEC, fl = Math.floor(s), idx = fl % 4;
+  const n = Math.round(s), d = s - n;
+  let a = idx, b = idx, f = 0;
+  if (n > 0 && Math.abs(d) < HALF) { a = (n + 3) % 4; b = n % 4; f = smooth(0, 1, (d + HALF) / (2 * HALF)); }
+  return { idx, a, b, f, u: s - fl };
+}
+
+/* ---------- 조명 ---------- */
+const hemi = new THREE.HemisphereLight(0xffffff, 0x888888, 1.4);
+const sun = new THREE.DirectionalLight(0xffffff, 2.4);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -15, right: 15, top: 15, bottom: -15, near: 1, far: 150 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.04;
+sun.target.position.set(0, 4, 0);
+scene.add(hemi, sun, sun.target);
+
+/* ---------- 하늘 / 해 / 구름 ---------- */
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, fog: false,
+  uniforms: {
+    topCol: { value: new THREE.Color() }, botCol: { value: new THREE.Color() },
+    sunDir: { value: new THREE.Vector3(0, 1, 0) }, sunCol: { value: new THREE.Color() },
+  },
+  vertexShader: `
+    varying vec3 vP;
+    void main() {
+      vP = position;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }`,
+  fragmentShader: `
+    uniform vec3 topCol;
+    uniform vec3 botCol;
+    uniform vec3 sunDir;
+    uniform vec3 sunCol;
+    varying vec3 vP;
+    void main() {
+      vec3 d = normalize(vP);
+      float h = clamp(d.y, 0.0, 1.0);
+      vec3 c = mix(botCol, topCol, pow(h, 0.55));
+      float s = max(dot(d, normalize(sunDir)), 0.0);
+      c += sunCol * (pow(s, 48.0) * 0.45 + pow(s, 5.0) * 0.10);
+      gl_FragColor = vec4(c, 1.0);
+      #include <colorspace_fragment>
+    }`,
+});
+const sky = new THREE.Mesh(new THREE.SphereGeometry(400, 32, 16), skyMat);
+sky.renderOrder = -1;
+scene.add(sky);
+
+const sunDisc = new THREE.Mesh(new THREE.SphereGeometry(12, 20, 12), new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, toneMapped: false }));
+scene.add(sunDisc);
+
+const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, fog: false });
+const cloudGroup = new THREE.Group();
+{
+  const g = new THREE.SphereGeometry(1, 12, 8);
+  for (let i = 0; i < 10; i++) {
+    const c = new THREE.Group();
+    const parts = 5 + Math.floor(rng() * 3);
+    for (let j = 0; j < parts; j++) {
+      const m = new THREE.Mesh(g, cloudMat);
+      m.position.set((j - parts / 2) * 4.5 + (rng() - 0.5) * 2, (rng() - 0.3) * 2.5, (rng() - 0.5) * 4);
+      const s = 4 + rng() * 4;
+      m.scale.set(s * 1.3, s * 0.8, s);
+      c.add(m);
+    }
+    const ang = rng() * Math.PI * 2, rad = 70 + rng() * 55;
+    c.position.set(Math.cos(ang) * rad, 12 + rng() * 16, Math.sin(ang) * rad);
+    c.rotation.y = rng() * Math.PI;
+    cloudGroup.add(c);
+  }
+}
+scene.add(cloudGroup);
+
+/* ---------- 언덕(지형) ---------- */
+function hillH(x, z) {
+  const r2 = x * x + z * z, d = Math.sqrt(r2);
+  let h = 3.0 * Math.exp(-r2 / (2 * 7.5 * 7.5));
+  const far = smooth(12, 42, d);
+  h += far * (2.2 + 1.6 * Math.sin(x * 0.08 + 1.3) * Math.cos(z * 0.07) + 1.2 * Math.sin(z * 0.05 + x * 0.04 + 2.0));
+  h += 0.18 * Math.sin(x * 0.55 + 0.7) * Math.sin(z * 0.47 + 1.9) * (0.4 + 0.6 * smooth(0, 6, d));
+  return h;
+}
+const groundMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+{
+  const geo = new THREE.PlaneGeometry(300, 300, 150, 150);
+  geo.rotateX(-Math.PI / 2);
+  const p = geo.attributes.position;
+  const col = new Float32Array(p.count * 3);
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), z = p.getZ(i);
+    p.setY(i, hillH(x, z));
+    const n = 0.5 * (Math.sin(x * 0.21 + z * 0.13) + Math.sin(z * 0.17 - x * 0.11 + 1.0));
+    const v = clamp(0.93 + 0.07 * n + 0.04 * Math.sin(x * 0.9) * Math.sin(z * 0.8), 0.8, 1);
+    col[i * 3] = v; col[i * 3 + 1] = v; col[i * 3 + 2] = v * (0.97 + 0.03 * n);
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.computeVertexNormals();
+  const ground = new THREE.Mesh(geo, groundMat);
+  ground.receiveShadow = true;
+  scene.add(ground);
+}
+
+/* ---------- 나무: 가지 ---------- */
+const tree = new THREE.Group();
+tree.position.y = hillH(0, 0) - 0.05;
+scene.add(tree);
+
+const branches = [], anchors = [];
+const MAXD = 5;
+function perturb(dir, ang) {
+  const ax = new THREE.Vector3(rng() - 0.5, rng() - 0.5, rng() - 0.5).cross(dir);
+  if (ax.lengthSq() < 1e-6) ax.set(1, 0, 0).cross(dir);
+  ax.normalize();
+  return dir.clone().applyAxisAngle(ax, ang);
+}
+function grow(p, dir, len, rad, depth) {
+  const end = p.clone().addScaledVector(dir, len);
+  branches.push({ p, dir, len, rad });
+  if (depth === 0) { anchors.push(end.clone(), end.clone()); return; }
+  if (depth <= 2) anchors.push(p.clone().addScaledVector(dir, len * (0.5 + rng() * 0.5)));
+  if (depth === MAXD) {
+    const n = 4;
+    for (let i = 0; i < n; i++) {
+      const a = i * (Math.PI * 2 / n) + rng() * 0.9, tilt = 0.45 + rng() * 0.4;
+      const d = new THREE.Vector3(Math.sin(tilt) * Math.cos(a), Math.cos(tilt), Math.sin(tilt) * Math.sin(a));
+      grow(end, d, len * (0.8 + rng() * 0.15), rad * 0.68, depth - 1);
+    }
+    return;
+  }
+  const n = 2 + (rng() < 0.5 ? 1 : 0);
+  for (let i = 0; i < n; i++) {
+    const ang = i === 0 ? 0.12 + rng() * 0.2 : 0.5 + rng() * 0.5;
+    const d = perturb(dir, ang);
+    d.y += 0.18; d.normalize();
+    grow(end, d, len * (i === 0 ? 0.86 : 0.78 + rng() * 0.1), rad * (i === 0 ? 0.7 : 0.62), depth - 1);
+  }
+}
+grow(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.05, 1, 0.03).normalize(), 2.2, 0.38, MAXD);
+
+const barkMat = new THREE.MeshLambertMaterial({ color: 0x6b4a32 });
+{
+  const cyl = new THREE.CylinderGeometry(0.7, 1, 1, 7, 1);
+  cyl.translate(0, 0.5, 0);
+  const m = new THREE.InstancedMesh(cyl, barkMat, branches.length);
+  const up = new THREE.Vector3(0, 1, 0);
+  branches.forEach((b, i) => {
+    dummy.position.copy(b.p);
+    dummy.quaternion.setFromUnitVectors(up, b.dir);
+    dummy.scale.set(b.rad, b.len * 1.04, b.rad);
+    dummy.updateMatrix();
+    m.setMatrixAt(i, dummy.matrix);
+  });
+  m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false;
+  tree.add(m);
+  const flare = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.62, 0.7, 8), barkMat);
+  flare.position.y = 0.15;
+  flare.castShadow = true;
+  tree.add(flare);
+}
+
+/* ---------- 나무: 잎 / 꽃 ---------- */
+function randInSphere() {
+  let x, y, z;
+  do { x = rng() * 2 - 1; y = rng() * 2 - 1; z = rng() * 2 - 1; } while (x * x + y * y + z * z > 1);
+  return [x, y, z];
+}
+const NL = 2200;
+const lx = new Float32Array(NL), ly = new Float32Array(NL), lz = new Float32Array(NL);
+const lo = new Float32Array(NL), lsz = new Float32Array(NL), lrx = new Float32Array(NL);
+const lry = new Float32Array(NL), lrz = new Float32Array(NL), lph = new Float32Array(NL), lv = new Float32Array(NL);
+for (let i = 0; i < NL; i++) {
+  const a = anchors[Math.floor(rng() * anchors.length)], o = randInSphere();
+  lx[i] = a.x + o[0] * 0.95; ly[i] = a.y + o[1] * 0.78; lz[i] = a.z + o[2] * 0.95;
+  lo[i] = rng(); lsz[i] = 0.7 + rng() * 0.6;
+  lrx[i] = rng() * 6.28; lry[i] = rng() * 6.28; lrz[i] = rng() * 6.28; lph[i] = rng() * 6.28;
+  lv[i] = 0.55 * (0.5 + 0.5 * Math.sin(lx[i] * 0.9 + lz[i] * 0.7 + ly[i] * 0.45)) + 0.45 * rng();
+}
+const leafMesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.38, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), NL);
+for (let i = 0; i < NL; i++) leafMesh.setColorAt(i, WHITE);
+leafMesh.castShadow = true; leafMesh.frustumCulled = false;
+tree.add(leafMesh);
+const leafCols = S.map(s => {
+  const arr = new Float32Array(NL * 3);
+  for (let i = 0; i < NL; i++) { samplePalette(s.pal, lv[i]); arr[i * 3] = tmpC.r; arr[i * 3 + 1] = tmpC.g; arr[i * 3 + 2] = tmpC.b; }
+  return arr;
+});
+let leafColKey = '';
+function updateLeafColors(a, b, f) {
+  const key = a + '|' + b + '|' + f.toFixed(4);
+  if (key === leafColKey) return;
+  leafColKey = key;
+  const arr = leafMesh.instanceColor.array, A = leafCols[a], B = leafCols[b];
+  for (let i = 0; i < arr.length; i++) arr[i] = A[i] + (B[i] - A[i]) * f;
+  leafMesh.instanceColor.needsUpdate = true;
+}
+
+const NB = 1100;
+const bx = new Float32Array(NB), by = new Float32Array(NB), bz = new Float32Array(NB);
+const bo = new Float32Array(NB), bsz = new Float32Array(NB), brx = new Float32Array(NB);
+const bry = new Float32Array(NB), brz = new Float32Array(NB), bph = new Float32Array(NB);
+const pinks = ['#ffe0ea', '#ffc2d6', '#fff4f8', '#ffa8c5'].map(C);
+const blossomGeo = new THREE.IcosahedronGeometry(0.17, 0);
+blossomGeo.scale(1, 0.7, 1);
+const blossomMesh = new THREE.InstancedMesh(blossomGeo, new THREE.MeshLambertMaterial({ color: 0xffffff }), NB);
+for (let i = 0; i < NB; i++) {
+  const a = anchors[Math.floor(rng() * anchors.length)], o = randInSphere();
+  bx[i] = a.x + o[0] * 1.05; by[i] = a.y + o[1] * 0.9; bz[i] = a.z + o[2] * 1.05;
+  bo[i] = rng(); bsz[i] = 0.8 + rng() * 0.6;
+  brx[i] = rng() * 6.28; bry[i] = rng() * 6.28; brz[i] = rng() * 6.28; bph[i] = rng() * 6.28;
+  blossomMesh.setColorAt(i, pinks[Math.floor(rng() * pinks.length)]);
+}
+blossomMesh.frustumCulled = false;
+tree.add(blossomMesh);
+
+let lastLeaf = 1, lastBl = 1;
+function updateCanopy(t, leafAmt, leafSize, blAmt) {
+  if (leafAmt > 0.0005 || lastLeaf > 0.0005) {
+    for (let i = 0; i < NL; i++) {
+      let s = clamp((leafAmt * 1.2 - lo[i]) / 0.2, 0, 1); s = s * s * (3 - 2 * s);
+      const ph = lph[i];
+      dummy.position.set(lx[i] + Math.sin(t * 1.2 + ph) * 0.05, ly[i] + Math.cos(t * 1.5 + ph) * 0.035, lz[i] + Math.sin(t * 1.0 + ph * 1.7) * 0.05);
+      dummy.rotation.set(lrx[i] + Math.sin(t * 1.7 + ph) * 0.15, lry[i], lrz[i]);
+      dummy.scale.setScalar(Math.max(s * lsz[i] * leafSize, 0.0001));
+      dummy.updateMatrix();
+      leafMesh.setMatrixAt(i, dummy.matrix);
+    }
+    leafMesh.instanceMatrix.needsUpdate = true;
+  }
+  lastLeaf = leafAmt;
+  if (blAmt > 0.0005 || lastBl > 0.0005) {
+    for (let i = 0; i < NB; i++) {
+      let s = clamp((blAmt * 1.2 - bo[i]) / 0.2, 0, 1); s = s * s * (3 - 2 * s);
+      const ph = bph[i];
+      dummy.position.set(bx[i] + Math.sin(t * 1.3 + ph) * 0.04, by[i] + Math.cos(t * 1.6 + ph) * 0.03, bz[i]);
+      dummy.rotation.set(brx[i], bry[i] + Math.sin(t * 1.4 + ph) * 0.2, brz[i]);
+      dummy.scale.setScalar(Math.max(s * bsz[i], 0.0001));
+      dummy.updateMatrix();
+      blossomMesh.setMatrixAt(i, dummy.matrix);
+    }
+    blossomMesh.instanceMatrix.needsUpdate = true;
+  }
+  lastBl = blAmt;
+}
+
+/* ---------- 땅 위의 풀과 꽃 ---------- */
+class Scatter {
+  constructor(geo, mat, items) {
+    this.items = items; this.last = -1;
+    this.mesh = new THREE.InstancedMesh(geo, mat, items.length);
+    this.mesh.frustumCulled = false;
+    items.forEach((it, i) => this.mesh.setColorAt(i, it.col));
+    scene.add(this.mesh);
+  }
+  update(amount) {
+    if (Math.abs(amount - this.last) < 0.0005) return;
+    this.last = amount;
+    this.items.forEach((it, i) => {
+      let s = clamp((amount * 1.2 - it.ord) / 0.2, 0, 1); s = s * s * (3 - 2 * s);
+      dummy.position.set(it.x, it.y, it.z);
+      dummy.rotation.set(it.rx, it.ry, it.rz);
+      dummy.scale.setScalar(Math.max(s * it.sc, 0.0001));
+      dummy.updateMatrix();
+      this.mesh.setMatrixAt(i, dummy.matrix);
+    });
+    this.mesh.instanceMatrix.needsUpdate = true;
+  }
+}
+const grassMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+const tuftItems = [];
+for (let c = 0; c < 700; c++) {
+  const r = 15 * Math.sqrt(rng()), a = rng() * 6.283;
+  if (r < 0.7) continue;
+  const cx = Math.cos(a) * r, cz = Math.sin(a) * r;
+  for (let j = 0; j < 3; j++) {
+    const x = cx + (rng() - 0.5) * 0.35, z = cz + (rng() - 0.5) * 0.35, b = 0.8 + rng() * 0.3;
+    tuftItems.push({ x, y: hillH(x, z) - 0.02, z, rx: (rng() - 0.5) * 0.7, ry: rng() * 6.28, rz: (rng() - 0.5) * 0.7,
+      sc: 0.7 + rng() * 0.9, ord: rng(), col: new THREE.Color(b, b, b) });
+  }
+}
+const tuftGeo = new THREE.ConeGeometry(0.06, 0.6, 4);
+tuftGeo.translate(0, 0.3, 0);
+const tufts = new Scatter(tuftGeo, grassMat, tuftItems);
+
+const flowerPal = ['#ffffff', '#fff07a', '#ff9fc2', '#c9a8ff', '#ffb347'].map(C);
+const gfItems = [];
+for (let i = 0; i < 360; i++) {
+  const r = 14 * Math.sqrt(rng()), a = rng() * 6.283;
+  if (r < 0.8) continue;
+  const x = Math.cos(a) * r, z = Math.sin(a) * r;
+  gfItems.push({ x, y: hillH(x, z) + 0.17, z, rx: 0, ry: 0, rz: 0, sc: 0.8 + rng() * 0.6, ord: rng(), col: flowerPal[Math.floor(rng() * flowerPal.length)] });
+}
+const gFlowers = new Scatter(new THREE.IcosahedronGeometry(0.12, 0), new THREE.MeshLambertMaterial({ color: 0xffffff }), gfItems);
+
+/* ---------- 떨어지는 낙엽 / 꽃잎 ---------- */
+class Faller {
+  constructor(geo, mat, n, o) {
+    this.n = n; this.o = o;
+    this.mesh = new THREE.InstancedMesh(geo, mat, n);
+    this.mesh.frustumCulled = false;
+    this.st = new Uint8Array(n);
+    this.p = new Float32Array(n * 3); this.r = new Float32Array(n * 3); this.rs = new Float32Array(n * 3);
+    this.vy = new Float32Array(n); this.ph = new Float32Array(n); this.tm = new Float32Array(n); this.sc = new Float32Array(n);
+    for (let i = 0; i < n; i++) { this.mesh.setColorAt(i, WHITE); this.hide(i); }
+    this.mesh.instanceMatrix.needsUpdate = true;
+    scene.add(this.mesh);
+  }
+  hide(i) {
+    dummy.position.set(0, -50, 0); dummy.rotation.set(0, 0, 0); dummy.scale.setScalar(0.0001);
+    dummy.updateMatrix(); this.mesh.setMatrixAt(i, dummy.matrix);
+  }
+  spawn(i) {
+    if (!this.o.spawn(this, i)) return false;
+    const o = this.o, k = i * 3;
+    this.vy[i] = o.vmin + Math.random() * o.vrange;
+    this.ph[i] = Math.random() * 6.28;
+    for (let j = 0; j < 3; j++) { this.r[k + j] = Math.random() * 6.28; this.rs[k + j] = (Math.random() - 0.5) * 2 * o.spin; }
+    this.st[i] = 1;
+    return true;
+  }
+  update(dt, t, inten, wx, wz) {
+    const o = this.o, n = this.n, target = inten * n;
+    let cd = false;
+    for (let i = 0; i < n; i++) {
+      let s = this.st[i];
+      const k = i * 3;
+      if (s === 0) {
+        if (i < target && Math.random() < o.rate * dt && this.spawn(i)) { s = 1; cd = true; } else continue;
+      }
+      let sc = this.sc[i];
+      if (s === 1) {
+        this.p[k + 1] -= this.vy[i] * dt;
+        this.p[k] += (wx * o.drift + Math.sin(t * o.fx + this.ph[i]) * o.sway) * dt;
+        this.p[k + 2] += (wz * o.drift + Math.cos(t * o.fx * 0.8 + this.ph[i]) * o.sway) * dt;
+        this.r[k] += this.rs[k] * dt; this.r[k + 1] += this.rs[k + 1] * dt; this.r[k + 2] += this.rs[k + 2] * dt;
+        const gy = hillH(this.p[k], this.p[k + 2]) + 0.04;
+        if (this.p[k + 1] <= gy) {
+          this.p[k + 1] = gy; this.st[i] = 2;
+          this.tm[i] = o.rest * (0.6 + Math.random() * 0.8);
+          this.r[k] = -Math.PI / 2; this.r[k + 1] = (Math.random() - 0.5) * 0.3; this.r[k + 2] = Math.random() * 6.28;
+        }
+      } else {
+        this.tm[i] -= dt;
+        if (this.tm[i] <= 0) { this.st[i] = 0; this.hide(i); continue; }
+        sc *= Math.min(1, this.tm[i] / 1.2);
+      }
+      dummy.position.set(this.p[k], this.p[k + 1], this.p[k + 2]);
+      dummy.rotation.set(this.r[k], this.r[k + 1], this.r[k + 2]);
+      dummy.scale.setScalar(Math.max(sc, 0.0001));
+      dummy.updateMatrix();
+      this.mesh.setMatrixAt(i, dummy.matrix);
+    }
+    this.mesh.instanceMatrix.needsUpdate = true;
+    if (cd) this.mesh.instanceColor.needsUpdate = true;
+  }
+}
+function pickVisible(ord, n, amt) {
+  for (let k = 0; k < 8; k++) { const j = (Math.random() * n) | 0; if (ord[j] < amt) return j; }
+  return -1;
+}
+const fallGeo = (() => {
+  const sh = new THREE.Shape();
+  sh.moveTo(0, -0.5);
+  sh.bezierCurveTo(0.55, -0.25, 0.45, 0.3, 0, 0.5);
+  sh.bezierCurveTo(-0.45, 0.3, -0.55, -0.25, 0, -0.5);
+  return new THREE.ShapeGeometry(sh, 6);
+})();
+const fallMat = new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+const leafFall = new Faller(fallGeo, fallMat, 160, {
+  rate: 1.0, drift: 1.0, sway: 0.9, fx: 1.7, rest: 5, vmin: 0.7, vrange: 0.6, spin: 3,
+  spawn(f, i) {
+    const j = pickVisible(lo, NL, cur.leaf);
+    if (j < 0) return false;
+    const k = i * 3;
+    f.p[k] = lx[j] + (Math.random() - 0.5) * 0.3;
+    f.p[k + 1] = ly[j] + tree.position.y;
+    f.p[k + 2] = lz[j] + (Math.random() - 0.5) * 0.3;
+    f.mesh.setColorAt(i, samplePalette(S[2].pal, Math.random()));
+    f.sc[i] = 0.3 + Math.random() * 0.2;
+    return true;
+  },
+});
+const petalFall = new Faller(fallGeo, fallMat, 90, {
+  rate: 0.5, drift: 1.2, sway: 0.7, fx: 1.3, rest: 3, vmin: 0.45, vrange: 0.35, spin: 2.5,
+  spawn(f, i) {
+    const j = pickVisible(bo, NB, cur.blossom);
+    if (j < 0) return false;
+    const k = i * 3;
+    f.p[k] = bx[j]; f.p[k + 1] = by[j] + tree.position.y; f.p[k + 2] = bz[j];
+    f.mesh.setColorAt(i, pinks[(Math.random() * pinks.length) | 0]);
+    f.sc[i] = 0.14 + Math.random() * 0.08;
+    return true;
+  },
+});
+
+/* ---------- 눈 ---------- */
+const NS = 2600;
+const snowPos = new Float32Array(NS * 3);
+const snowVy = new Float32Array(NS), snowPh = new Float32Array(NS), snowOn = new Uint8Array(NS);
+for (let i = 0; i < NS; i++) { snowPos[i * 3 + 1] = -100; snowVy[i] = 0.9 + Math.random() * 1.0; snowPh[i] = Math.random() * 6.28; }
+const snowGeo = new THREE.BufferGeometry();
+snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
+const snowTex = (() => {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+  const g = cv.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.45, 'rgba(255,255,255,.85)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; return tex;
+})();
+const snowPts = new THREE.Points(snowGeo, new THREE.PointsMaterial({ map: snowTex, size: 0.14, transparent: true, depthWrite: false, color: 0xffffff }));
+snowPts.frustumCulled = false;
+scene.add(snowPts);
+function updateSnow(dt, t, inten, wx, wz) {
+  const target = inten * NS;
+  for (let i = 0; i < NS; i++) {
+    const k = i * 3;
+    if (!snowOn[i]) {
+      if (i < target && Math.random() < 1.6 * dt) {
+        snowOn[i] = 1;
+        snowPos[k] = (Math.random() - 0.5) * 52; snowPos[k + 1] = 0.5 + Math.random() * 17; snowPos[k + 2] = (Math.random() - 0.5) * 52;
+      } else continue;
+    }
+    snowPos[k + 1] -= snowVy[i] * dt;
+    snowPos[k] += (wx * 0.5 + Math.sin(t * 0.9 + snowPh[i]) * 0.35) * dt;
+    snowPos[k + 2] += (wz * 0.5 + Math.cos(t * 0.7 + snowPh[i]) * 0.35) * dt;
+    if (snowPos[k + 1] < 5.5 && snowPos[k + 1] <= hillH(snowPos[k], snowPos[k + 2])) {
+      if (i < target) {
+        snowPos[k] = (Math.random() - 0.5) * 52; snowPos[k + 1] = 17 + Math.random() * 3; snowPos[k + 2] = (Math.random() - 0.5) * 52;
+      } else { snowOn[i] = 0; snowPos[k + 1] = -100; }
+    }
+  }
+  snowGeo.attributes.position.needsUpdate = true;
+}
+
+/* ---------- 화면 표시(HUD) ---------- */
+const labelEl = $('label'), nameEl = $('name'), enEl = $('en');
+const segs = [...document.querySelectorAll('#bar b')];
+let shownIdx = 0;
+function updateHud(st) {
+  if (st.idx !== shownIdx) {
+    shownIdx = st.idx;
+    nameEl.textContent = S[st.idx].name;
+    enEl.textContent = S[st.idx].en;
+    labelEl.classList.remove('pop'); void labelEl.offsetWidth; labelEl.classList.add('pop');
+  }
+  segs.forEach((b, i) => { b.style.width = (st.idx > i ? 100 : st.idx === i ? st.u * 100 : 0) + '%'; });
+}
+
+/* ---------- 카메라 조작(드래그로 시점 회전) ---------- */
+let drag = false, lastX = 0, lastY = 0, yawOff = 0, pitchOff = 0, camR = 17;
+renderer.domElement.addEventListener('pointerdown', e => { drag = true; lastX = e.clientX; lastY = e.clientY; renderer.domElement.setPointerCapture(e.pointerId); });
+addEventListener('pointermove', e => {
+  if (!drag) return;
+  yawOff -= (e.clientX - lastX) * 0.006;
+  pitchOff = clamp(pitchOff + (e.clientY - lastY) * 0.02, -3, 6);
+  lastX = e.clientX; lastY = e.clientY;
+});
+addEventListener('pointerup', () => { drag = false; });
+function onResize() {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  camR = 17 * Math.max(1, 1.1 / camera.aspect);
+}
+addEventListener('resize', onResize);
+onResize();
+
+/* ---------- 메인 루프 ---------- */
+const AZ = 40 * DEG;
+const sunDir = new THREE.Vector3();
+const t0 = performance.now();
+let last = t0;
+
+function frame() {
+  requestAnimationFrame(frame);
+  const now = performance.now();
+  const elapsed = Math.max(0, (now - t0) / 1000);
+  const dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+
+  const st = seasonState(elapsed);
+  blendState(S[st.a], S[st.b], st.f);
+
+  // 하늘, 안개, 빛
+  skyMat.uniforms.topCol.value.copy(cur.skyTop);
+  skyMat.uniforms.botCol.value.copy(cur.skyBot);
+  skyMat.uniforms.sunCol.value.copy(cur.sun).multiplyScalar(0.8);
+  scene.fog.color.copy(cur.skyBot);
+  hemi.color.copy(cur.hemiS); hemi.groundColor.copy(cur.hemiG); hemi.intensity = cur.hemiI;
+  sun.color.copy(cur.sun); sun.intensity = cur.sunI;
+  const el = cur.el * DEG;
+  sunDir.set(Math.cos(el) * Math.sin(AZ), Math.sin(el), Math.cos(el) * Math.cos(AZ));
+  skyMat.uniforms.sunDir.value.copy(sunDir);
+  sun.position.copy(sunDir).multiplyScalar(70).add(sun.target.position);
+  sunDisc.position.copy(sunDir).multiplyScalar(330);
+  sunDisc.material.color.copy(cur.sun).lerp(WHITE, 0.5);
+
+  // 땅, 풀, 나무껍질, 구름
+  groundMat.color.copy(cur.ground);
+  grassMat.color.copy(cur.grass);
+  barkMat.color.copy(cur.bark);
+  cloudMat.color.copy(cur.cloud);
+  cloudMat.emissive.copy(cur.cloud).multiplyScalar(0.35);
+  cloudGroup.rotation.y = elapsed * 0.004;
+
+  // 잎, 꽃, 풀
+  updateLeafColors(st.a, st.b, st.f);
+  updateCanopy(elapsed, cur.leaf, cur.leafSize, cur.blossom);
+  tufts.update(cur.grassAmt);
+  gFlowers.update(cur.gflower);
+
+  // 낙엽, 꽃잎, 눈
+  const wx = 0.6 + 0.5 * Math.sin(elapsed * 0.27), wz = 0.25 * Math.sin(elapsed * 0.19 + 1);
+  leafFall.update(dt, elapsed, cur.fall, wx, wz);
+  petalFall.update(dt, elapsed, cur.petal * 0.7, wx, wz);
+  updateSnow(dt, elapsed, cur.snow, wx, wz);
+
+  // 카메라
+  const ang = 0.6 + elapsed * 0.045 + yawOff;
+  const camY = 7.2 + pitchOff + Math.sin(elapsed * 0.13) * 0.6;
+  camera.position.set(Math.sin(ang) * camR, camY, Math.cos(ang) * camR);
+  camera.lookAt(0, 5.2, 0);
+
+  updateHud(st);
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(() => { last = performance.now(); frame(); });
+</script>
+</body>
+</html>
+```
+
+시간은 `performance.now()` 기준이라, 프레임이 느린 기기에서도 계절 길이는 10초로 유지됩니다. 다만 탭이 백그라운드로 가면 그동안 계절 시간은 계속 흘러, 돌아왔을 때 계절이 바뀌어 있을 수 있습니다.

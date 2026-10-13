@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "modelSlug": "claude-sonnet-5-5",
+  "modelId": "claude-sonnet-5-5",
+  "prompt": {
+    "id": "season-tree",
+    "version": "v1",
+    "sha256": "c0e9226157ca8dc2bb79972a98e8f60e125205fd37455cea727542447443abe6"
+  },
+  "params": {
+    "reasoningEffort": "high",
+    "maxOutputTokens": 65536
+  },
+  "runtime": {
+    "gitCommit": "f0e698868f321729a36937aca7bca80966c706f9",
+    "nodeVersion": "v24.14.0",
+    "generator": {
+      "tool": "claude-code",
+      "version": "2.1.296",
+      "invocation": "CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude -p --model claude-sonnet-5-5 --effort high --tools \"\" --system-prompt \"<system prompt>\" --safe-mode --strict-mcp-config --no-session-persistence --output-format json (stdin: <user prompt>)"
+    }
+  },
+  "startedAt": "2026-10-13T08:43:23.018Z",
+  "finishedAt": "2026-10-13T08:50:59.325Z",
+  "attempts": [
+    {
+      "n": 1,
+      "startedAt": "2026-10-13T08:43:23.018Z",
+      "latencyMs": 456298,
+      "firstTokenMs": null,
+      "result": {
+        "type": "response",
+        "stopReason": "end",
+        "rawStopReason": "end_turn",
+        "resolvedModelId": "claude-sonnet-5-5",
+        "requestId": null,
+        "usage": {
+          "inputTokens": 1053,
+          "outputTokens": 65060,
+          "reasoningTokens": 48767
+        }
+      }
+    }
+  ],
+  "outcome": "ok",
+  "responseTextPath": "results/claude-sonnet-5-5/response.txt",
+  "output": {
+    "path": "results/claude-sonnet-5-5/index.html",
+    "bytes": 28423,
+    "sha256": "5514675bd86763929785d9bae1536e144de2ea3cc4008f4df3215cee6adacf99",
+    "extraction": "fenced_block"
+  },
+  "usageTotal": {
+    "inputTokens": 1053,
+    "outputTokens": 65060,
+    "reasoningTokens": 48767
+  },
+  "cost": {
+    "inputUsd": 0.002106,
+    "outputUsd": 0.6506,
+    "totalUsd": 0.652706,
+    "pricingAsOf": "2026-10-10"
+  },
+  "validation": {
+    "checkedAt": "2026-10-13T08:51:40.832Z",
+    "environment": {
+      "browser": "chromium",
+      "browserVersion": "156.0.8078.4"
+    },
+    "loaded": true,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "externalRequests": [
+      {
+        "url": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "resourceType": "script"
+      }
+    ],
+    "screenshots": [
+      {
+        "label": "spring",
+        "atMs": 5000,
+        "path": "results/claude-sonnet-5-5/spring.jpg"
+      },
+      {
+        "label": "summer",
+        "atMs": 15000,
+        "path": "results/claude-sonnet-5-5/summer.jpg"
+      },
+      {
+        "label": "autumn",
+        "atMs": 25000,
+        "path": "results/claude-sonnet-5-5/autumn.jpg"
+      },
+      {
+        "label": "winter",
+        "atMs": 35000,
+        "path": "results/claude-sonnet-5-5/winter.jpg"
+      }
+    ]
+  }
+}
