@@ -1,11 +1,11 @@
 # 작업 인계 (PROGRESS)
 
-> 새 대화형 세션은 이 파일부터 읽는다. 마지막 갱신: 2026-10-13 (phase 3 확인·merge·첫 배포·Claude smoke 세션)
+> 새 대화형 세션은 이 파일부터 읽는다. 마지막 갱신: 2026-10-13 (phase 3 확인·첫 배포·Claude smoke·phase 4 계획 세션)
 > 무인 step 세션(execute.py)은 이 파일을 읽을 필요 없다 — 필요한 맥락은 step 파일과 하네스가 준다.
 
 ## 지금 하는 일
 
-aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. **phase 3(`03-deploy-claude-adapter`: 배포 워크플로 + Claude Code 어댑터)까지 끝나 main에 merge되고 첫 배포까지 됐다(https://jonggurlhan.github.io/one-prompt-bench/).** Claude smoke도 끝났다(fixture·⚠ 반영). 다음은 phase 4(Codex CLI 어댑터) 계획이다. 설계는 전부 `docs/`에 있다(CLAUDE.md "문서" 절).
+aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. **phase 3(`03-deploy-claude-adapter`: 배포 워크플로 + Claude Code 어댑터)까지 끝나 main에 merge되고 첫 배포까지 됐다(https://jonggurlhan.github.io/one-prompt-bench/).** Claude smoke도 끝났다(fixture·⚠ 반영). **phase 4(`04-codex-adapter`) 계획을 만들어 실행을 기다리는 중이다.** 설계는 전부 `docs/`에 있다(CLAUDE.md "문서" 절).
 
 ## 진행 상태
 
@@ -17,13 +17,15 @@ aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. 
 - [x] phase 3 handoff → docs 반영·커밋(`60ade99`)
 - [x] 첫 배포(2026-10-13): Pages Source = GitHub Actions, main push → run 38334877323 성공(리눅스에서만 도는 테스트 포함 전부 통과). 결과를 ARCHITECTURE "검증기"·"배포", OPERATIONS "배포"에 적었다.
 - [x] Claude smoke(2026-10-13, claude-haiku-5-5): outcome ok → `raw-stdout.txt`를 fixture `stdout-smoke-ok.json`으로(테스트 추가), ARCHITECTURE "Claude Code CLI"에 "smoke로 확인한 것"과 남은 ⚠ 정리. 첫 배포 결과와 함께 한 번에 커밋·push하기로 했다(사용자).
-- [ ] phase 4(Codex CLI 어댑터, slug는 계획 때 정한다) 계획·실행, phase 5
+- [x] phase 4 계획(2026-10-13): Codex 0.157.1 공개 소스(태그 `rust-v0.157.1`)로 이벤트 형식·설정 키·에러 문구·로그인 출력을 확인해 ARCHITECTURE "Codex CLI"를 다시 쓰고(사용량 이중 계산 바로잡음), 사용자 결정으로 ADR-027(덧붙는 블록 일부 끄기)을 더했다. `phases/04-codex-adapter/` step 0 `codex-adapter`, step 1 `codex-preflight-smoke`
+- [ ] phase 4 실행 → 확인·merge → 사람 작업(Codex smoke, 8개 일괄 생성과 검증)
+- [ ] phase 5
 
 ## 다음 세션이 바로 할 일
 
-1. `git status`가 깨끗한지 본다. 커밋 안 된 변경이 있으면 사용자에게 확인받고 커밋한다(phase 실행 전에 작업 트리가 깨끗해야 한다).
-2. `/harness`로 phase 4(Codex CLI 어댑터) 계획. `system/cli.ts`(runCli·cliEnv·findOnPath·withTempDir)와 Claude Code 어댑터 구조(`pipeline/src/adapters/claude-code/`, 레지스트리 주입점, smoke 기록기, fixture README의 실제/합성 구분)를 본보기로 쓴다. 사양은 ARCHITECTURE "Codex CLI"와 그 ⚠.
-3. Claude 모델 첫 실제 생성(phase 4 뒤 8개 일괄 생성 때)에서 reasoningTokens를 본다 — `--effort high`가 적용되는지의 유일한 단서다(ARCHITECTURE "Claude Code CLI" ⚠).
+1. phase 4가 아직 안 돌았으면 사용자가 `python scripts/execute.py 04-codex-adapter`를 실행한다(`git status`가 깨끗해야 한다, `phases/`는 예외).
+2. phase 4가 끝났으면 `/harness` F 절차: summary·handoff와 `npm test` 확인 → 사용자가 main에 `--no-ff` merge → handoff 결정을 docs로.
+3. 사람 작업 안내: `! npm run smoke -- gpt-6-1-sol`(또는 다른 OpenAI 모델) → `raw-stdout.txt`(JSONL)를 `pipeline/test/fixtures/codex/`로 옮기고 ARCHITECTURE "Codex CLI"의 ⚠ 확정 → 8개 일괄 생성(`npm run gen -- --all`)과 검증. Claude 모델 생성에서는 reasoningTokens로 `--effort high` 적용을 본다.
 
 ## 사용자 결정·답변
 
