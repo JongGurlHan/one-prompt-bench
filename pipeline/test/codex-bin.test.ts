@@ -43,7 +43,8 @@ test('Windows: .cmd shim 옆에 codex.js가 있으면 node + codex.js (확장자
 
 test('Windows: nodePath를 주지 않으면 지금 실행 중인 Node(process.execPath)로 띄운다', async () => {
   const dir = await tempDir();
-  await touch(path.join(dir, 'codex.cmd'));
+  // PATHEXT 표기(대문자) 그대로 만든다 — 리눅스 CI는 파일 이름의 대소문자를 구분한다
+  await touch(path.join(dir, 'codex.CMD'));
   const script = path.join(dir, ...JS_BESIDE_SHIM);
   await touch(script);
 
