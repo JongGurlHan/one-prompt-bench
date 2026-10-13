@@ -16,13 +16,13 @@ aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. 
 - [x] Codex smoke 1차(2026-10-13, gpt-6.1-sol, Codex 0.157.1): preflight 통과, **서버가 모델 거부(400)** — 0.157.1이 gpt-6.1-sol보다 먼저 나와 모델 목록에 없다. 실제 출력을 fixture `stdout-model-not-supported.jsonl`로 옮기고, 웹소켓 에러 JSON(`"status":400`)을 분류하도록 고쳤다(처음엔 unknown). ARCHITECTURE "Codex CLI"에 "smoke로 확인한 것"·0.162.1 소스 비교, OPERATIONS 표 갱신(`fix`·`docs` 커밋)
 - [x] Codex CLI 0.157.1 → 0.162.1 업데이트(2026-10-13, 사용자) → smoke 2차 성공: 입력 9,418(캐시 7,296)·출력 21·추론 0, 8.1초, 도구 사용 없음. 실제 출력을 fixture `stdout-smoke-ok.jsonl`로 옮기고 테스트를 더했다. ARCHITECTURE "Codex CLI"를 0.162.1 기준으로 고쳤다(기본 지시문 교체를 0.162.1 소스로 확인).
 - [x] 사용자 결정(2026-10-13): Codex 웹 검색 도구를 끈다 → ADR-028, 인자에 `-c web_search="disabled"`(테스트 먼저), 커밋
-- [ ] Codex smoke 3차(웹 검색 끈 뒤) → 8개 일괄 생성과 검증
+- [x] Codex smoke 3차(2026-10-13, 웹 검색 끈 뒤): 설정 거부 없음, 입력 6,962(캐시 0)·출력 21·추론 0, 13.5초. ARCHITECTURE·OPERATIONS에 기록(fixture는 모양이 같아 안 옮김)
+- [ ] 8개 일괄 생성과 검증
 - [ ] phase 5 `05-…`(PRD "개발 순서" 5번: 판정 도우미, 비교표·프롬프트·소개 탭, 휴대폰 화면, README) → 8개 판정
 
 ## 다음 세션이 바로 할 일
 
-1. Codex smoke 3차: 사용자가 `! npm run smoke -- gpt-6-1-sol`을 실행한다. `web_search="disabled"`가 거부되지 않는지, 입력 토큰이 9,418에서 얼마나 줄었는지 보고, ARCHITECTURE "Codex CLI"의 "smoke로 확인한 것"·⚠에 적는다(원본이 앞 smoke와 다른 모양이면 fixture로도 옮긴다). 9,418토큰 입력은 ADR-027이 남긴 도구 정의·샌드박스 안내로 보고 그대로 두기로 했다(2026-10-13 추천에 사용자가 "추천대로"라고 답함 — 웹 검색 끄기와 함께 낸 추천).
-2. 일괄 생성: 사용자가 `! npm run gen -- --all`(Gemini는 이미 있어 건너뛰고 7개). Claude 3개는 Pro 한도, Codex 4개는 ChatGPT 한도를 쓴다 — 한도에 걸린 모델은 `api_failed`로 남고 다시 실행하면 그 모델만 돈다. 끝나면 `npm run check:results` → `data:` 커밋. Claude 생성의 reasoningTokens로 `--effort high` 적용을 확인한다(ARCHITECTURE "Claude Code CLI" ⚠). 그다음 phase 5를 `/harness`로 계획한다.
+1. 일괄 생성: 사용자가 `! npm run gen -- --all`(Gemini는 이미 있어 건너뛰고 7개). Claude 3개는 Pro 한도, Codex 4개는 ChatGPT 한도를 쓴다 — 한도에 걸린 모델은 `api_failed`로 남고 다시 실행하면 그 모델만 돈다. 끝나면 `npm run check:results` → `data:` 커밋. Claude 생성의 reasoningTokens로 `--effort high` 적용을 확인한다(ARCHITECTURE "Claude Code CLI" ⚠). 그다음 phase 5를 `/harness`로 계획한다.
 
 ## 사용자 결정·답변
 

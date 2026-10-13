@@ -27,7 +27,7 @@ Claude 세션(대화형·무인 모두)은 실제 모델 호출을 하지 않는
 |---|---|
 | 공통 | 입력 토큰이 수백 개 수준인가 (수천 개 이상이면 도구 기본 지시문·메모리·CLAUDE.md가 섞인 것 → 격리 옵션을 고친다) |
 | Claude Code | `--system-prompt`로 기본 지시문이 교체되는가, `--effort high`가 적용되는가, 잘림·거부를 어느 필드로 알 수 있는가, 추론 토큰을 따로 주는가, `modelUsage`에 모델이 하나인가(나머지는 ARCHITECTURE "Claude Code CLI"의 ⚠). `raw-stdout.txt`는 `pipeline/test/fixtures/claude-code/`로 그대로 옮긴다. 2026-10-13 claude-haiku-5-5로 확인함(ARCHITECTURE "smoke로 확인한 것") |
-| Codex CLI | 입력 토큰 규모(ADR-027로 끈 블록 밖에 무엇이 남는가), Hello 요청에도 추론 토큰이 나오는가(`model_reasoning_effort`), 모델이 명령 실행·파일 쓰기를 시도하는가, stderr 내용(나머지는 ARCHITECTURE "Codex CLI"의 ⚠). `raw-stdout.txt`(JSONL)는 `pipeline/test/fixtures/codex/`로 그대로 옮긴다. `codex login status` 형식과 설정 키는 2026-10-13 소스로 확인함. 2026-10-13 첫 smoke(gpt-6.1-sol, Codex 0.157.1)는 이 버전이 모델을 몰라 서버가 거부했다(ARCHITECTURE "Codex CLI"의 "smoke로 확인한 것") — Codex CLI가 대상 모델보다 먼저 나온 버전이면 업데이트한다. 0.162.1로 업데이트한 뒤 다시 한 smoke는 성공했다(입력 9,418토큰, 추론 0) |
+| Codex CLI | 입력 토큰 규모(ADR-027로 끈 블록 밖에 무엇이 남는가), Hello 요청에도 추론 토큰이 나오는가(`model_reasoning_effort`), 모델이 명령 실행·파일 쓰기를 시도하는가, stderr 내용(나머지는 ARCHITECTURE "Codex CLI"의 ⚠). `raw-stdout.txt`(JSONL)는 `pipeline/test/fixtures/codex/`로 그대로 옮긴다. `codex login status` 형식과 설정 키는 2026-10-13 소스로 확인함. 2026-10-13 첫 smoke(gpt-6.1-sol, Codex 0.157.1)는 이 버전이 모델을 몰라 서버가 거부했다(ARCHITECTURE "Codex CLI"의 "smoke로 확인한 것") — Codex CLI가 대상 모델보다 먼저 나온 버전이면 업데이트한다. 0.162.1로 업데이트한 뒤 다시 한 smoke는 성공했다(입력 9,418토큰, 추론 0). 웹 검색을 끈 뒤(ADR-028) 입력 6,962토큰 |
 | Gemini API | thinking level·`maxOutputTokens`·`systemInstruction` 필드 이름(설치한 SDK 버전), 사용량 필드 이름, 무료 티어 429와 일일 할당량 소진의 구분 |
 
 확인 결과는 `docs/ARCHITECTURE.md` "도구별 호출 사양"의 ⚠ 표시를 지우고 사실로 고쳐 적는다.

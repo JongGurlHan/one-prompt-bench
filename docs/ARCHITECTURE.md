@@ -221,7 +221,10 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
   - 입력 9,418토큰: 같은 smoke 프롬프트가 Gemini에서 35토큰, Claude Code에서 655토큰이었다. 기본 지시문은 위 "시스템 프롬프트"대로 교체되므로(0.162.1 소스로 확인), 나머지 약 9천 토큰은 ADR-027이 남겨 둔 도구 정의·샌드박스 안내 쪽이다. 항목별 크기는 출력으로 알 수 없다(추정). 비용은 ADR-008대로 이 입력 전부를 입력 정가로 계산한다.
   - 추론 0: Claude Code smoke와 같이 "Hello" 요청이라 추론하지 않은 것인지 `model_reasoning_effort`가 적용되지 않은 것인지 출력으로 구분할 수 없다.
   - 모델이 쓸 수 있는 웹 검색: 0.162.1 기본값은 `web_search` 모드 `cached`다(`core/src/config/mod.rs`의 `resolve_web_search_mode`, 설정이 없으면 `WebSearchMode::Cached`). 서버 쪽 도구라 read-only 샌드박스로 막히지 않는다. Claude Code(`--tools ""`)·Gemini(도구 없음)와 조건이 달라서 ADR-028로 끈다. 이 smoke는 끄기 전 호출이다.
-- ⚠ 아직 실제 출력으로 확인하지 못한 것: 실제 생성 프롬프트에서 `reasoning_output_tokens`가 나오는가(`model_reasoning_effort` 적용). 모델이 명령 실행·파일 쓰기를 시도하는가(item 종류 — 첫 실제 생성에서 본다). `web_search="disabled"`가 거부되지 않고 입력 토큰이 얼마나 줄어드는가(다음 smoke). 한도·429·5xx·401의 실제 문구(웹소켓 JSON의 `error.type` 값 포함). 에러 이벤트가 없을 때는 stderr가 meta.json의 에러 message가 되므로, stderr에 사용자 폴더 경로가 찍히면 공개 기록에 남는다(Claude Code도 같은 방식, smoke 두 번 모두 stderr는 비어 있었다).
+- smoke로 확인한 것(2026-10-13, gpt-6.1-sol, Codex 0.162.1, `-c web_search="disabled"`를 더한 뒤, 원본은 `results-smoke/gpt-6-1-sol-20261013-161149/` — 이벤트 모양이 `stdout-smoke-ok.jsonl`과 같아 fixture로 옮기지 않았다):
+  - outcome ok. 설정이 거부되지 않았다. exit 0, stderr 비어 있음, 걸린 시간 13.5초, 응답은 앞 smoke와 같은 Hello HTML.
+  - 입력 6,962토큰(`cached_input_tokens` 0), 출력 21, 추론 0. 웹 검색을 끄기 전보다 2,456토큰 적다 — 웹 검색 도구 정의의 크기로 본다. 앞 smoke에서 7,296토큰이 캐시돼 있던 앞부분이 이번엔 캐시되지 않은 것도, 도구 정의가 매 요청 앞부분에 붙는다는 해석과 맞는다(추정). 남은 약 6,900토큰은 셸·파일 수정 등 나머지 도구 정의와 샌드박스 안내, 프롬프트다(ADR-027이 남긴 것).
+- ⚠ 아직 실제 출력으로 확인하지 못한 것: 실제 생성 프롬프트에서 `reasoning_output_tokens`가 나오는가(`model_reasoning_effort` 적용). 모델이 명령 실행·파일 쓰기를 시도하는가(item 종류 — 첫 실제 생성에서 본다). 한도·429·5xx·401의 실제 문구(웹소켓 JSON의 `error.type` 값 포함). 에러 이벤트가 없을 때는 stderr가 meta.json의 에러 message가 되므로, stderr에 사용자 폴더 경로가 찍히면 공개 기록에 남는다(Claude Code도 같은 방식, smoke 두 번 모두 stderr는 비어 있었다).
 
 **Gemini API** (`@google/genai` SDK, `.env`의 GEMINI_API_KEY)
 - `.env`는 `dotenv.parse`로 읽어 설정 객체로만 쓰고 `process.env`에는 넣지 않는다. Claude·Codex 자식 프로세스로 키가 넘어가지 않게 하려는 것이다.
