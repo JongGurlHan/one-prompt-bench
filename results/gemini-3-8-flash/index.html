@@ -1,673 +1,754 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>사계절의 나무 (Four Seasons Tree)</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      user-select: none;
-    }
-    body {
-      overflow: hidden;
-      background-color: #000;
-      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Segoe UI", Roboto, sans-serif;
-    }
-    #canvas-container {
-      width: 100vw;
-      height: 100vh;
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 1;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>사계절의 3D 나무</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
 
-    /* 계절 안내 UI */
-    .season-ui {
-      position: absolute;
-      top: 32px;
-      left: 32px;
-      z-index: 10;
-      background: rgba(255, 255, 255, 0.18);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.35);
-      border-radius: 20px;
-      padding: 22px 28px;
-      color: #fff;
-      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15);
-      min-width: 240px;
-      pointer-events: none;
-      transition: all 0.5s ease;
-    }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
+        }
 
-    .season-badge {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      opacity: 0.85;
-      margin-bottom: 6px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .season-badge::before {
-      content: '';
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: currentColor;
-    }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
 
-    .season-title {
-      font-size: 32px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      line-height: 1.1;
-      margin-bottom: 6px;
-      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    }
+        /* 계절 안내 UI 카드 */
+        #season-ui {
+            position: absolute;
+            top: 28px;
+            left: 28px;
+            padding: 22px 28px;
+            background: rgba(255, 255, 255, 0.22);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            border-radius: 20px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+            color: #1d2129;
+            min-width: 210px;
+            transition: border-color 0.6s ease;
+            pointer-events: none;
+        }
 
-    .season-desc {
-      font-size: 13px;
-      opacity: 0.9;
-      font-weight: 400;
-      line-height: 1.4;
-      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-    }
+        .season-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border-radius: 30px;
+            background: rgba(0, 0, 0, 0.08);
+            margin-bottom: 8px;
+        }
 
-    /* 계절 진행도 바 */
-    .timeline {
-      margin-top: 16px;
-      height: 4px;
-      background: rgba(255, 255, 255, 0.25);
-      border-radius: 4px;
-      position: relative;
-      overflow: hidden;
-    }
-    .timeline-progress {
-      height: 100%;
-      width: 0%;
-      background: #ffffff;
-      border-radius: 4px;
-      box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
-    }
+        .season-title {
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            line-height: 1.1;
+            margin-bottom: 4px;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.4);
+        }
 
-    .hint {
-      position: absolute;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 10;
-      color: rgba(255, 255, 255, 0.7);
-      font-size: 13px;
-      letter-spacing: 0.5px;
-      background: rgba(0, 0, 0, 0.25);
-      padding: 8px 18px;
-      border-radius: 20px;
-      backdrop-filter: blur(8px);
-      pointer-events: none;
-    }
-  </style>
-  <!-- 고정 버전 Three.js 라이브러리 -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+        .season-desc {
+            font-size: 13px;
+            opacity: 0.85;
+            font-weight: 500;
+            margin-bottom: 14px;
+        }
+
+        /* 계절 진행 게이지 */
+        .progress-track {
+            width: 100%;
+            height: 4px;
+            background: rgba(0, 0, 0, 0.08);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: #1d2129;
+            border-radius: 2px;
+            transition: width 0.1s linear;
+        }
+
+        /* 조작 안내 */
+        #controls-hint {
+            position: absolute;
+            bottom: 24px;
+            right: 24px;
+            padding: 8px 16px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.9);
+            background: rgba(0, 0, 0, 0.28);
+            backdrop-filter: blur(8px);
+            border-radius: 30px;
+            letter-spacing: 0.3px;
+            pointer-events: none;
+        }
+    </style>
+    <!-- Three.js CDN 버전을 고정하여 로드 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-  <div id="canvas-container"></div>
+    <div id="canvas-container"></div>
 
-  <div class="season-ui" id="seasonUi">
-    <div class="season-badge" id="seasonBadge">Season</div>
-    <div class="season-title" id="seasonTitle">봄</div>
-    <div class="season-desc" id="seasonDesc">따스한 바람과 흩날리는 벚꽃</div>
-    <div class="timeline">
-      <div class="timeline-progress" id="timelineBar"></div>
+    <div id="season-ui">
+        <div id="season-badge" class="season-badge">SEASON</div>
+        <div id="season-title" class="season-title">봄</div>
+        <div id="season-desc" class="season-desc">꽃잎이 흩날리는 따스한 계절</div>
+        <div class="progress-track">
+            <div id="progress-bar" class="progress-bar"></div>
+        </div>
     </div>
-  </div>
 
-  <div class="hint">마우스를 드래그하여 시점을 회전할 수 있습니다</div>
+    <div id="controls-hint">마우스 드래그로 회전 · 휠로 줌</div>
 
-  <script>
-    // --- 1. 기본 설정 및 씬 초기화 ---
-    const CYCLE_DURATION = 40.0; // 1회 순환 40초 (계절당 10초)
-    const SEASONS = [
-      { name: '봄', en: 'Spring', desc: '따스한 바람과 흩날리는 벚꽃', badgeColor: '#ff9ebb' },
-      { name: '여름', en: 'Summer', desc: '눈부신 햇살과 무성한 녹음', badgeColor: '#4ade80' },
-      { name: '가을', en: 'Autumn', desc: '황금빛 들녘과 붉게 물든 단풍', badgeColor: '#f97316' },
-      { name: '겨울', en: 'Winter', desc: '고요한 언덕과 춤추는 눈송이', badgeColor: '#93c5fd' }
-    ];
+    <script>
+        // --- 1. 기본 씬 설정 ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
 
-    const container = document.getElementById('canvas-container');
-    const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 5, 22);
 
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 7, 24);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+        container.appendChild(renderer.domElement);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    container.appendChild(renderer.domElement);
+        // 안개 설정 (하늘색과 동기화)
+        scene.fog = new THREE.FogExp2(0xa0d0f0, 0.022);
 
-    // --- 2. 조명 시스템 ---
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
-    scene.add(hemiLight);
+        // --- 2. 조명 설정 ---
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
+        hemiLight.position.set(0, 40, 0);
+        scene.add(hemiLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-    dirLight.position.set(15, 25, 15);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
-    dirLight.shadow.camera.near = 0.5;
-    dirLight.shadow.camera.far = 60;
-    dirLight.shadow.camera.left = -15;
-    dirLight.shadow.camera.right = 15;
-    dirLight.shadow.camera.top = 15;
-    dirLight.shadow.camera.bottom = -15;
-    dirLight.shadow.bias = -0.0005;
-    scene.add(dirLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(16, 28, 14);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 60;
+        const d = 16;
+        dirLight.shadow.camera.left = -d;
+        dirLight.shadow.camera.right = d;
+        dirLight.shadow.camera.top = d;
+        dirLight.shadow.camera.bottom = -d;
+        dirLight.shadow.bias = -0.0005;
+        scene.add(dirLight);
 
-    // 안개 (계절 색상과 블렌딩)
-    const fog = new THREE.FogExp2(0xcce0ff, 0.022);
-    scene.fog = fog;
+        // 부드러운 보조 광원
+        const fillLight = new THREE.DirectionalLight(0xfff0dd, 0.3);
+        fillLight.position.set(-15, 10, -10);
+        scene.add(fillLight);
 
-    // --- 3. 언덕 (지형) 생성 ---
-    const hillGeometry = new THREE.SphereGeometry(22, 64, 48);
-    hillGeometry.scale(1.6, 0.45, 1.6); // 완만하고 넓은 언덕 모양
-    const hillMaterial = new THREE.MeshStandardMaterial({
-      roughness: 0.85,
-      metalness: 0.05,
-      flatShading: true
-    });
-    const hill = new THREE.Mesh(hillGeometry, hillMaterial);
-    hill.position.y = -9.5;
-    hill.receiveShadow = true;
-    scene.add(hill);
+        // --- 3. 절차적 텍스처 생성 (외부 이미지 미사용) ---
+        // 잎 모양 텍스처
+        function createLeafTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 64, 64);
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.moveTo(32, 4);
+            ctx.bezierCurveTo(56, 16, 56, 48, 32, 60);
+            ctx.bezierCurveTo(8, 48, 8, 16, 32, 4);
+            ctx.closePath();
+            ctx.fill();
+            return new THREE.CanvasTexture(canvas);
+        }
 
-    // 언덕 위 장식용 잔디/꽃 덤불 (절차적 생성)
-    const decorGroup = new THREE.Group();
-    const decorGeo = new THREE.DodecahedronGeometry(0.2, 0);
-    const decorMat = new THREE.MeshStandardMaterial({ roughness: 0.9, flatShading: true });
-    const decorInstanced = new THREE.InstancedMesh(decorGeo, decorMat, 120);
-    const dummy = new THREE.Object3D();
+        // 파티클 (꽃잎/낙엽/눈송이) 부드러운 원형 텍스처
+        function createParticleTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            grad.addColorStop(0.4, 'rgba(255, 255, 255, 0.85)');
+            grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(32, 32, 30, 0, Math.PI * 2);
+            ctx.fill();
+            return new THREE.CanvasTexture(canvas);
+        }
 
-    for (let i = 0; i < 120; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const dist = 3.5 + Math.random() * 11;
-      const x = Math.cos(angle) * dist;
-      const z = Math.sin(angle) * dist;
-      // 언덕 곡면에 맞춘 y 위치 근사
-      const y = 0.5 - (dist * dist) * 0.025 + (Math.random() * 0.1);
-      const s = 0.6 + Math.random() * 0.9;
-      dummy.position.set(x, y, z);
-      dummy.scale.set(s, s * (0.8 + Math.random() * 0.6), s);
-      dummy.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, Math.random() * 0.3);
-      dummy.updateMatrix();
-      decorInstanced.setMatrixAt(i, dummy.matrix);
-    }
-    decorInstanced.receiveShadow = true;
-    decorGroup.add(decorInstanced);
-    scene.add(decorGroup);
+        const leafTexture = createLeafTexture();
+        const particleTexture = createParticleTexture();
 
-    // --- 4. 나무(줄기 및 가지) 생성 ---
-    const treeGroup = new THREE.Group();
-    scene.add(treeGroup);
+        // --- 4. 언덕(Ground) 생성 ---
+        const hillRadius = 24;
+        const hillGeom = new THREE.PlaneGeometry(50, 50, 90, 90);
+        hillGeom.rotateX(-Math.PI / 2);
+        const hillPos = hillGeom.attributes.position;
 
-    const woodMaterial = new THREE.MeshStandardMaterial({
-      color: 0x4a3222,
-      roughness: 0.9,
-      metalness: 0.1,
-      flatShading: true
-    });
+        // 중앙이 솟아오른 유기적인 언덕 모양으로 정점 변형
+        for (let i = 0; i < hillPos.count; i++) {
+            const x = hillPos.getX(i);
+            const z = hillPos.getZ(i);
+            const dist = Math.sqrt(x * x + z * z);
+            let y = 2.8 * Math.exp(-(dist * dist) / (2 * 7.0 * 7.0));
+            // 잔디 둔덕 노이즈
+            y += Math.sin(x * 0.4) * Math.cos(z * 0.4) * 0.25;
+            y += Math.sin(x * 0.9 + 1.2) * 0.1;
+            hillPos.setY(i, y - 0.4);
+        }
+        hillGeom.computeVertexNormals();
 
-    const leafPositions = [];
-
-    // 재귀적 브랜칭 알고리즘
-    function createBranch(start, dir, length, radius, depth) {
-      if (depth > 4) {
-        leafPositions.push(start.clone());
-        return;
-      }
-
-      const end = start.clone().add(dir.clone().multiplyScalar(length));
-      const mid = start.clone().add(end).multiplyScalar(0.5);
-
-      const branchGeo = new THREE.CylinderGeometry(radius * 0.68, radius, length, 7);
-      const branchMesh = new THREE.Mesh(branchGeo, woodMaterial);
-      branchMesh.castShadow = true;
-      branchMesh.receiveShadow = true;
-
-      // 실린더를 방향 벡터로 회전
-      const orientation = new THREE.Matrix4();
-      const up = new THREE.Vector3(0, 1, 0);
-      orientation.lookAt(start, end, up);
-      orientation.multiply(new THREE.Matrix4().makeRotationX(Math.PI / 2));
-      branchMesh.applyMatrix4(orientation);
-      branchMesh.position.copy(mid);
-
-      treeGroup.add(branchMesh);
-
-      // 가지치기 수 및 각도 계산
-      const subBranches = depth === 0 ? 3 : (Math.random() > 0.3 ? 3 : 2);
-      for (let i = 0; i < subBranches; i++) {
-        const angleSpread = 0.45 + Math.random() * 0.3;
-        const rotAngle = (i / subBranches) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
-
-        const newDir = dir.clone();
-        const axis1 = new THREE.Vector3(Math.cos(rotAngle), 0, Math.sin(rotAngle)).normalize();
-        newDir.applyAxisAngle(axis1, angleSpread);
-        newDir.y += 0.2; // 위쪽으로 유도
-        newDir.normalize();
-
-        createBranch(end, newDir, length * (0.68 + Math.random() * 0.1), radius * 0.65, depth + 1);
-      }
-    }
-
-    // 메인 줄기 시작
-    createBranch(new THREE.Vector3(0, 0.4, 0), new THREE.Vector3(0, 1, 0), 3.2, 0.62, 0);
-
-    // --- 5. 나뭇잎 덩어리(Canopy) 생성 ---
-    const foliageGroup = new THREE.Group();
-    treeGroup.add(foliageGroup);
-
-    const leafMeshes = [];
-    const leafGeo = new THREE.DodecahedronGeometry(1.0, 1);
-
-    leafPositions.forEach((pos) => {
-      // 끝단 가지 주위에 풍성한 구형 나뭇잎 클러스터 배치
-      const clusterCount = 2 + Math.floor(Math.random() * 2);
-      for (let i = 0; i < clusterCount; i++) {
-        const mat = new THREE.MeshStandardMaterial({
-          roughness: 0.6,
-          metalness: 0.1,
-          flatShading: true
+        const hillMaterial = new THREE.MeshStandardMaterial({
+            color: 0x5da83f,
+            roughness: 0.9,
+            metalness: 0.05,
+            flatShading: false
         });
-        const mesh = new THREE.Mesh(leafGeo, mat);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
+        const hillMesh = new THREE.Mesh(hillGeom, hillMaterial);
+        hillMesh.receiveShadow = true;
+        scene.add(hillMesh);
 
-        const offset = new THREE.Vector3(
-          (Math.random() - 0.5) * 1.6,
-          (Math.random() - 0.3) * 1.4,
-          (Math.random() - 0.5) * 1.6
-        );
-        mesh.position.copy(pos).add(offset);
-        const baseScale = 0.85 + Math.random() * 0.75;
-        mesh.scale.setScalar(baseScale);
-        mesh.userData = {
-          baseScale: baseScale,
-          seed: Math.random() * Math.PI * 2
-        };
-
-        leafMeshes.push(mesh);
-        foliageGroup.add(mesh);
-      }
-    });
-
-    // 가지 위에 쌓이는 겨울철 눈 캡 메쉬
-    const snowCapGroup = new THREE.Group();
-    treeGroup.add(snowCapGroup);
-    const snowCapMat = new THREE.MeshStandardMaterial({
-      color: 0xf5f8ff,
-      roughness: 0.9,
-      flatShading: true
-    });
-    leafPositions.forEach((pos) => {
-      const cap = new THREE.Mesh(new THREE.DodecahedronGeometry(0.35, 1), snowCapMat);
-      cap.position.copy(pos).add(new THREE.Vector3(0, 0.1, 0));
-      cap.scale.set(1.4, 0.4, 1.4);
-      snowCapGroup.add(cap);
-    });
-
-    // --- 6. 계절별 파티클 시스템 (꽃잎, 단풍, 눈) ---
-    // (1) 봄 꽃잎 파티클
-    const springCount = 500;
-    const springGeo = new THREE.BufferGeometry();
-    const springPos = new Float32Array(springCount * 3);
-    const springVel = [];
-    for (let i = 0; i < springCount; i++) {
-      springPos[i * 3 + 0] = (Math.random() - 0.5) * 18;
-      springPos[i * 3 + 1] = 2 + Math.random() * 12;
-      springPos[i * 3 + 2] = (Math.random() - 0.5) * 18;
-      springVel.push({
-        y: -0.6 - Math.random() * 0.7,
-        x: 0.8 + Math.random() * 0.7,
-        sway: Math.random() * Math.PI * 2
-      });
-    }
-    springGeo.setAttribute('position', new THREE.BufferAttribute(springPos, 3));
-    const springMat = new THREE.PointsMaterial({
-      color: 0xffb7c5,
-      size: 0.22,
-      transparent: true,
-      opacity: 0.0,
-      depthWrite: false
-    });
-    const springParticles = new THREE.Points(springGeo, springMat);
-    scene.add(springParticles);
-
-    // (2) 가을 낙엽 파티클
-    const autumnCount = 450;
-    const autumnGeo = new THREE.BufferGeometry();
-    const autumnPos = new Float32Array(autumnCount * 3);
-    const autumnVel = [];
-    for (let i = 0; i < autumnCount; i++) {
-      autumnPos[i * 3 + 0] = (Math.random() - 0.5) * 18;
-      autumnPos[i * 3 + 1] = 2 + Math.random() * 12;
-      autumnPos[i * 3 + 2] = (Math.random() - 0.5) * 18;
-      autumnVel.push({
-        y: -1.0 - Math.random() * 1.0,
-        x: 0.6 + Math.random() * 0.8,
-        sway: Math.random() * Math.PI * 2
-      });
-    }
-    autumnGeo.setAttribute('position', new THREE.BufferAttribute(autumnPos, 3));
-    const autumnMat = new THREE.PointsMaterial({
-      color: 0xe05615,
-      size: 0.26,
-      transparent: true,
-      opacity: 0.0,
-      depthWrite: false
-    });
-    const autumnParticles = new THREE.Points(autumnGeo, autumnMat);
-    scene.add(autumnParticles);
-
-    // (3) 겨울 눈송이 파티클
-    const winterCount = 1200;
-    const winterGeo = new THREE.BufferGeometry();
-    const winterPos = new Float32Array(winterCount * 3);
-    const winterVel = [];
-    for (let i = 0; i < winterCount; i++) {
-      winterPos[i * 3 + 0] = (Math.random() - 0.5) * 30;
-      winterPos[i * 3 + 1] = Math.random() * 16;
-      winterPos[i * 3 + 2] = (Math.random() - 0.5) * 30;
-      winterVel.push({
-        y: -0.7 - Math.random() * 0.9,
-        x: (Math.random() - 0.5) * 0.4,
-        sway: Math.random() * Math.PI * 2
-      });
-    }
-    winterGeo.setAttribute('position', new THREE.BufferAttribute(winterPos, 3));
-    const winterMat = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 0.18,
-      transparent: true,
-      opacity: 0.0,
-      depthWrite: false
-    });
-    const winterParticles = new THREE.Points(winterGeo, winterMat);
-    scene.add(winterParticles);
-
-    // --- 7. 계절별 팔레트 및 가중치 함수 ---
-    const PALETTES = {
-      spring: {
-        sky: new THREE.Color(0xa7d8ff),
-        fog: new THREE.Color(0xd2eaff),
-        ground: new THREE.Color(0x7ec66f),
-        decor: new THREE.Color(0xff8fb1),
-        leaves: new THREE.Color(0xffa4be),
-        leafScale: 0.85,
-        sunColor: new THREE.Color(0xfff1dc),
-        sunIntensity: 1.15
-      },
-      summer: {
-        sky: new THREE.Color(0x3ea6ff),
-        fog: new THREE.Color(0x82c8ff),
-        ground: new THREE.Color(0x2f963b),
-        decor: new THREE.Color(0x38b000),
-        leaves: new THREE.Color(0x1e8234),
-        leafScale: 1.08,
-        sunColor: new THREE.Color(0xfffae6),
-        sunIntensity: 1.45
-      },
-      autumn: {
-        sky: new THREE.Color(0xdf824b),
-        fog: new THREE.Color(0xebb079),
-        ground: new THREE.Color(0x8c6130),
-        decor: new THREE.Color(0xd97706),
-        leaves: new THREE.Color(0xc94014),
-        leafScale: 0.92,
-        sunColor: new THREE.Color(0xff9944),
-        sunIntensity: 1.1
-      },
-      winter: {
-        sky: new THREE.Color(0x8fa1b8),
-        fog: new THREE.Color(0xb9c6d6),
-        ground: new THREE.Color(0xeef4fa),
-        decor: new THREE.Color(0xd1d9e2),
-        leaves: new THREE.Color(0x94a3b8),
-        leafScale: 0.001, // 잎이 모두 떨어지고 가지만 남음
-        sunColor: new THREE.Color(0xdce7f5),
-        sunIntensity: 0.75
-      }
-    };
-
-    const paletteKeys = ['spring', 'summer', 'autumn', 'winter'];
-
-    // 부드러운 가중치 계산 (Cosine bell curve 기반 보간)
-    function getSeasonWeights(t) {
-      // t는 0 ~ 4 사이의 연속된 값
-      const weights = [];
-      let sum = 0;
-      for (let i = 0; i < 4; i++) {
-        let diff = Math.abs(t - i);
-        if (diff > 2) diff = 4 - diff;
-        // 거리가 1 이내일 때 부드럽게 상승/하강
-        const w = diff < 1 ? 0.5 * (1 + Math.cos(diff * Math.PI)) : 0;
-        weights.push(w);
-        sum += w;
-      }
-      return weights.map(w => w / (sum || 1));
-    }
-
-    // --- 8. 마우스 인터랙션 (카메라 회전 드래그) ---
-    let isDragging = false;
-    let prevMouseX = 0;
-    let prevMouseY = 0;
-    let cameraAngle = 0;
-    let cameraHeight = 7;
-    let cameraRadius = 24;
-
-    window.addEventListener('mousedown', (e) => {
-      isDragging = true;
-      prevMouseX = e.clientX;
-      prevMouseY = e.clientY;
-    });
-
-    window.addEventListener('mouseup', () => { isDragging = false; });
-    window.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
-      const deltaX = e.clientX - prevMouseX;
-      const deltaY = e.clientY - prevMouseY;
-      prevMouseX = e.clientX;
-      prevMouseY = e.clientY;
-
-      cameraAngle -= deltaX * 0.006;
-      cameraHeight = Math.max(1.5, Math.min(18, cameraHeight + deltaY * 0.04));
-    });
-
-    // 터치 지원
-    window.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 1) {
-        isDragging = true;
-        prevMouseX = e.touches[0].clientX;
-        prevMouseY = e.touches[0].clientY;
-      }
-    }, { passive: true });
-    window.addEventListener('touchend', () => { isDragging = false; });
-    window.addEventListener('touchmove', (e) => {
-      if (!isDragging || e.touches.length !== 1) return;
-      const deltaX = e.touches[0].clientX - prevMouseX;
-      const deltaY = e.touches[0].clientY - prevMouseY;
-      prevMouseX = e.touches[0].clientX;
-      prevMouseY = e.touches[0].clientY;
-
-      cameraAngle -= deltaX * 0.007;
-      cameraHeight = Math.max(1.5, Math.min(18, cameraHeight + deltaY * 0.04));
-    }, { passive: true });
-
-    // 반응형 리사이즈
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    // --- 9. UI 요소 참조 ---
-    const uiBadge = document.getElementById('seasonBadge');
-    const uiTitle = document.getElementById('seasonTitle');
-    const uiDesc = document.getElementById('seasonDesc');
-    const uiBar = document.getElementById('timelineBar');
-
-    // --- 10. 메인 애니메이션 루프 ---
-    const clock = new THREE.Clock();
-
-    function animate() {
-      requestAnimationFrame(animate);
-
-      const elapsedTime = clock.getElapsedTime();
-      const cycleTime = elapsedTime % CYCLE_DURATION;
-      const cycleProgress = cycleTime / CYCLE_DURATION; // 0.0 ~ 1.0
-
-      // 연속 계절 파라미터 (0.0: 봄, 1.0: 여름, 2.0: 가을, 3.0: 겨울)
-      const seasonContinuous = cycleProgress * 4.0;
-      const weights = getSeasonWeights(seasonContinuous);
-
-      // (A) 색상 및 파라미터 가중 보간
-      const finalSky = new THREE.Color(0, 0, 0);
-      const finalFog = new THREE.Color(0, 0, 0);
-      const finalGround = new THREE.Color(0, 0, 0);
-      const finalDecor = new THREE.Color(0, 0, 0);
-      const finalLeaves = new THREE.Color(0, 0, 0);
-      const finalSun = new THREE.Color(0, 0, 0);
-      let finalLeafScale = 0;
-      let finalSunIntensity = 0;
-
-      for (let i = 0; i < 4; i++) {
-        const p = PALETTES[paletteKeys[i]];
-        const w = weights[i];
-
-        finalSky.addScaledColor(p.sky, w);
-        finalFog.addScaledColor(p.fog, w);
-        finalGround.addScaledColor(p.ground, w);
-        finalDecor.addScaledColor(p.decor, w);
-        finalLeaves.addScaledColor(p.leaves, w);
-        finalSun.addScaledColor(p.sunColor, w);
-        finalLeafScale += p.leafScale * w;
-        finalSunIntensity += p.sunIntensity * w;
-      }
-
-      // 배경 및 조명 적용
-      renderer.setClearColor(finalSky, 1);
-      fog.color.copy(finalFog);
-      hillMaterial.color.copy(finalGround);
-      decorMat.color.copy(finalDecor);
-      dirLight.color.copy(finalSun);
-      dirLight.intensity = finalSunIntensity;
-
-      // 눈 캡(겨울) 스케일 및 투명도: 겨울 가중치에 비례
-      const winterW = weights[3];
-      snowCapGroup.scale.setScalar(Math.min(1.0, winterW * 1.3));
-      snowCapMat.opacity = Math.min(1.0, winterW * 1.5);
-      snowCapMat.transparent = true;
-
-      // (B) 나뭇잎 클러스터 변형 및 바람 효과
-      const windBase = Math.sin(elapsedTime * 1.6) * 0.04;
-      treeGroup.rotation.z = windBase * 0.4;
-      treeGroup.rotation.x = Math.cos(elapsedTime * 1.2) * 0.02;
-
-      leafMeshes.forEach((mesh) => {
-        mesh.material.color.copy(finalLeaves);
-        const flutter = 1.0 + Math.sin(elapsedTime * 3.0 + mesh.userData.seed) * 0.04;
-        mesh.scale.setScalar(mesh.userData.baseScale * finalLeafScale * flutter);
-      });
-
-      // (C) 파티클 애니메이션
-      // 1. 봄 꽃잎
-      springMat.opacity = weights[0] * 0.9;
-      if (springMat.opacity > 0.01) {
-        const pos = springGeo.attributes.position.array;
-        for (let i = 0; i < springCount; i++) {
-          springVel[i].sway += 0.025;
-          pos[i * 3 + 0] += Math.sin(springVel[i].sway) * 0.05 + 0.02;
-          pos[i * 3 + 1] += springVel[i].y * 0.035;
-          pos[i * 3 + 2] += Math.cos(springVel[i].sway) * 0.03;
-
-          // 바닥에 닿으면 재배치
-          if (pos[i * 3 + 1] < 0.2) {
-            pos[i * 3 + 1] = 9 + Math.random() * 4;
-            pos[i * 3 + 0] = (Math.random() - 0.5) * 12;
-            pos[i * 3 + 2] = (Math.random() - 0.5) * 12;
-          }
+        // 언덕 위 장식 작은 돌멩이들
+        const rockGeom = new THREE.DodecahedronGeometry(0.3, 1);
+        const rockMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.8 });
+        for (let i = 0; i < 18; i++) {
+            const rock = new THREE.Mesh(rockGeom, rockMat);
+            const ang = Math.random() * Math.PI * 2;
+            const r = 2.5 + Math.random() * 8;
+            rock.position.set(Math.cos(ang) * r, 0.4 + Math.random() * 0.8, Math.sin(ang) * r);
+            const s = 0.4 + Math.random() * 0.7;
+            rock.scale.set(s, s * 0.6, s);
+            rock.rotation.set(Math.random(), Math.random(), Math.random());
+            rock.castShadow = true;
+            rock.receiveShadow = true;
+            scene.add(rock);
         }
-        springGeo.attributes.position.needsUpdate = true;
-      }
 
-      // 2. 가을 단풍
-      autumnMat.opacity = weights[2] * 0.95;
-      if (autumnMat.opacity > 0.01) {
-        const pos = autumnGeo.attributes.position.array;
-        for (let i = 0; i < autumnCount; i++) {
-          autumnVel[i].sway += 0.035;
-          pos[i * 3 + 0] += Math.sin(autumnVel[i].sway) * 0.08 + 0.04;
-          pos[i * 3 + 1] += autumnVel[i].y * 0.05;
-          pos[i * 3 + 2] += Math.cos(autumnVel[i].sway) * 0.05;
+        // --- 5. 나무(Trunk & Branches) 생성 ---
+        const treeGroup = new THREE.Group();
+        scene.add(treeGroup);
 
-          if (pos[i * 3 + 1] < 0.2) {
-            pos[i * 3 + 1] = 9 + Math.random() * 4;
-            pos[i * 3 + 0] = (Math.random() - 0.5) * 14;
-            pos[i * 3 + 2] = (Math.random() - 0.5) * 14;
-          }
+        const branchTips = [];
+        const snowCapMeshes = [];
+
+        const barkMaterial = new THREE.MeshStandardMaterial({
+            color: 0x4a3222,
+            roughness: 0.95,
+            metalness: 0.05
+        });
+
+        const snowCapMaterial = new THREE.MeshStandardMaterial({
+            color: 0xf2f7fb,
+            roughness: 0.85,
+            metalness: 0.0,
+            transparent: true,
+            opacity: 0.0
+        });
+
+        // 프랙탈 방식 가지 생성 함수
+        function createBranch(start, dir, length, radius, depth) {
+            const end = start.clone().add(dir.clone().multiplyScalar(length));
+            const mid = start.clone().add(end).multiplyScalar(0.5);
+
+            // 가지 실린더
+            const branchGeom = new THREE.CylinderGeometry(radius * 0.68, radius, length, 8);
+            const branchMesh = new THREE.Mesh(branchGeom, barkMaterial);
+
+            const up = new THREE.Vector3(0, 1, 0);
+            const quat = new THREE.Quaternion().setFromUnitVectors(up, dir.clone().normalize());
+            branchMesh.setRotationFromQuaternion(quat);
+            branchMesh.position.copy(mid);
+            branchMesh.castShadow = true;
+            branchMesh.receiveShadow = true;
+            treeGroup.add(branchMesh);
+
+            // 겨울용 가지 윗부분 눈 쌓임 메쉬
+            const snowGeom = new THREE.CylinderGeometry(radius * 0.7, radius * 1.05, length * 0.92, 8);
+            const snowMesh = new THREE.Mesh(snowGeom, snowCapMaterial);
+            snowMesh.setRotationFromQuaternion(quat);
+            // 가지 위쪽 표면으로 살짝 올림
+            snowMesh.position.copy(mid).add(new THREE.Vector3(0, radius * 0.35, 0));
+            snowMesh.scale.set(1.08, 1.0, 0.7);
+            treeGroup.add(snowMesh);
+            snowCapMeshes.push(snowMesh);
+
+            // 가지 끝 저장 (잎과 꽃의 생성 위치)
+            if (depth <= 0) {
+                branchTips.push(end);
+                return;
+            }
+
+            const branchCount = depth === 1 ? 3 : (Math.random() > 0.4 ? 3 : 2);
+            for (let i = 0; i < branchCount; i++) {
+                const angle = (i / branchCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.6;
+                const spread = 0.52 + Math.random() * 0.28;
+                const newDir = new THREE.Vector3(
+                    dir.x * 0.6 + Math.cos(angle) * spread,
+                    Math.max(0.2, dir.y * 0.75 + 0.38),
+                    dir.z * 0.6 + Math.sin(angle) * spread
+                ).normalize();
+
+                createBranch(
+                    end,
+                    newDir,
+                    length * (0.68 + Math.random() * 0.14),
+                    radius * 0.65,
+                    depth - 1
+                );
+            }
         }
-        autumnGeo.attributes.position.needsUpdate = true;
-      }
 
-      // 3. 겨울 눈송이
-      winterMat.opacity = weights[3] * 0.95;
-      if (winterMat.opacity > 0.01) {
-        const pos = winterGeo.attributes.position.array;
-        for (let i = 0; i < winterCount; i++) {
-          winterVel[i].sway += 0.018;
-          pos[i * 3 + 0] += Math.sin(winterVel[i].sway) * 0.03;
-          pos[i * 3 + 1] += winterVel[i].y * 0.04;
-          pos[i * 3 + 2] += Math.cos(winterVel[i].sway) * 0.02;
+        // 밑동 시작 (언덕 정상)
+        const trunkBase = new THREE.Vector3(0, 2.3, 0);
+        createBranch(trunkBase, new THREE.Vector3(0, 1, 0), 3.4, 0.62, 3);
 
-          if (pos[i * 3 + 1] < 0) {
-            pos[i * 3 + 1] = 14 + Math.random() * 2;
-            pos[i * 3 + 0] = (Math.random() - 0.5) * 28;
-            pos[i * 3 + 2] = (Math.random() - 0.5) * 28;
-          }
+        // --- 6. 무성한 나뭇잎/꽃 인스턴스 (InstancedMesh) ---
+        const totalLeaves = branchTips.length * 75; // 약 2,000~2,500개
+        const leafGeom = new THREE.PlaneGeometry(0.5, 0.65);
+        leafGeom.translate(0, 0.3, 0); // 회전 중심을 잎자루로 이동
+
+        const leafMaterial = new THREE.MeshStandardMaterial({
+            map: leafTexture,
+            transparent: true,
+            alphaTest: 0.15,
+            side: THREE.DoubleSide,
+            roughness: 0.7,
+            metalness: 0.05
+        });
+
+        const leafMesh = new THREE.InstancedMesh(leafGeom, leafMaterial, totalLeaves);
+        leafMesh.castShadow = true;
+        leafMesh.receiveShadow = true;
+        scene.add(leafMesh);
+
+        // 각 잎의 초기 변환 정보 및 색상 지터 저장
+        const leafData = [];
+        const dummy = new THREE.Object3D();
+        let leafIdx = 0;
+
+        branchTips.forEach(tip => {
+            const clusterLeaves = 75;
+            for (let i = 0; i < clusterLeaves; i++) {
+                if (leafIdx >= totalLeaves) break;
+
+                // 가지 끝 주위에 구형 구름 형태로 분포
+                const radius = 1.6 * Math.cbrt(Math.random());
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+
+                const px = tip.x + radius * Math.sin(phi) * Math.cos(theta);
+                const py = tip.y + radius * Math.sin(phi) * Math.sin(theta) * 0.85;
+                const pz = tip.z + radius * Math.cos(phi);
+
+                const baseScale = 0.75 + Math.random() * 0.55;
+                const rotX = (Math.random() - 0.5) * Math.PI * 2;
+                const rotY = (Math.random() - 0.5) * Math.PI * 2;
+                const rotZ = (Math.random() - 0.5) * Math.PI * 2;
+
+                leafData.push({
+                    pos: new THREE.Vector3(px, py, pz),
+                    baseRot: new THREE.Euler(rotX, rotY, rotZ),
+                    baseScale: baseScale,
+                    swaySpeed: 1.2 + Math.random() * 2.0,
+                    swayOffset: Math.random() * Math.PI * 2,
+                    hueVariation: (Math.random() - 0.5) * 0.08,
+                    lightVariation: (Math.random() - 0.5) * 0.12
+                });
+
+                dummy.position.set(px, py, pz);
+                dummy.rotation.set(rotX, rotY, rotZ);
+                dummy.scale.setScalar(baseScale);
+                dummy.updateMatrix();
+                leafMesh.setMatrixAt(leafIdx, dummy.matrix);
+
+                leafIdx++;
+            }
+        });
+        leafMesh.instanceMatrix.needsUpdate = true;
+
+        // --- 7. 대기 파티클 (꽃잎 / 빛가루 / 낙엽 / 눈송이) ---
+        const particleCount = 750;
+        const particleGeom = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(particleCount * 3);
+        const particleColors = new Float32Array(particleCount * 3);
+        const particleSizes = new Float32Array(particleCount);
+        const particleVelocities = [];
+
+        for (let i = 0; i < particleCount; i++) {
+            particlePositions[i * 3 + 0] = (Math.random() - 0.5) * 26;
+            particlePositions[i * 3 + 1] = Math.random() * 16 + 1;
+            particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 26;
+
+            particleColors[i * 3 + 0] = 1.0;
+            particleColors[i * 3 + 1] = 0.8;
+            particleColors[i * 3 + 2] = 0.85;
+
+            particleSizes[i] = 0.3 + Math.random() * 0.35;
+
+            particleVelocities.push({
+                vy: 0.8 + Math.random() * 0.9,
+                vxOsc: 0.6 + Math.random() * 0.8,
+                vzOsc: 0.6 + Math.random() * 0.8,
+                phase: Math.random() * Math.PI * 2,
+                rotSpeed: (Math.random() - 0.5) * 3
+            });
         }
-        winterGeo.attributes.position.needsUpdate = true;
-      }
 
-      // (D) 카메라 부드러운 자동 선회 (드래그하지 않을 때)
-      if (!isDragging) {
-        cameraAngle += 0.0018;
-      }
-      camera.position.x = Math.sin(cameraAngle) * cameraRadius;
-      camera.position.z = Math.cos(cameraAngle) * cameraRadius;
-      camera.position.y = cameraHeight;
-      camera.lookAt(0, 3.8, 0);
+        particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        particleGeom.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+        particleGeom.setAttribute('size', new THREE.BufferAttribute(particleSizes, 1));
 
-      // (E) UI 텍스트 및 프로그레스 갱신
-      const currentSeasonIndex = Math.floor((seasonContinuous + 0.5) % 4);
-      const activeSeason = SEASONS[currentSeasonIndex];
-      uiTitle.textContent = activeSeason.name;
-      uiDesc.textContent = activeSeason.desc;
-      uiBadge.style.color = activeSeason.badgeColor;
-      uiBadge.textContent = activeSeason.en;
-      uiBar.style.width = `${(cycleProgress * 100).toFixed(1)}%`;
+        const particleMaterial = new THREE.PointsMaterial({
+            size: 0.45,
+            map: particleTexture,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.85,
+            depthWrite: false,
+            blending: THREE.NormalBlending
+        });
 
-      renderer.render(scene, camera);
-    }
+        const particleSystem = new THREE.Points(particleGeom, particleMaterial);
+        scene.add(particleSystem);
 
-    animate();
-  </script>
+        // --- 8. 사계절 정의 & 부드러운 보간 파라미터 ---
+        // 각 계절 10초, 총 40초 주기
+        const SEASON_CONFIGS = [
+            {
+                name: "봄",
+                badge: "SPRING",
+                desc: "꽃잎이 흩날리는 따스한 계절",
+                skyColor: new THREE.Color(0xa2d6f2),
+                fogColor: new THREE.Color(0xcae8f7),
+                groundColor: new THREE.Color(0x60ab43),
+                sunColor: new THREE.Color(0xfff7e6),
+                sunIntensity: 1.25,
+                hemiSky: 0xbde6ff,
+                hemiGround: 0x558833,
+                leafScale: 1.0,
+                leafBaseColor: new THREE.Color(0xffa8bc), // 화사한 벚꽃 핑크
+                snowCover: 0.0,
+                particleColor: new THREE.Color(0xffb7c7), // 분홍 꽃잎
+                particleOpacity: 0.85,
+                particleSpeed: 1.0
+            },
+            {
+                name: "여름",
+                badge: "SUMMER",
+                desc: "싱그러운 녹음이 우거진 눈부신 계절",
+                skyColor: new THREE.Color(0x4aa5e8),
+                fogColor: new THREE.Color(0x90cbf3),
+                groundColor: new THREE.Color(0x2d8a22),
+                sunColor: new THREE.Color(0xffffff),
+                sunIntensity: 1.5,
+                hemiSky: 0x9edbff,
+                hemiGround: 0x226618,
+                leafScale: 1.25,
+                leafBaseColor: new THREE.Color(0x279427), // 무성하고 짙은 초록
+                snowCover: 0.0,
+                particleColor: new THREE.Color(0xfff1aa), // 햇살의 금빛 꽃가루
+                particleOpacity: 0.25,
+                particleSpeed: 0.6
+            },
+            {
+                name: "가을",
+                badge: "AUTUMN",
+                desc: "붉은 단풍과 낙엽이 흩날리는 계절",
+                skyColor: new THREE.Color(0xd69360),
+                fogColor: new THREE.Color(0xe3b692),
+                groundColor: new THREE.Color(0x8a6026),
+                sunColor: new THREE.Color(0xffcc8f),
+                sunIntensity: 1.15,
+                hemiSky: 0xffd1a4,
+                hemiGround: 0x6e471b,
+                leafScale: 0.95,
+                leafBaseColor: new THREE.Color(0xc94716), // 타오르는 단풍 주홍/적색
+                snowCover: 0.02,
+                particleColor: new THREE.Color(0xd6531c), // 붉은 낙엽
+                particleOpacity: 0.9,
+                particleSpeed: 1.4
+            },
+            {
+                name: "겨울",
+                badge: "WINTER",
+                desc: "하얀 눈이 고요히 쌓인 은빛 계절",
+                skyColor: new THREE.Color(0x97aab9),
+                fogColor: new THREE.Color(0xc1ccd5),
+                groundColor: new THREE.Color(0xe4edf2), // 설원
+                sunColor: new THREE.Color(0xe0e9f5),
+                sunIntensity: 0.85,
+                hemiSky: 0xd6e3ed,
+                hemiGround: 0x99aab8,
+                leafScale: 0.0, // 앙상한 가지 (잎 사라짐)
+                leafBaseColor: new THREE.Color(0xdde8ef),
+                snowCover: 1.0, // 가지 위 소복한 눈
+                particleColor: new THREE.Color(0xffffff), // 하얀 눈송이
+                particleOpacity: 0.95,
+                particleSpeed: 0.9
+            }
+        ];
+
+        // 3차 Hermite 부드러운 곡선 함수
+        function smoothstep(t) {
+            return t * t * (3 - 2 * t);
+        }
+
+        // --- 9. UI 제어 요소 ---
+        const uiTitle = document.getElementById('season-title');
+        const uiBadge = document.getElementById('season-badge');
+        const uiDesc = document.getElementById('season-desc');
+        const uiProgress = document.getElementById('progress-bar');
+        const uiBox = document.getElementById('season-ui');
+
+        // --- 10. 마우스/터치 인터랙션 (카메라 회전 및 줌) ---
+        let isDragging = false;
+        let previousMouseX = 0;
+        let previousMouseY = 0;
+        let cameraAngleX = 0;
+        let cameraAngleY = 0.22;
+        let cameraDistance = 22;
+
+        window.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            previousMouseX = e.clientX;
+            previousMouseY = e.clientY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const deltaX = e.clientX - previousMouseX;
+            const deltaY = e.clientY - previousMouseY;
+            cameraAngleX -= deltaX * 0.006;
+            cameraAngleY = Math.max(0.05, Math.min(Math.PI / 2.3, cameraAngleY + deltaY * 0.005));
+            previousMouseX = e.clientX;
+            previousMouseY = e.clientY;
+        });
+
+        window.addEventListener('mouseup', () => { isDragging = false; });
+
+        window.addEventListener('wheel', (e) => {
+            cameraDistance = Math.max(10, Math.min(36, cameraDistance + e.deltaY * 0.02));
+        }, { passive: true });
+
+        // 터치 지원
+        let touchStartX = 0, touchStartY = 0;
+        window.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                isDragging = true;
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }
+        });
+        window.addEventListener('touchmove', (e) => {
+            if (!isDragging || e.touches.length !== 1) return;
+            const deltaX = e.touches[0].clientX - touchStartX;
+            const deltaY = e.touches[0].clientY - touchStartY;
+            cameraAngleX -= deltaX * 0.008;
+            cameraAngleY = Math.max(0.05, Math.min(Math.PI / 2.3, cameraAngleY + deltaY * 0.006));
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+        window.addEventListener('touchend', () => { isDragging = false; });
+
+        // 창 크기 조절
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- 11. 메인 애니메이션 루프 ---
+        const clock = new THREE.Clock();
+        const TOTAL_CYCLE = 40.0; // 사계절 총 40초
+        const SEASON_DURATION = 10.0; // 한 계절당 10초
+
+        // 임시 연산용 객체들
+        const curSky = new THREE.Color();
+        const curFog = new THREE.Color();
+        const curGround = new THREE.Color();
+        const curSun = new THREE.Color();
+        const curHemiSky = new THREE.Color();
+        const curHemiGround = new THREE.Color();
+        const curLeafColor = new THREE.Color();
+        const curParticleColor = new THREE.Color();
+        const tempLeafColor = new THREE.Color();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+            const cycleTime = elapsedTime % TOTAL_CYCLE;
+
+            // 계절 인덱스 계산 (0: 봄, 1: 여름, 2: 가을, 3: 겨울)
+            const seasonIndex = Math.floor(cycleTime / SEASON_DURATION);
+            const nextSeasonIndex = (seasonIndex + 1) % 4;
+
+            // 계절 내 진행률 (0.0 ~ 1.0)
+            const seasonProgress = (cycleTime % SEASON_DURATION) / SEASON_DURATION;
+
+            // 계절간 부드러운 전환 블렌드 가중치 (끝부분 3초 동안 서서히 다음 계절로 전환)
+            const transitionStart = 0.7; // 7초부터 전환 시작
+            let blend = 0;
+            if (seasonProgress > transitionStart) {
+                const rawBlend = (seasonProgress - transitionStart) / (1.0 - transitionStart);
+                blend = smoothstep(rawBlend);
+            }
+
+            const cCur = SEASON_CONFIGS[seasonIndex];
+            const cNext = SEASON_CONFIGS[nextSeasonIndex];
+
+            // 1) 색상 및 속성 보간
+            curSky.copy(cCur.skyColor).lerp(cNext.skyColor, blend);
+            curFog.copy(cCur.fogColor).lerp(cNext.fogColor, blend);
+            curGround.copy(cCur.groundColor).lerp(cNext.groundColor, blend);
+            curSun.copy(cCur.sunColor).lerp(cNext.sunColor, blend);
+            curHemiSky.copy(cCur.hemiSky).lerp(cNext.hemiSky, blend);
+            curHemiGround.copy(cCur.hemiGround).lerp(cNext.hemiGround, blend);
+            curLeafColor.copy(cCur.leafBaseColor).lerp(cNext.leafBaseColor, blend);
+            curParticleColor.copy(cCur.particleColor).lerp(cNext.particleColor, blend);
+
+            const curSunIntensity = THREE.MathUtils.lerp(cCur.sunIntensity, cNext.sunIntensity, blend);
+            const curSnowCover = THREE.MathUtils.lerp(cCur.snowCover, cNext.snowCover, blend);
+            const curLeafScale = THREE.MathUtils.lerp(cCur.leafScale, cNext.leafScale, blend);
+            const curParticleOpacity = THREE.MathUtils.lerp(cCur.particleOpacity, cNext.particleOpacity, blend);
+            const curParticleSpeed = THREE.MathUtils.lerp(cCur.particleSpeed, cNext.particleSpeed, blend);
+
+            // 2) 씬 환경 업데이트
+            scene.background = curSky;
+            scene.fog.color = curFog;
+            renderer.setClearColor(curFog);
+
+            hillMaterial.color.copy(curGround);
+            dirLight.color.copy(curSun);
+            dirLight.intensity = curSunIntensity;
+            hemiLight.color.copy(curHemiSky);
+            hemiLight.groundColor.copy(curHemiGround);
+
+            // 겨울 가지 눈 쌓임 효과
+            snowCapMaterial.opacity = curSnowCover;
+
+            // 3) UI 업데이트
+            uiTitle.textContent = cCur.name;
+            uiBadge.textContent = cCur.badge;
+            uiDesc.textContent = cCur.desc;
+            uiProgress.style.width = `${(seasonProgress * 100).toFixed(1)}%`;
+
+            // 4) 나뭇잎 크기 및 바람에 흔들리는 애니메이션
+            for (let i = 0; i < totalLeaves; i++) {
+                const data = leafData[i];
+                if (!data) continue;
+
+                // 잎 크기: 겨울에는 0으로 축소되어 앙상한 가지만 남음
+                let scale = data.baseScale * curLeafScale;
+
+                // 봄에는 작게 싹터서 만개하는 효과
+                if (seasonIndex === 0 && seasonProgress < 0.3) {
+                    scale *= (seasonProgress / 0.3) * 0.7 + 0.3;
+                }
+
+                if (scale < 0.001) {
+                    scale = 0.0001;
+                }
+
+                // 부드러운 바람 흔들림
+                const sway = Math.sin(elapsedTime * data.swaySpeed + data.swayOffset) * 0.12;
+
+                dummy.position.copy(data.pos);
+                dummy.rotation.set(
+                    data.baseRot.x + sway,
+                    data.baseRot.y + sway * 0.8,
+                    data.baseRot.z + sway * 0.5
+                );
+                dummy.scale.setScalar(scale);
+                dummy.updateMatrix();
+                leafMesh.setMatrixAt(i, dummy.matrix);
+
+                // 개별 잎 색상 지터
+                tempLeafColor.copy(curLeafColor);
+                tempLeafColor.offsetHSL(data.hueVariation, 0, data.lightVariation);
+                leafMesh.setColorAt(i, tempLeafColor);
+            }
+            leafMesh.instanceMatrix.needsUpdate = true;
+            if (leafMesh.instanceColor) leafMesh.instanceColor.needsUpdate = true;
+
+            // 5) 대기 파티클 (꽃잎/낙엽/눈송이) 낙하 및 흩날림 시뮬레이션
+            const posAttr = particleGeom.attributes.position;
+            const colAttr = particleGeom.attributes.color;
+            const posArr = posAttr.array;
+            const colArr = colAttr.array;
+
+            particleMaterial.opacity = curParticleOpacity;
+
+            for (let i = 0; i < particleCount; i++) {
+                const vel = particleVelocities[i];
+                const i3 = i * 3;
+
+                // 낙하 속도
+                posArr[i3 + 1] -= vel.vy * curParticleSpeed * 0.08;
+
+                // 바람에 의한 회전 및 좌우 흔들림
+                posArr[i3 + 0] += Math.sin(elapsedTime * vel.vxOsc + vel.phase) * 0.035;
+                posArr[i3 + 2] += Math.cos(elapsedTime * vel.vzOsc + vel.phase) * 0.025;
+
+                // 바닥이나 범위 아래로 떨어지면 위에서 재생성
+                if (posArr[i3 + 1] < 0.2) {
+                    posArr[i3 + 1] = 13 + Math.random() * 4;
+                    posArr[i3 + 0] = (Math.random() - 0.5) * 22;
+                    posArr[i3 + 2] = (Math.random() - 0.5) * 22;
+                }
+
+                // 파티클 색상 보간
+                colArr[i3 + 0] = curParticleColor.r;
+                colArr[i3 + 1] = curParticleColor.g;
+                colArr[i3 + 2] = curParticleColor.b;
+            }
+            posAttr.needsUpdate = true;
+            colAttr.needsUpdate = true;
+
+            // 6) 카메라 자연스러운 자동 회전 (드래그하지 않을 때 은은하게 회전)
+            if (!isDragging) {
+                cameraAngleX += 0.0018;
+            }
+
+            const targetY = 4.2;
+            camera.position.x = Math.sin(cameraAngleX) * Math.cos(cameraAngleY) * cameraDistance;
+            camera.position.y = targetY + Math.sin(cameraAngleY) * cameraDistance * 0.7;
+            camera.position.z = Math.cos(cameraAngleX) * Math.cos(cameraAngleY) * cameraDistance;
+            camera.lookAt(0, 3.8, 0);
+
+            // 렌더링
+            renderer.render(scene, camera);
+        }
+
+        // 실행 시작
+        animate();
+    </script>
 </body>
 </html>
