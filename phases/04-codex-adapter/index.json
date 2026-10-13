@@ -4,7 +4,35 @@
   "model": "claude-opus-5-5",
   "timeout_sec": 3600,
   "steps": [
-    { "step": 0, "name": "codex-adapter", "status": "pending", "ac": ["npm run lint", "npm run typecheck", "npm test"] },
-    { "step": 1, "name": "codex-preflight-smoke", "status": "pending", "ac": ["npm run lint", "npm run typecheck", "npm test"] }
-  ]
+    {
+      "step": 0,
+      "name": "codex-adapter",
+      "status": "completed",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ],
+      "started_at": "2026-10-13T11:35:03+0900",
+      "model": "claude-opus-5-5",
+      "session_id": "2838b089-1cae-4164-8e5f-a15614e85f09",
+      "cost_usd": 3.6917,
+      "num_turns": 40,
+      "summary": "Codex CLI 어댑터(pipeline/src/adapters/codex/: codex.bin·codex.adapter·codex.errors)와 합성 JSONL fixture(pipeline/test/fixtures/codex/), 가짜 실행 함수(test/codex-fakes.ts), 테스트 4개(codex-adapter·errors·runner·bin)를 추가했다. 실제 codex는 한 번도 띄우지 않았다",
+      "handoff": "인터페이스: resolveCodexCommand({env,platform,nodePath}) → CodexCommand{bin,prefixArgs}, readCodexVersion(command, env=process.env, run=runSync), new CodexAdapter(runCli, {command, version, env}). 레지스트리의 create()는 resolveCodexCommand → readCodexVersion → new CodexAdapter 순서로 쓰면 된다.\n동기 실행 RunSync·SyncRunResult·runSync(30초, OS 임시 폴더)를 claude-code.bin.ts에서 system/cli.ts로 옮겼다(동작은 같다). claude-code-bin.test.ts는 import만 고쳤다.\n공통 한도 문구 USAGE_LIMIT_RE는 claude-code.errors.ts에 그대로 두고 codex.errors.ts가 import한다.\n가짜 실행 함수: codexExited(stdout, {exitCode, stderr, lastMessage, inspect}) — turn.completed가 있으면 마지막 agent_message를 -o 경로에 쓴다. FAKE_CODEX_COMMAND·FAKE_CODEX_VERSION('0.157.1')·CODEX_PARENT_ENV(PARENT_ENV + CODEX_HOME). fakeRunCli·exited는 claude-code-fakes.ts의 것을 쓴다. Codex fixture 이름은 stdout-<이름>.jsonl이다.\n로그인 상태(codex login status) 합성 fixture는 만들지 않았다 → step 1이 fixtures/codex/에 더하고 README 표에 적는다.\nARCHITECTURE에 없던 결정 1: 분류에는 대표 에러 문구 하나만 쓴다(turn.failed → 마지막 error 이벤트 → stderr, message와 출처가 같다). 이벤트·stderr 전체를 훑지 않는다. 앞선 재연결 메시지(stream disconnected)가 뒤의 401을 network로 바꾸지 않게 하려는 것이다.\n결정 2: maxOutputTokens가 null이 아니면 describeInvocation도 던진다(Runner가 모델을 부르기 전에 멈춘다). JSON이지만 객체가 아닌 줄(예: [1,2])도 'JSON이 아닌 줄'로 본다.\ninvocation은 ARCHITECTURE 명령 모양 그대로다(공백이 든 인자만 따옴표로 감싸므로 -c model_reasoning_effort=\"high\"가 그대로 보인다).\n남은 이슈(⚠): stderr가 message가 될 때 Codex가 경로(사용자 폴더)를 쓰면 그 경로가 meta.json에 남을 수 있다. smoke에서 stderr 내용을 확인한다. ARCHITECTURE의 ⚠ 항목은 바꾸지 않았다.",
+      "completed_at": "2026-10-13T11:48:46+0900",
+      "attempts": 1
+    },
+    {
+      "step": 1,
+      "name": "codex-preflight-smoke",
+      "status": "pending",
+      "ac": [
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
+      ]
+    }
+  ],
+  "created_at": "2026-10-13T11:35:03+0900"
 }
