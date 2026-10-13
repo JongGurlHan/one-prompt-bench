@@ -14,7 +14,11 @@ const displays = models.map((m) => m.display);
 const columnKeys = <T extends object>(columns: T) => Object.keys(columns) as (keyof T)[];
 const MODEL_COLUMNS = columnKeys(MODELS_TABLE.columns);
 const RECORD_COLUMNS = columnKeys(RECORD_TABLE.columns);
+type ModelColumn = (typeof MODEL_COLUMNS)[number];
 type RecordColumn = (typeof RECORD_COLUMNS)[number];
+
+/** 표 1 칸 옆의 각주 기호 (¶는 displayModel이 행마다 정한다 — 버린 결과물이 있는 모델, ADR-032) */
+const modelsFootnoteMark = (d: ModelDisplay, col: ModelColumn) => (col === 'generationCount' ? d.generationCountMark : '');
 
 /** 표 2 칸 옆의 각주 기호 (§ † ‡는 displayModel이 행마다 정한다) */
 const footnoteMark = (d: ModelDisplay, col: RecordColumn) =>
@@ -26,8 +30,8 @@ const footnoteMark = (d: ModelDisplay, col: RecordColumn) =>
         ? d.reasoningTokensMark
         : '';
 
-/** 표 1에서 Mono로 쓰는 칸 (날짜·크기·버전) */
-const MONO_MODEL_COLUMNS = new Set<string>(['releasedAt', 'fileSize', 'threeVersion']);
+/** 표 1에서 Mono로 쓰는 칸 (날짜·생성 횟수·크기·버전) */
+const MONO_MODEL_COLUMNS = new Set<string>(['releasedAt', 'generationCount', 'fileSize', 'threeVersion']);
 
 const HEADING_ID = { models: 'models-table-title', record: 'record-table-title', checks: 'checks-table-title' } as const;
 ---
@@ -49,27 +53,44 @@ const HEADING_ID = { models: 'models-table-title', record: 'record-table-title',
           {
             displays.map((d) => (
               <tr data-slug={d.slug}>
-                {MODEL_COLUMNS.map((col) =>
-                  col === 'displayName' ? (
-                    <th scope="row" data-col={col}>
-                      {d.displayName}
-                    </th>
-                  ) : col === 'status' ? (
-                    <td data-col={col}>
-                      <StatusBadge badge={d.status} size="table" />
-                    </td>
-                  ) : (
+                {MODEL_COLUMNS.map((col) => {
+                  if (col === 'displayName') {
+                    return (
+                      <th scope="row" data-col={col}>
+                        {d.displayName}
+                      </th>
+                    );
+                  }
+                  if (col === 'status') {
+                    return (
+                      <td data-col={col}>
+                        <StatusBadge badge={d.status} size="table" />
+                      </td>
+                    );
+                  }
+                  const mark = modelsFootnoteMark(d, col);
+                  return (
                     <td data-col={col} class:list={{ num: MONO_MODEL_COLUMNS.has(col) }}>
                       {d[col]}
+                      {mark && <sup>{mark}</sup>}
                     </td>
-                  ),
-                )}
+                  );
+                })}
               </tr>
             ))
           }
         </tbody>
       </table>
     </div>
+    <ul class="footnotes" data-field="models-footnotes">
+      {
+        MODELS_TABLE.footnotes.map((f) => (
+          <li>
+            <sup>{f.mark}</sup> {f.text}
+          </li>
+        ))
+      }
+    </ul>
   </section>
 
   <section class="block">
@@ -254,7 +275,7 @@ const HEADING_ID = { models: 'models-table-title', record: 'record-table-title',
     color: var(--text-muted);
   }
 
-  /* 각주 기호 († ‡ §) */
+  /* 각주 기호 († ‡ § ¶) */
   sup {
     margin-left: 2px;
     line-height: 0;

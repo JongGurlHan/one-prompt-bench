@@ -4,14 +4,19 @@ import { displayModel, loadResults, type ModelDisplay } from '@opb/core';
 import { chromium, type Browser, type Page } from 'playwright';
 import { TEST_BASE, buildSite } from './support/build.ts';
 import {
+  EXPECTED_COMMIT_HASHES,
   EXPECTED_ERROR_COUNT,
   EXPECTED_ORDER,
   EXPECTED_REASON,
+  EXPECTED_REGENERATION,
   FAIL_MARK_NOTE,
   FIRST_WITH_OUTPUT,
   NEWEST,
+  REGENERATED_BLANK,
+  REGENERATED_CONTINUED,
   RESPONSE_TEXT,
   makeNoOutputDataRoot,
+  makeRegeneratedFirstDataRoot,
   makeResultsTabDataRoot,
   runLog,
 } from './support/results-data.ts';
@@ -26,6 +31,7 @@ import { serveDist, type StaticServer } from './support/static-server.ts';
 let browser: Browser;
 let server: StaticServer;
 let noOutputServer: StaticServer;
+let regeneratedFirstServer: StaticServer;
 let displays: Map<string, ModelDisplay>;
 
 before(async () => {
@@ -33,6 +39,7 @@ before(async () => {
   displays = new Map((await loadResults(root)).map((e) => [e.model.slug, displayModel(e)]));
   server = await serveDist((await buildSite(root)).outDir, TEST_BASE);
   noOutputServer = await serveDist((await buildSite(await makeNoOutputDataRoot())).outDir, TEST_BASE);
+  regeneratedFirstServer = await serveDist((await buildSite(await makeRegeneratedFirstDataRoot())).outDir, TEST_BASE);
   browser = await chromium.launch();
 });
 
@@ -40,6 +47,7 @@ after(async () => {
   await browser?.close();
   await server?.close();
   await noOutputServer?.close();
+  await regeneratedFirstServer?.close();
 });
 
 interface Tab {
@@ -112,7 +120,16 @@ async function frameState(page: Page) {
   );
 }
 
-/** 카드 값이 그 모델의 displayModel 결과와 같다 */
+/** 재생성 안내 박스가 보이면 첫 줄·줄 목록, 숨어 있으면 null */
+async function shownRegeneration(page: Page) {
+  if (!(await field(page, 'regeneration').isVisible())) return null;
+  return {
+    title: await fieldText(page, 'regeneration-title'),
+    lines: (await page.locator('[data-field="regeneration-lines"] li').allTextContents()).map((t) => t.trim()),
+  };
+}
+
+/** 카드 값·재생성 안내 박스가 그 모델의 displayModel 결과와 같다 */
 async function assertCards(page: Page, slug: string) {
   const d = displays.get(slug)!;
   assert.equal(await fieldText(page, 'name'), d.displayName);
@@ -123,6 +140,7 @@ async function assertCards(page: Page, slug: string) {
   assert.deepEqual(records.map((t) => t.trim()), [d.status.label, d.requestCheck, d.errorCount, d.tokens, d.cost, d.duration], slug);
   assert.equal(await field(page, 'note').isVisible(), d.note !== null, slug);
   if (d.note !== null) assert.equal(await fieldText(page, 'note'), d.note);
+  assert.deepEqual(await shownRegeneration(page), d.regeneration, `${slug} regeneration`);
 }
 
 async function assertNothingRunning(page: Page) {
@@ -329,6 +347,94 @@ test('결과물이 하나도 없으면 맨 위 모델의 이유와 원문이 처
   await closeTab(tab);
 });
 
+/* ───────── 재생성 안내 박스 (ADR-032) ───────── */
+
+/** 안내 박스가 실행 카드 바로 위에 있고 안내 박스 토큰(경고색 아님)으로 그려졌다. 커밋 해시만 Mono이고 링크는 없다 */
+async function assertRegenerationBox(page: Page, slug: string) {
+  assert.deepEqual(await shownRegeneration(page), EXPECTED_REGENERATION[slug], slug);
+  const notice = await box(page, '[data-field="regeneration"]');
+  const run = await box(page, 'section.run');
+  assert.ok(notice.bottom <= run.top, '안내 박스는 실행 카드 위');
+  assert.ok(run.top - notice.bottom <= 24, `실행 카드 바로 위 (${run.top - notice.bottom}px)`);
+  assert.ok(Math.abs(notice.left - run.left) <= 1 && Math.abs(notice.right - run.right) <= 1, '실행 카드와 폭이 같다');
+
+  const style = await field(page, 'regeneration').evaluate((el) => {
+    const s = getComputedStyle(el);
+    const line = el.querySelector('li');
+    return {
+      background: s.backgroundColor,
+      color: s.color,
+      radius: s.borderRadius,
+      padding: s.padding,
+      fontSize: s.fontSize,
+      titleWeight: getComputedStyle(el.querySelector('[data-field="regeneration-title"]')!).fontWeight,
+      lineSize: line ? getComputedStyle(line).fontSize : null,
+      animation: s.animationName,
+    };
+  });
+  assert.deepEqual(style, {
+    background: 'rgb(233, 239, 234)', // --notice-bg
+    color: 'rgb(35, 67, 47)', // --notice-text
+    radius: '10px',
+    padding: '12px 16px',
+    fontSize: '14px',
+    titleWeight: '600',
+    lineSize: '13px',
+    animation: 'none',
+  });
+
+  const hashes = await page
+    .locator('[data-field="regeneration"] code')
+    .evaluateAll((els) => els.map((e) => ({ text: e.textContent, font: getComputedStyle(e).fontFamily })));
+  assert.deepEqual(hashes.map((h) => h.text), EXPECTED_COMMIT_HASHES[slug]);
+  for (const h of hashes) assert.match(h.font, /^"?IBM Plex Mono"?,/, h.font);
+  assert.equal(await page.locator('[data-field="regeneration"] a').count(), 0, '버린 결과물은 링크하지 않는다');
+}
+
+test('다시 생성한 모델 ↔ 아닌 모델을 버튼으로 오가면 실행 카드 위 안내 박스가 보였다 숨는다', async () => {
+  const tab = await openTab();
+  const { page } = tab;
+  await waitLoads(tab, FIRST_WITH_OUTPUT, 1);
+  assert.ok(!(await field(page, 'regeneration').isVisible()), '첫 선택 모델은 다시 생성하지 않았다');
+
+  await button(page, REGENERATED_BLANK).click();
+  await waitLoads(tab, REGENERATED_BLANK, 1);
+  await assertRegenerationBox(page, REGENERATED_BLANK);
+
+  await button(page, 'model-violation').click();
+  assert.ok(!(await field(page, 'regeneration').isVisible()));
+  assert.equal(await page.locator('[data-field="regeneration-lines"] li').count(), 0, '앞 모델의 줄이 남지 않는다');
+
+  await button(page, REGENERATED_CONTINUED).click();
+  await assertRegenerationBox(page, REGENERATED_CONTINUED);
+
+  // 다시 생성한 모델끼리 바꾸면 내용이 바뀐다
+  await button(page, REGENERATED_BLANK).click();
+  await assertRegenerationBox(page, REGENERATED_BLANK);
+
+  // 결과물이 없는 모델·첫 모델로 돌아가면 숨는다
+  for (const slug of ['model-truncated', FIRST_WITH_OUTPUT]) {
+    await button(page, slug).click();
+    assert.ok(!(await field(page, 'regeneration').isVisible()), slug);
+    await assertCards(page, slug);
+  }
+  await closeTab(tab);
+});
+
+test('첫 선택 모델이 다시 생성한 모델이면 처음부터 안내 박스가 보이고, 다른 모델을 고르면 숨는다', async () => {
+  const tab = await openTab(regeneratedFirstServer);
+  const { page } = tab;
+  await waitLoads(tab, REGENERATED_BLANK, 1);
+  assert.deepEqual(await pressedSlugs(page), [REGENERATED_BLANK]);
+  await assertRegenerationBox(page, REGENERATED_BLANK);
+
+  await button(page, 'model-violation').click();
+  assert.ok(!(await field(page, 'regeneration').isVisible()));
+  await button(page, REGENERATED_BLANK).click();
+  await assertRegenerationBox(page, REGENERATED_BLANK);
+  await closeTab(tab);
+});
+
 /* ───────── 휴대폰 (폭 < 768px): 선택기 · 범례 위치 · 설명 문구 ───────── */
 
 const picker = (page: Page) => page.locator('select[data-field="model-select"]');
@@ -479,5 +585,43 @@ test('넓은 화면(1280px): 목록이 보이고 선택기는 숨는다, 화면 
   assert.ok(await button(page, 'model-refused').isVisible());
   await assertNothingRunning(page);
   assert.deepEqual(tab.loads, [FIRST_WITH_OUTPUT, 'model-miss']);
+  await closeTab(tab);
+});
+
+test('휴대폰: 선택기로 다시 생성한 모델 ↔ 아닌 모델을 오가면 안내 박스가 보였다 숨고, 가로로 넘치지 않는다', async () => {
+  const tab = await openTab(server, undefined, PHONE);
+  const { page } = tab;
+  await waitLoads(tab, FIRST_WITH_OUTPUT, 1);
+  assert.ok(!(await field(page, 'regeneration').isVisible()));
+
+  for (const slug of [REGENERATED_CONTINUED, 'model-violation', REGENERATED_BLANK, 'model-failed', REGENERATED_CONTINUED]) {
+    await picker(page).selectOption(slug);
+    await assertSelected(page, slug);
+    await assertCards(page, slug);
+    if (EXPECTED_REGENERATION[slug]) {
+      await assertRegenerationBox(page, slug);
+      // 선택기 아래, 실행 카드 위, 화면 안
+      const notice = await box(page, '[data-field="regeneration"]');
+      assert.ok((await box(page, 'select[data-field="model-select"]')).bottom <= notice.top);
+      assert.ok(notice.left >= 0 && notice.right <= PHONE.width, `notice ${notice.left}..${notice.right}`);
+    } else {
+      assert.ok(!(await field(page, 'regeneration').isVisible()), slug);
+    }
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${slug}: 가로로 넘치지 않는다`);
+    await assertLegendBelowResult(page);
+  }
+  await closeTab(tab);
+});
+
+test('휴대폰: 첫 선택 모델이 다시 생성한 모델이면 처음 화면에 안내 박스가 보이고 넘치지 않는다', async () => {
+  const tab = await openTab(regeneratedFirstServer, undefined, PHONE);
+  const { page } = tab;
+  await waitLoads(tab, REGENERATED_BLANK, 1);
+  await assertSelected(page, REGENERATED_BLANK);
+  await assertRegenerationBox(page, REGENERATED_BLANK);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+
+  await picker(page).selectOption('model-violation');
+  assert.ok(!(await field(page, 'regeneration').isVisible()));
   await closeTab(tab);
 });

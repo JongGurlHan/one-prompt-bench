@@ -1,4 +1,4 @@
-import type { ModelDisplay, RequirementDisplay } from '@opb/core';
+import type { ModelDisplay, RegenerationNotice, RequirementDisplay } from '@opb/core';
 import { RECORD_CARD, resultFrameTitle, runCardMeta } from './copy.ts';
 import { responseTextSrc, resultSrc, viewHref } from './paths.ts';
 
@@ -31,6 +31,8 @@ export interface ResultView {
     /** 응답 원문 카드에 불러올 원문 사본. 원문을 보여 주지 않는 라벨이면 null */
     responseTextSrc: string | null;
   } | null;
+  /** 실행 카드 위 재생성 안내 박스 (ADR-032). 버린 결과물이 없으면 null */
+  regeneration: RegenerationNotice | null;
   requirements: RequirementDisplay[];
   note: string | null;
   record: Record<RecordKey, string>;
@@ -45,6 +47,7 @@ export function resultView(d: ModelDisplay): ResultView {
     missing: d.missingOutput
       ? { reason: d.missingOutput.text, responseTextSrc: d.missingOutput.showResponseText ? responseTextSrc(d.slug) : null }
       : null,
+    regeneration: d.regeneration,
     requirements: d.requirements,
     note: d.note,
     record: {

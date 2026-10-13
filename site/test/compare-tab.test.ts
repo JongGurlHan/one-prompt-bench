@@ -4,7 +4,14 @@ import { STATUS_LEGEND, displayModel, loadResults, type ModelDisplay, type Provi
 import { makeDataRoot } from '@opb/core/testing';
 import { TEST_BASE, buildSite, type BuiltSite } from './support/build.ts';
 import { element, elements, find, findAll, hasAttr, hasClass, text, urls, type Element } from './support/html.ts';
-import { EXPECTED_ERROR_COUNT, EXPECTED_ORDER, EXPECTED_TONE, TAB_CASES, makeResultsTabDataRoot } from './support/results-data.ts';
+import {
+  EXPECTED_ERROR_COUNT,
+  EXPECTED_GENERATION_COUNT,
+  EXPECTED_ORDER,
+  EXPECTED_TONE,
+  TAB_CASES,
+  makeResultsTabDataRoot,
+} from './support/results-data.ts';
 
 /* 비교표 탭(/compare/) dist 검사: 결과 탭과 같은 데이터(상태 라벨 10개 + 판정 있음/없음), 모델 0개 데이터 (빌드는 각각 한 번) */
 
@@ -13,7 +20,7 @@ const PAGE = 'compare/index.html';
 // docs/COPY.md "비교표 탭" 그대로
 const DESCRIPTION = '모델마다 어떻게 만들어졌고, 얼마나 들었고, 프롬프트를 얼마나 지켰는지 나란히 봐요. 모델은 출시일 최신순이에요.';
 const TABLES = [
-  { key: 'models', title: '수록 모델', columns: ['모델', '회사', '출시일', '생성 도구', '결과', '파일 크기', 'three.js 버전'] },
+  { key: 'models', title: '수록 모델', columns: ['모델', '회사', '출시일', '생성 도구', '결과', '생성 횟수', '파일 크기', 'three.js 버전'] },
   { key: 'record', title: '생성 기록', columns: ['모델', '입력 토큰', '출력 토큰', '그중 추론', '비용 (정가 기준)', '걸린 시간', '재시도'] },
   { key: 'checks', title: '요구사항과 검증', columns: ['모델', '장면', '계절 순환', '계절 모습', '계절 이름', '조건 검사', '에러 수'] },
 ] as const;
@@ -22,6 +29,10 @@ const FOOTNOTES = [
   '† Codex CLI는 출력 상한을 지정할 수 없어 모델 기본값으로 생성했어요. 다른 모델의 출력 상한은 65,536 토큰이에요.',
   '‡ Gemini 3.8 Flash는 추론 강도가 low·medium·high 세 단계라 high가 최고 단계예요. 다른 모델은 high 위에 단계가 더 있어요.',
   '§ Claude Code와 Codex CLI는 프롬프트 밖에 도구 정의 같은 내용을 덧붙여 보내요. 입력 토큰에 이 몫이 들어 있어요(Claude Code 약 600토큰, Codex CLI 약 7,000토큰).',
+];
+/** 표 1 아래 각주 (ADR-032) */
+const MODELS_FOOTNOTES = [
+  '¶ 다시 생성했거나 고친 결과물이에요. 화면에 나무가 그려지지 않으면 같은 프롬프트로 최대 3번까지 생성하고, 그래도 안 되면 브라우저 에러를 알려 주고 최대 2번 고치게 해요. 그래도 안 되면 수록에서 빼요. 자세한 과정은 결과 탭에 적었어요.',
 ];
 const LEGEND = ['✓ 충족 · △ 부분 충족 · ✗ 미충족 (사람이 판정)', '조건 검사: 정상 · 지시 미준수 · 위반'];
 
@@ -138,6 +149,7 @@ test('표 1 수록 모델: 회사·출시일·생성 도구·결과 배지·파�
     assert.equal(value(cell(r, 'generator')), d.generator, slug);
     assert.equal(value(cell(r, 'fileSize')), d.fileSize, slug);
     assert.equal(value(cell(r, 'threeVersion')), d.threeVersion, slug);
+    assert.equal(value(cell(r, 'generationCount')), d.generationCount, slug);
 
     const badges = findAll(cell(r, 'status').inner, 'span', hasClass('badge'));
     assert.equal(badges.length, 1, slug);
@@ -156,6 +168,40 @@ test('표 1 수록 모델: 회사·출시일·생성 도구·결과 배지·파�
   assert.equal(value(cell(row(full.html, 'models', 'model-miss'), 'threeVersion')), '미고정');
   assert.equal(value(cell(row(full.html, 'models', 'model-ok'), 'generator')), 'Claude Code');
   assert.equal(value(cell(row(full.html, 'models', 'model-miss'), 'generator')), 'Codex CLI');
+});
+
+test('표 1 생성 횟수: "결과" 다음 열이고 값은 displayModel 그대로(Mono), ¶는 버린 결과물이 있는 행의 그 칸에만 위첨자로 붙는다', () => {
+  const head = elements(element(table(full.html, 'models').inner, 'thead').inner, 'th').map((th) => text(th.inner));
+  assert.equal(head.indexOf('생성 횟수'), head.indexOf('결과') + 1);
+
+  assert.deepEqual(Object.keys(EXPECTED_GENERATION_COUNT).sort(), [...EXPECTED_ORDER].sort());
+  for (const slug of EXPECTED_ORDER) {
+    const d = full.displays.get(slug)!;
+    const r = row(full.html, 'models', slug);
+    const c = cell(r, 'generationCount');
+    assert.equal(value(c), d.generationCount, slug);
+    assert.equal(marks(c), d.generationCountMark, slug);
+    assert.equal(value(c) + marks(c), EXPECTED_GENERATION_COUNT[slug], slug);
+    assert.ok(hasClass('num')(c.attrs), `${slug}: 숫자 칸(Mono 13px)`);
+    // 표 1에서 위첨자는 생성 횟수 칸의 ¶뿐이다
+    assert.equal(elements(r.inner, 'sup').length, d.generationCountMark ? 1 : 0, slug);
+  }
+  assert.deepEqual(
+    EXPECTED_ORDER.filter((slug) => marks(cell(row(full.html, 'models', slug), 'generationCount')) === '¶'),
+    ['model-miss', 'model-fail-mark'],
+  );
+});
+
+test('표 1 아래 각주 한 줄 ¶ (COPY 그대로, 기호는 위첨자), 표 2 각주와 같은 모양', () => {
+  const modelsTable = full.html.indexOf('data-table="models"');
+  const footnotes = byField(full.html, 'ul', 'models-footnotes');
+  const at = full.html.indexOf('data-field="models-footnotes"');
+  assert.ok(at > modelsTable, '각주는 표 1 아래');
+  assert.ok(at < full.html.indexOf('data-table="record"'), '표 2보다 위');
+  const items = elements(footnotes.inner, 'li');
+  assert.deepEqual(items.map((li) => text(li.inner)), MODELS_FOOTNOTES);
+  assert.deepEqual(items.map((li) => marks(li)), ['¶']);
+  assert.equal(footnotes.attrs.get('class'), byField(full.html, 'ul', 'footnotes').attrs.get('class'));
 });
 
 /* ───────── 표 2 생성 기록 ───────── */
@@ -200,8 +246,9 @@ test('표 2 위에 비용 안내 박스, 아래에 각주 3줄(† ‡ § 순서
   const items = elements(footnotes.inner, 'li');
   assert.deepEqual(items.map((li) => text(li.inner)), FOOTNOTES);
   assert.deepEqual(items.map((li) => marks(li)), ['†', '‡', '§']);
-  // "(추가, ADR-030)"은 출처 표시라 화면에 없다
+  // "(추가, ADR-030)"·"(추가, ADR-032)"는 출처 표시라 화면에 없다
   assert.ok(!full.html.includes('ADR-030'));
+  assert.ok(!full.html.includes('ADR-032'));
   assert.ok(!text(element(full.html, 'main').inner).includes('(추가'));
 });
 
@@ -271,7 +318,7 @@ test('헤더 탭은 소개·결과·비교표·프롬프트 4개이고, 현재 �
 
 test('결과 탭에는 각주 기호가 없다 (각주는 비교표에만 있다)', async () => {
   const results = await full.site.readText('index.html');
-  for (const mark of ['§', '†', '‡']) assert.ok(!results.includes(mark), `index.html contains ${mark}`);
+  for (const mark of ['§', '†', '‡', '¶']) assert.ok(!results.includes(mark), `index.html contains ${mark}`);
 });
 
 test('비교표는 결과물을 실행하거나 직접 링크하지 않는다 (iframe·/r/ 주소 없음)', () => {
@@ -291,6 +338,7 @@ test('모델이 하나도 없어도 빌드되고 표 3개는 열 머리만 있�
     assert.deepEqual(elements(element(table(empty.html, t.key).inner, 'thead').inner, 'th').map((th) => text(th.inner)), t.columns);
   }
   assert.deepEqual(elements(byField(empty.html, 'ul', 'footnotes').inner, 'li').map((li) => text(li.inner)), FOOTNOTES);
+  assert.deepEqual(elements(byField(empty.html, 'ul', 'models-footnotes').inner, 'li').map((li) => text(li.inner)), MODELS_FOOTNOTES);
 });
 
 test('표의 행을 빼면 페이지는 모델 수와 관계없이 같다 (숫자를 하드코딩하지 않는다)', () => {
