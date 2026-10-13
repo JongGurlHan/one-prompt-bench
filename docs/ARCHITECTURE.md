@@ -164,7 +164,7 @@ env: CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536
   - 위 목록에 없던 필드: `uuid`, `ttft_stream_ms`, `time_to_request_ms`, `first_content_frame_ms`, `fast_mode_state`(`"off"`), `permission_denials`, `subagent_stats`, `safety_stops`(0), `queued_turn_count`, `result_index`. 어댑터는 쓰지 않는다.
 - 첫 실제 생성으로 확인한 것(2026-10-13, Claude 3개, 2.1.296, 원본 stdout은 남지 않아 meta.json으로 본 것):
   - 세 모델 모두 추론 토큰이 나왔다(Haiku 33,917 · Opus 31,054 · Sonnet 69,211) → `--effort high`로 추론이 켜진다(어느 단계가 적용됐는지는 출력으로 구분할 수 없다).
-  - Haiku(입력 1,052·출력 41,757)·Opus(입력 2,100·출력 46,549)는 요청 한 번으로 끝났다. Sonnet은 출력 87,265·입력 67,708로 상한 65,536을 넘었다 — 위 "이어 쓰기"가 일어나 `result`가 HTML 중간에서 시작하는 마지막 조각뿐이었고, 그때 어댑터는 `end_turn` 그대로 기록해 `no_html`이 됐다. 이 기록을 계기로 이어 쓰기를 잘림으로 보게 고쳤고, Sonnet은 고친 어댑터로 다시 생성한다(ADR-029).
+  - Haiku(입력 1,052·출력 41,757)·Opus(입력 2,100·출력 46,549)는 요청 한 번으로 끝났다. Sonnet은 출력 87,265·입력 67,708로 상한 65,536을 넘었다 — 위 "이어 쓰기"가 일어나 `result`가 HTML 중간에서 시작하는 마지막 조각뿐이었고, 그때 어댑터는 `end_turn` 그대로 기록해 `no_html`이 됐다. 이 기록을 계기로 이어 쓰기를 잘림으로 보게 고쳤고, Sonnet은 고친 어댑터로 다시 생성했다(ADR-029): 입력 1,053·출력 65,060(추론 48,767)으로 요청 한 번에 끝나 outcome ok(상한 476토큰 아래).
 - ⚠ 아직 실제 출력으로 확인하지 못한 것(합성 fixture 그대로): 이어 쓰기 없이 `stop_reason: max_tokens`가 오는 경우가 있는가(이어 쓰기 횟수를 다 쓴 경우 등)·거부(`refusal`인지, `safety_stops`와 관계있는지)가 어떻게 나오는가 — 지금은 `is_error: false` + `stop_reason`으로 가정했고, 모르는 값은 stopReason `other`로 둔다. 이어 쓰기가 일어난 실제 stdout(`num_turns`·`usage.iterations`로 드러나는지). API 키 로그인일 때 `authMethod` 값. 529·401 출력의 `api_error` 값과 `result` 문구(에러는 smoke로 일부러 만들 수 없으니 실제로 만나면 옮긴다). 시스템 프롬프트 끝 줄바꿈이 Windows 인자로 그대로 가는지는 출력으로 확인할 수 없다.
 
 **Codex CLI** (0.162.1 — 2026-10-13 0.157.1에서 업데이트. 플래그는 `codex exec --help`, 이벤트 형식·설정 키·에러 문구는 공개 소스 `openai/codex` 태그 `rust-v0.157.1`로 확인했고, `rust-v0.162.1`과 비교해 어댑터가 쓰는 부분이 같음을 확인했다 — 아래 "smoke로 확인한 것")
