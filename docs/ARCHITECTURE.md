@@ -292,13 +292,14 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
 ## 판정 도우미 (`npm run judge -- <slug>`)
 
 - `outcome`이 `ok`이고 결과물이 있는 모델만 판정할 수 있다.
-- 결과물 경로·스크린샷 경로·판정 기준 요약(`loadJudgingCriteria`)을 보여 주고, 요구사항 4개(pass/partial/fail)와 메모(1~200자)를 입력받는다. 판정 기준 요약은 물을 것이 있을 때만 보인다. 검증 전(`validation` null) 결과물은 거절하지 않고 "스크린샷 없음 — npm run validate"를 안내한 뒤 받는다.
+- 결과물 경로·스크린샷 경로·판정 기준 요약(`loadJudgingCriteria`)을 보여 주고, 요구사항 4개(pass/partial/fail)와 메모(선택, 1~200자)를 입력받는다. 판정 기준 요약은 물을 것이 있을 때만 보인다.
+- 메모는 선택이다(ADR-012). 요구사항 4개를 모두 플래그로 주면 묻지 않고 저장한다 — `--note`가 없으면 `note: null`. 입력이 없는 실행(Claude Code의 `!`)은 이 방법만 쓸 수 있다(대화형은 stdin이 없어 첫 질문에서 취소된다). 대화형에서는 메모 질문에 빈 줄(공백만 포함)로 답하면 메모 없음이다. 빈 `--note ""`는 실수일 수 있어 거절하고 "메모 없이 저장하려면 --note를 빼세요"를 안내한다. 검증 전(`validation` null) 결과물은 거절하지 않고 "스크린샷 없음 — npm run validate"를 안내한 뒤 받는다.
 - `modelSlug`, `prompt`(id·version), `outputSha256`(meta.json의 `output.sha256`), `judgedAt`(KST 오프셋)은 자동으로 채운다. 저장 전에 `JudgmentSchema`로 검사한다.
 - 기존 판정(깨진 파일 포함)이 있으면 **값 입력보다 먼저** 내용을 보여 주고 덮어쓸지 확인받는다(`--yes`면 확인 없이 덮어쓴다). 입력을 다 하고 거절하는 낭비를 막으려는 순서다.
 - 같은 값을 플래그로도 받는다: `--scene --cycle --look --label --note --yes`. 플래그 값은 `pass`·`partial`·`fail`만 받고, 대화형 입력은 `p`·`a`·`f`도 받는다. 이 플래그를 다른 명령에 쓰면 사용법 오류다.
-- 거절(저장 없이 exit 1): 모르는 slug, meta.json 없음, outcome이 `ok`가 아님, `output` null, 메모가 비었거나 200자 초과, 플래그 값 오류, 덮어쓰기 거절, 입력 취소(EOF·Ctrl+C·잘못된 입력 3회). 저장은 `judgment.json`(2칸 들여쓰기 + 끝 줄바꿈), `judgedAt`은 `+09:00` 초 단위.
+- 거절(저장 없이 exit 1): 모르는 slug, meta.json 없음, outcome이 `ok`가 아님, `output` null, `--note`가 비었거나 메모가 200자 초과, 플래그 값 오류, 덮어쓰기 거절, 입력 취소(EOF·Ctrl+C·잘못된 입력 3회). 저장은 `judgment.json`(2칸 들여쓰기 + 끝 줄바꿈), `judgedAt`은 `+09:00` 초 단위.
 - 대화형 입력(`createTerminalAsk`)은 질문마다 readline을 열고 닫는다. 여러 답을 stdin 파이프로 한꺼번에 넣는 방식은 지원하지 않는다 — 자동화는 플래그를 쓴다.
-- 실행 예: `npm run judge -- <slug>`(대화형), `npm run judge -- <slug> --scene pass --cycle partial --look pass --label fail --note "메모" [--yes]`.
+- 실행 예: `npm run judge -- <slug>`(대화형), `npm run judge -- <slug> --scene pass --cycle partial --look pass --label fail [--note "메모"] [--yes]`.
 
 ## 사이트 (Astro, `site/`)
 

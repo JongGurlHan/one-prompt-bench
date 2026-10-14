@@ -106,7 +106,7 @@ phase 1에서 반영한 변경(SDK 방식 → CLI 방식): `runtime.sdkPackage`�
 
 ## judgment.json (`JudgmentSchema`)
 
-`modelSlug`, `prompt`(`id`·`version`), `outputSha256`(판정한 결과물), `judgedAt`, `requirements`(`scene`·`seasonCycle`·`seasonLook`·`seasonLabel` 각각 `pass`/`partial`/`fail`), `note`(1~200자, 사이트의 모델별 관찰 코멘트로 그대로 노출).
+`modelSlug`, `prompt`(`id`·`version`), `outputSha256`(판정한 결과물), `judgedAt`, `requirements`(`scene`·`seasonCycle`·`seasonLook`·`seasonLabel` 각각 `pass`/`partial`/`fail`), `note`(1~200자 또는 `null`, 사이트의 모델별 관찰 코멘트로 그대로 노출). 메모는 선택이고(ADR-012), 없으면 키를 빼지 않고 `null`로 둔다. 빈 문자열은 받지 않는다(메모 없음을 나타내는 방법은 `null` 하나).
 판정 기준: `prompts/season-tree-v1.judging.md`. 결과물(`outcome: ok`)이 있는 모델만 판정한다.
 
 ## check:results (배포 게이트)
