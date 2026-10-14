@@ -5,7 +5,7 @@
 
 ## 지금 하는 일
 
-aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. phase 6(재생성 공개, ADR-032)과 8개 판정까지 main에 커밋했고 **아직 push 전**이다(origin/main `17bf737`). 남은 것은 push(배포) → 리눅스 CI 확인 → PRD 성공 기준 점검이다. 설계는 전부 `docs/`에 있다(CLAUDE.md "문서" 절).
+aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. phase 6(재생성 공개, ADR-032)과 8개 판정까지 배포했다(2026-10-14, origin/main `d66f097`). 남은 것은 PRD 성공 기준 점검이다. 설계는 전부 `docs/`에 있다(CLAUDE.md "문서" 절).
 
 ## 진행 상태
 
@@ -16,13 +16,13 @@ aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. 
 - [x] main merge(2026-10-14, `90e846a`, main에서 check:results 통과)
 - [x] 판정 메모를 선택으로 바꿈(2026-10-14 사용자 결정 — `note: null`, 요구사항 4개를 플래그로 주면 묻지 않음. `a6390e7`·`88e7aa1`, merge `086e023`, ADR-012·013 등 문서 반영)
 - [x] 8개 판정(2026-10-14, 값은 사용자가 정함, `judge` 플래그로 실행): 7개는 4개 모두 pass·메모 없음, Gemini 3.8 Flash는 계절 모습 partial + 메모 "나무 컬러 변화 적용안됨(전부 검정색)". check:results 통과, 개발 서버 결과 탭·비교표 표 3에서 확인
-- [ ] push(배포) → 리눅스 CI(phase 5·6 브라우저 테스트가 처음 돈다) 확인 → PRD 성공 기준 점검
+- [x] push(2026-10-14, 사용자 지시) → 배포 run 38503814228 성공(리눅스에서 phase 5·6 브라우저 테스트 처음 통과) → 공개 사이트에서 안내 박스(버튼·375px 선택기)·생성 횟수 열·¶ 각주·바뀐 문구·판정·Gemini 메모 확인
+- [ ] PRD 성공 기준 점검
 
 ## 다음 세션이 바로 할 일
 
-1. push가 됐는지 본다(`git status` — origin/main보다 앞서 있으면 아직). push는 사용자 확인을 받고 한다.
-2. push 뒤 배포 워크플로(리눅스)를 본다(`gh run list --limit 3`). 실패하면 브라우저 테스트(phase 5·6에서 처음 리눅스로 돈다)와 `ubuntu-latest` 변경(2026-10-19부터 Ubuntu 26 — playwright `--with-deps`)부터 확인한다. 성공하면 공개 사이트에서 안내 박스·생성 횟수·판정을 확인한다.
-3. PRD 성공 기준을 하나씩 점검해 사용자에게 보고한다.
+1. `docs/PRD.md`의 성공 기준을 하나씩 공개 사이트(https://jonggurlhan.github.io/one-prompt-bench/)와 레포로 점검해 사용자에게 보고한다. 못 맞춘 것이 있으면 다음 phase 후보로 정리한다.
+2. 배포 워크플로가 다시 돌 때 실패하면 `ubuntu-latest` 변경(2026-10-19부터 Ubuntu 26 — playwright `--with-deps`)부터 확인한다.
 
 ## 사용자 결정·답변
 
@@ -30,7 +30,7 @@ aquagarden-bench를 참고한 LLM 벤치마크 사이트(One Prompt Bench) MVP. 
 
 ## 주의할 점
 
-- git: origin/main = `17bf737`(배포됨). main에 push하면 배포 워크플로가 돈다. **push는 phase 6 merge와 판정 뒤에** 한다 — 그 전에 push하면 다시 생성한 결과물이 아무 표시 없이 공개된다. 원격 `feat-02-validator-results-tab`은 `209e652`까지만 올라가 있다. 로컬에 `feat-01`~`feat-06`·`fix-optional-judgment-note` 브랜치가 남아 있다. Windows를 흉내 내는 테스트에서 파일을 만들 때는 대소문자까지 실제 이름대로 만든다(리눅스 CI는 구분한다).
+- git: origin/main = `d66f097`(배포됨, 이 PROGRESS 갱신 커밋은 아직 push 안 함). main에 push하면 배포 워크플로가 돈다. 원격 `feat-02-validator-results-tab`은 `209e652`까지만 올라가 있다. 로컬에 `feat-01`~`feat-06`·`fix-optional-judgment-note` 브랜치가 남아 있다. Windows를 흉내 내는 테스트에서 파일을 만들 때는 대소문자까지 실제 이름대로 만든다(리눅스 CI는 구분한다).
 - `git merge --no-ff`를 브랜치 이름 없이 main에서 실행하면 upstream이 없어 실패한다(2026-10-13 사용자가 한 번 그랬다, 아무 일도 안 일어남).
 - gh 계정: 이 PC의 `gh`에 JongGurlHan·LeoMetascale 두 계정이 있고, 사용자가 **활성 계정을 JongGurlHan으로 두라고 했다**(LeoMetascale로 되돌리지 않는다). JongGurlHan 토큰에는 `workflow` 권한이 있다. LeoMetascale이 활성이면 push가 workflow 권한 없음으로 거부된다.
 - 이 PC 환경(2026-10-12 확인): Claude Code 2.1.296, codex-cli 0.162.1, Node 24.14, npm 11.9, Python 3.12, Windows + Git Bash. 환경변수에 ANTHROPIC/OPENAI/GEMINI 키 없음. `.env`에 GEMINI_API_KEY 있음(값은 읽지 않는다). 터미널 출력이 cp949라 Python으로 한글을 출력할 때는 `PYTHONIOENCODING=utf-8`이 필요하다.
