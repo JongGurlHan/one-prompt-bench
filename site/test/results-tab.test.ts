@@ -1,26 +1,32 @@
 import assert from 'node:assert/strict';
 import { before, test } from 'node:test';
 import { displayModel, loadResults, sortByRelease, type ModelDisplay } from '@opb/core';
-import { makeDataRoot } from '@opb/core/testing';
+import { FAKE_COMMIT, FAKE_DISCARDED_COMMIT, makeDataRoot } from '@opb/core/testing';
 import type { ResultView } from '../src/lib/results-view.ts';
 import { TEST_BASE, buildSite, type BuiltSite } from './support/build.ts';
-import { element, elements, find, findAll, hasAttr, hasClass, text } from './support/html.ts';
+import { decodeEntities, element, elements, find, findAll, hasAttr, hasClass, text, urls } from './support/html.ts';
 import {
+  EXPECTED_COMMIT_HASHES,
   EXPECTED_ERROR_COUNT,
   EXPECTED_ORDER,
   EXPECTED_REASON,
+  EXPECTED_REGENERATION,
   EXPECTED_TONE,
   FAIL_MARK_NOTE,
   FIRST_WITH_OUTPUT,
   NO_OUTPUT_SLUGS,
+  REGENERATED_BLANK,
+  REGENERATED_FIRST_SLUGS,
   RESPONSE_MARK,
   RESPONSE_TEXT,
   TAB_CASES,
   makeNoOutputDataRoot,
+  makeRegeneratedFirstDataRoot,
   makeResultsTabDataRoot,
 } from './support/results-data.ts';
 
-/* 결과 탭(/) dist 검사: 모든 상태 + 판정 있음/없음 데이터, 결과물이 하나도 없는 데이터 (빌드는 각각 한 번) */
+/* 결과 탭(/) dist 검사: 모든 상태 + 판정 있음/없음 데이터, 결과물이 하나도 없는 데이터,
+ * 첫 선택 모델을 다시 생성한 데이터 (빌드는 각각 한 번) */
 
 const LEGEND = ['정상', '지시 미준수', '위반', '잘림', 'HTML 없음', '거부', '한도 초과', '생성 실패', '생성 전', '검증 전'];
 const REQUIREMENTS = ['장면', '계절 순환', '계절 모습', '계절 이름'];
@@ -37,6 +43,7 @@ interface Built {
 
 let full: Built;
 let noOutput: Built;
+let regeneratedFirst: Built;
 
 async function build(dataRoot: string): Promise<Built> {
   const site = await buildSite(dataRoot);
@@ -47,6 +54,7 @@ async function build(dataRoot: string): Promise<Built> {
 before(async () => {
   full = await build(await makeResultsTabDataRoot());
   noOutput = await build(await makeNoOutputDataRoot());
+  regeneratedFirst = await build(await makeRegeneratedFirstDataRoot());
 });
 
 /* ───────── 페이지에서 꺼내기 ───────── */
@@ -318,6 +326,75 @@ test('응답 원문은 빌드 HTML에 넣지 않고, {N}은 모델 수로 바뀐
   assert.ok(text(element(noOutput.html, 'main').inner).includes(`모델 ${NO_OUTPUT_SLUGS.length}개`));
   // 원문 사본은 있다 (선택할 때 fetch)
   for (const slug of Object.keys(RESPONSE_TEXT)) assert.ok(full.site.has(`r/${slug}/response.txt`), slug);
+});
+
+/* ───────── 재생성 안내 박스 (ADR-032) ───────── */
+
+/** 태그만 지운 글자 (text()와 달리 태그 자리에 공백을 넣지 않는다 — 줄 안의 <code> 해시 앞뒤가 붙어 있다) */
+const plain = (html: string) => decodeEntities(html.replace(/<[^>]*>/g, '')).trim();
+const regenerationBox = (html: string) => byField(html, 'div', 'regeneration');
+/** 안내 박스에 보이는 첫 줄·줄 목록 */
+const shownRegeneration = (html: string) => {
+  const box = regenerationBox(html);
+  return {
+    title: plain(find(box.inner, 'p', hasAttr('data-field', 'regeneration-title')).inner),
+    lines: findAll(find(box.inner, 'ul', hasAttr('data-field', 'regeneration-lines')).inner, 'li').map((li) => plain(li.inner)),
+  };
+};
+
+test('재생성 안내 박스는 실행 카드 바로 위에 하나 있고, 첫 선택 모델에 버린 결과물이 없으면 비어 있고 숨겨져 있다', () => {
+  for (const { html } of [full, noOutput, regeneratedFirst]) {
+    assert.equal(findAll(html, 'div', hasAttr('data-field', 'regeneration')).length, 1);
+    const result = find(html, 'div', hasClass('result')).inner;
+    const at = result.indexOf('data-field="regeneration"');
+    assert.ok(at >= 0, '안내 박스는 결과 칸 안에 있다');
+    assert.ok(at < result.indexOf('<section'), '결과 칸의 첫 요소(실행 카드 위)');
+    assert.equal(find(result, 'section').attrs.get('aria-labelledby'), 'run-name', '바로 다음은 실행 카드');
+  }
+  for (const { html } of [full, noOutput]) {
+    assert.ok(regenerationBox(html).attrs.has('hidden'));
+    assert.deepEqual(shownRegeneration(html), { title: '', lines: [] });
+  }
+});
+
+test('첫 선택 모델이 다시 생성한 모델이면 안내 박스가 빌드 HTML에 COPY 그대로 들어 있고 숨겨져 있지 않다', () => {
+  assert.deepEqual(pressed(regeneratedFirst.html), [REGENERATED_BLANK]);
+  assert.deepEqual(selectedOptions(regeneratedFirst.html), [REGENERATED_BLANK]);
+  assert.ok(!regenerationBox(regeneratedFirst.html).attrs.has('hidden'));
+  assert.deepEqual(shownRegeneration(regeneratedFirst.html), EXPECTED_REGENERATION[REGENERATED_BLANK]);
+  assert.deepEqual(shownRegeneration(regeneratedFirst.html), regeneratedFirst.displays.get(REGENERATED_BLANK)!.regeneration);
+  // 커밋 해시(앞 7자)만 Mono(<code>)이고 글자는 그대로다
+  assert.deepEqual(
+    elements(regenerationBox(regeneratedFirst.html).inner, 'code').map((c) => plain(c.inner)),
+    EXPECTED_COMMIT_HASHES[REGENERATED_BLANK],
+  );
+  // 결과물은 첫 선택 모델 것 하나만 실행된다
+  assert.deepEqual(elements(regeneratedFirst.html, 'iframe').map((f) => f.attrs.get('src')), [`${TEST_BASE}r/${REGENERATED_BLANK}/index.html`]);
+});
+
+test('모델별 값(JSON)의 regeneration은 displayModel 값 그대로이고, 버린 결과물이 있는 모델만 COPY 문구를 갖는다', () => {
+  for (const b of [full, noOutput, regeneratedFirst]) {
+    for (const v of views(b.html)) {
+      assert.deepEqual(v.regeneration, b.displays.get(v.slug)!.regeneration, v.slug);
+      assert.deepEqual(v.regeneration, EXPECTED_REGENERATION[v.slug] ?? null, v.slug);
+    }
+  }
+  assert.deepEqual(
+    views(full.html).filter((v) => v.regeneration).map((v) => v.slug).sort(),
+    Object.keys(EXPECTED_REGENERATION).sort(),
+  );
+  assert.deepEqual(views(regeneratedFirst.html).map((v) => v.slug), REGENERATED_FIRST_SLUGS);
+});
+
+test('버린 결과물은 실행하거나 링크하지 않는다: 커밋 해시는 글자(앞 7자)로만 있고 전체 해시·커밋 주소가 없다', () => {
+  for (const { html } of [full, regeneratedFirst]) {
+    for (const hash of [FAKE_DISCARDED_COMMIT, FAKE_COMMIT]) assert.ok(!html.includes(hash), `full hash ${hash} in page`);
+    assert.deepEqual(elements(regenerationBox(html).inner, 'a'), []);
+    for (const url of urls(html)) assert.doesNotMatch(url, /9876543|0123456|commit/, url);
+    // "(추가, ADR-032)" 같은 출처 표시나 수정본 문구는 없다
+    assert.ok(!html.includes('ADR-032'));
+    assert.ok(!text(element(html, 'main').inner).includes('수정 '));
+  }
 });
 
 /* ───────── 결과물이 하나도 없을 때 ───────── */

@@ -10,6 +10,7 @@ import {
   FAKE_MODELS,
   STATUS_CASES,
   buildResult,
+  fakeDiscarded,
   fakeModel,
   makeDataRoot,
   writeResult,
@@ -94,4 +95,27 @@ test('buildResult: 모든 상태 사례가 스키마를 통과하고, 잘못된 
   assert.throws(() =>
     buildResult(FAKE_MODELS[0]!, { outcome: 'ok', judgment: { note: '' } }),
   );
+});
+
+test('fakeModel: discarded를 주면 그대로 넣고, 주지 않으면 키가 없다 (models.json에 쓰고 읽어도 같다)', async () => {
+  const plain = fakeModel('x', 'openai', '2026-09-01', 'X');
+  assert.ok(!('discarded' in plain));
+
+  const records = [fakeDiscarded(), fakeDiscarded({ reason: 'continued_output', commit: null, at: '2026-10-14' })];
+  const regenerated = fakeModel('y', 'anthropic', '2026-09-02', 'Y', {}, records);
+  assert.deepEqual(regenerated.discarded, records);
+  assert.deepEqual(records[0], {
+    made: 'generation',
+    reason: 'blank_screen',
+    next: 'regenerate',
+    at: '2026-10-13',
+    commit: records[0]!.commit,
+  });
+  assert.match(records[0]!.commit!, /^[a-f0-9]{40}$/);
+
+  const root = await makeDataRoot([plain, regenerated]);
+  const models = ModelRegistrySchema.parse(JSON.parse(await readFile(path.join(root, 'models.json'), 'utf8')));
+  assert.deepEqual(models, [plain, regenerated]);
+  // 버린 결과물 기록이 있어도 결과 폴더는 같은 방식으로 만든다
+  await writeResult(root, 'y', { outcome: 'ok' });
 });

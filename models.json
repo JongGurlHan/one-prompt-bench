@@ -36,7 +36,16 @@
       "outputPer1M": 10,
       "asOf": "2026-10-10",
       "sourceUrl": "https://platform.claude.com/docs/en/models/overview"
-    }
+    },
+    "discarded": [
+      {
+        "made": "generation",
+        "reason": "continued_output",
+        "next": "regenerate",
+        "at": "2026-10-13",
+        "commit": null
+      }
+    ]
   },
   {
     "slug": "claude-opus-5-5",
@@ -75,7 +84,23 @@
       "outputPer1M": 10,
       "asOf": "2026-10-10",
       "sourceUrl": "https://developers.openai.com/api/docs/models/gpt-6-sol"
-    }
+    },
+    "discarded": [
+      {
+        "made": "generation",
+        "reason": "blank_screen",
+        "next": "regenerate",
+        "at": "2026-10-13",
+        "commit": "f0e698868f321729a36937aca7bca80966c706f9"
+      },
+      {
+        "made": "generation",
+        "reason": "blank_screen",
+        "next": "regenerate",
+        "at": "2026-10-14",
+        "commit": "a766e4f00b5a80c4bd1bb1272f5a36f4ed3ae996"
+      }
+    ]
   },
   {
     "slug": "gpt-6-astra",
@@ -101,6 +126,15 @@
       "outputPer1M": 3.75,
       "asOf": "2026-10-10",
       "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing"
-    }
+    },
+    "discarded": [
+      {
+        "made": "generation",
+        "reason": "blank_screen",
+        "next": "regenerate",
+        "at": "2026-10-14",
+        "commit": "eac58e07bb8d3d6ffdb1a4ba7ddc6eabd15d4ff0"
+      }
+    ]
   }
 ]

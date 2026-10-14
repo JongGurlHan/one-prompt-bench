@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-/** preflight·runtime.gitCommit에 쓰는 git 조회. 테스트는 가짜를 주입한다 (실제 git 결과는 작업 트리에 따라 달라진다) */
+/** preflight·runtime.gitCommit·--force 버리기 전 커밋 검사에 쓰는 git 조회. 테스트는 가짜를 주입한다 (실제 git 결과는 작업 트리에 따라 달라진다) */
 export interface GitClient {
   /** `git status --porcelain -- <paths…>` 출력 그대로. 빈 문자열 = 변경 없음 */
   status(paths: readonly string[]): Promise<string>;

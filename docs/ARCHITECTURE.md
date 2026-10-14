@@ -104,8 +104,8 @@ models.json ─▶ Batch ─▶ Runner(재시도·타임아웃·저장·비용) 
 - `usage_limit`(구독 한도)는 바로 재시도하지 않고 기록한 뒤 다음 모델로 넘어간다. 한도가 풀린 뒤 다시 실행하면 그 모델만 돈다.
 - outcome이 `ok`면 바로 검증기(`VALIDATOR` 토큰 = `PlaywrightValidator`)를 실행한다. 검증이 실패해도 batch는 계속하고 `validation`은 null로 남긴다(나중에 `npm run validate`).
 - meta.json이 스키마를 통과하지 못하거나 `modelSlug`가 폴더 이름과 다르면 건드리지 않고 실패로 보고한 뒤 다음 모델로 간다(`--force`면 확인 목록에 넣고 비운다).
-- 순서: 대상 선택 → preflight → HEAD 커밋 → 프롬프트 1회 로드(깨진 프롬프트로 폴더를 비우지 않게) → 폴더 상태 판정 → `--force` 확인 → 순차 실행 → 요약표.
-- 종료 코드: preflight 실패·사용법 오류·`--force` 거절·깨진 meta.json·모델 처리 중 예외·검증기 오류면 1. 모델 outcome이 `api_failed`(한도 초과 포함)인 것은 기록이 정상으로 남은 것이라 0.
+- 순서: 대상 선택 → preflight → HEAD 커밋 → 프롬프트 1회 로드(깨진 프롬프트로 폴더를 비우지 않게) → 폴더 상태 판정 → (`--force`) 버리기 전 커밋 검사 → `--force` 확인 → 순차 실행 → 요약표.
+- 종료 코드: preflight 실패·사용법 오류·버리기 전 커밋 검사 실패(git status 실패 포함)·`--force` 거절·깨진 meta.json·모델 처리 중 예외·검증기 오류면 1. 모델 outcome이 `api_failed`(한도 초과 포함)인 것은 기록이 정상으로 남은 것이라 0.
 - **preflight** (실제 호출 전 자동 점검, 하나라도 실패하면 아무것도 호출하지 않고 종료):
   - 환경변수에 `ANTHROPIC_API_KEY`·`OPENAI_API_KEY`가 없다(빈 문자열로 있어도 실패).
   - 대상 모델의 생성 도구마다 어댑터가 등록돼 있다. 어댑터가 아직 없는 도구가 섞이면 아무것도 호출하지 않는다. 도구별 인증 점검(아래 두 항목)은 그 도구의 어댑터와 함께 만든다.
@@ -114,10 +114,11 @@ models.json ─▶ Batch ─▶ Runner(재시도·타임아웃·저장·비용) 
   - Google 대상이 있으면 `.env`에 `GEMINI_API_KEY`가 있다 (값은 출력하지 않는다).
   - `packages/`, `pipeline/`, `prompts/`, `models.json`에 커밋 안 된 변경이 없다 — meta.json의 `gitCommit`이 실제 코드를 가리키게.
 
-### 다시 생성·수정 요청 (ADR-032 — 버리기 전 커밋 검사는 phase 6, `--repair`는 필요해질 때 구현)
+### 다시 생성·수정 요청 (ADR-032 — 버리기 전 커밋 검사는 phase 6에서 구현, `--repair`는 필요해질 때 구현)
 
-나무가 그려지지 않은 결과물의 사다리(다시 생성 총 3회 → 수정 요청 2회 → 수록 제외)는 사람이 명령으로 밟는다. 기록 모양과 불변식은 DATA "스키마 변경 예정".
+나무가 그려지지 않은 결과물의 사다리(다시 생성 총 3회 → 수정 요청 2회 → 수록 제외)는 사람이 명령으로 밟는다. 기록 모양은 DATA "버린 결과물", 불변식은 DATA "check:results" 규칙 10(수정본 불변식은 "스키마 변경 예정").
 - **버리기 전 커밋 검사**: `--force`·`--repair`는 버릴 결과 폴더(`results/<slug>/`)에 git HEAD와 다른 변경(수정·삭제·새 파일)이 있으면 아무것도 하지 않고 멈춘다(exit 1). 버린 결과물의 증거가 git에 남아야 하기 때문이다. 예외: 폴더의 meta.json이 `api_failed`이거나 meta.json이 없는 경우(표본이 아님).
+  - `--force` 구현(phase 6, `batch.ts` `needsCommitBeforeDiscard`·`uncommittedMessage`): 파일이 있는 비울 폴더 중 표본(meta.json이 정상 기록이고 `api_failed`가 아님, 또는 meta.json이 깨짐 — 무엇인지 모르므로 엄격하게)마다 `git status --porcelain -- results/<slug>/`를 본다. 하나라도 출력이 있으면 확인을 묻기 전에 폴더별 변경 목록과 "먼저 커밋하세요(ADR-032 — 버린 결과물은 git에 남아야 한다)"를 출력하고 exit 1. git status가 실패해도 아무것도 지우지 않고 exit 1. `--force` 없는 실행(`api_failed`·중단된 폴더를 다시 돌리는 경로)은 검사하지 않는다.
 - **`gen <slug> --repair`**: slug 정확히 1개, `--all`·`--force`와 함께 쓸 수 없다. 대상은 meta.json이 스키마를 통과하고 outcome `ok`, `output`·`validation`이 있는 모델이다. 지금 결과물이 수정본이면 `repair.round`가 상한(2)이면 거절한다. 생성본 횟수 상한(3)을 다 썼는지는 `models.json` `discarded`로 알 수 있지만, 사다리 순서를 지키는 것은 사람 몫이고 명령은 수정 횟수만 막는다.
   - 요청문: `prompts/<id>-<version>.repair.md`(지금 `season-tree-v1.repair.md`, 프롬프트 파일과 같은 읽기 규칙 — LF·BOM 없음·UTF-8)의 자리표시를 채운다. `{{PROMPT}}` = 원래 user 프롬프트 파일 내용 그대로, `{{HTML}}` = 지금 `results/<slug>/index.html` 내용 그대로, `{{ERRORS}}` = 에러 목록. 자리표시가 정확히 한 번씩 있지 않으면 에러로 멈춘다(모델을 부르지 않는다).
   - 에러 목록: `validation.pageErrors` 다음 `consoleErrors`를 등장 순서대로, 같은 문구는 한 번만 `{문구} ({N}번)` 한 줄씩. 서로 다른 문구는 최대 20개, 문구는 500자까지(넘으면 자르고 `…`). 하나도 없으면 `기록된 에러는 없어요.`. 실제로 넣은 목록을 meta.json `repair.errors`에 남긴다.
@@ -313,8 +314,9 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
   - 첫 선택 모델(ADR-025)은 빌드 때 HTML로 그린다. 모델 전부의 표시 값(`ResultView`)은 `<script type="application/json" id="result-views">`로 넣고(`<`는 `<`로 이스케이프), 클라이언트는 그 값을 그대로 옮긴다. 라벨·포맷을 클라이언트에서 다시 계산하지 않는다.
   - 결과물 iframe은 페이지에 하나다. 결과물이 없는 모델을 고르면 iframe을 문서에서 떼어 내서 앞의 결과물이 멈추게 하고, 결과물이 있는 모델을 고르면 src를 먼저 바꾼 뒤 다시 붙인다(한 번만 로드). "다시 시작"은 같은 src를 다시 설정한다. 이미 고른 모델을 다시 누르면 아무것도 하지 않는다.
   - 결과물이 없는 모델은 이유를 보여 주고, 응답 원문(response.txt)은 그 모델을 고를 때 `fetch`로 불러온다(첫 화면 용량을 줄이기 위해). 늦게 온 앞 모델의 원문은 버리고, 받은 원문은 캐시한다.
-- site 테스트가 쓰는 DOM 계약(바꾸면 테스트도 함께 바꾼다): `[data-results-tab]`, `button[data-slug][aria-pressed]`, `[data-field=…]`, `dd[data-req=<key>][data-mark]`, `dd[data-record=<key>]`, `[data-action=restart|open]`, 휴대폰 선택기 `select[data-field=model-select]`(`label[for=model-select]`)와 설명 문구 `span[data-screen=wide|narrow]`.
-  - 비교표(`/compare/`): `table[data-table=models|record|checks]`, 행 `tr[data-slug]`, 칸 `td[data-col=<ModelDisplay 키>]`, 판정 칸 `td[data-col=<RequirementKey>][data-mark=pass|partial|fail|none]`, `p[data-field=notice]`, `ul[data-field=footnotes]`, `div[data-field=legend]`. 표 컨테이너는 `div.table-wrap[role=region][tabindex=0]`.
+  - 재생성 안내 박스(ADR-032)는 페이지에 한 벌이다. `ResultView.regeneration`(core `ModelDisplay.regeneration` 그대로, 없으면 null)을 JSON으로 넘기고, 모델을 고를 때 내용과 `hidden`을 바꾼다. 줄 끝의 커밋 해시만 `<code>`(Mono)로 떼어 그리는데, 나누는 함수 `src/lib/regeneration-line.ts`(`commitHashParts`, 이으면 원문 그대로)는 import가 없어서 빌드 HTML과 클라이언트 스크립트가 함께 쓰고 core가 클라이언트 번들에 들어가지 않는다.
+- site 테스트가 쓰는 DOM 계약(바꾸면 테스트도 함께 바꾼다): `[data-results-tab]`, `button[data-slug][aria-pressed]`, `[data-field=…]`, `dd[data-req=<key>][data-mark]`, `dd[data-record=<key>]`, `[data-action=restart|open]`, 휴대폰 선택기 `select[data-field=model-select]`(`label[for=model-select]`)와 설명 문구 `span[data-screen=wide|narrow]`. 재생성 안내 박스는 `.result`의 첫 요소 `div[data-field=regeneration]`(버린 결과물이 없으면 `hidden`) > `p[data-field=regeneration-title]` + `ul[data-field=regeneration-lines]` > `li`(커밋 해시 7자만 `<code>`).
+  - 비교표(`/compare/`): `table[data-table=models|record|checks]`, 행 `tr[data-slug]`, 칸 `td[data-col=<ModelDisplay 키>]`(표 1 "생성 횟수"는 `td[data-col=generationCount]`, ¶는 `<sup>`), 판정 칸 `td[data-col=<RequirementKey>][data-mark=pass|partial|fail|none]`, `p[data-field=notice]`, 표 1 각주 `ul[data-field=models-footnotes]`, 표 2 각주 `ul[data-field=footnotes]`, `div[data-field=legend]`. 표 컨테이너는 `div.table-wrap[role=region][tabindex=0]`.
   - 프롬프트(`/prompt/`): `section[data-field=prompt-card]`, `button[data-action=copy][data-copied-label]`, `script#prompt-source`(원문 JSON), `dd[data-condition=count|reasoning|outputLimit|generators|retry|systemPrompt]`, `section#judge`, `table[data-table=criteria]`. 소개(`/intro/`): `div[data-field=cards]`의 `section[data-card=what|how|caution]`, `section[data-field=inclusion]`.
   - 테스트: 복사 버튼은 Playwright `page.clock.pauseAt`으로 시계를 멈추고 `runFor`로만 흐르게 한다(`install()`만 하면 가짜 시계도 실제 시간대로 흘러 느린 환경에서 흔들린다). 헤더 탭 목록이 바뀌면 `build-output`·`compare-tab`·`prompt-intro-tabs` 테스트의 기대값을 함께 고친다.
 - 클라이언트 동작(모델 전환, 다시 시작, 복사 버튼, 휴대폰 드롭다운)은 Astro `<script>`의 순수 TypeScript로 만든다. UI 프레임워크(React 등)는 쓰지 않는다.

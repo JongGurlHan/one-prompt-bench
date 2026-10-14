@@ -28,6 +28,11 @@
       "status": "completed",
       "blocked_at": "2026-10-13T19:43:03+0900",
       "completed_at": "2026-10-13T21:25:03+0900"
+    },
+    {
+      "dir": "06-regeneration-disclosure",
+      "status": "completed",
+      "completed_at": "2026-10-14T03:35:09+0900"
     }
   ]
 }

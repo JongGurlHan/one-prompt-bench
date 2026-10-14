@@ -23,6 +23,7 @@ import {
   THREE_PINNED_URL,
   THREE_UNPINNED_URL,
   buildResult,
+  fakeDiscarded,
   fakeModel,
   type FakeResult,
 } from './support/testing.js';
@@ -395,6 +396,90 @@ test('입력 토큰 §는 생성 도구가 Claude Code 또는 Codex CLI인 행 (
   }
 });
 
+/* ───────── 생성 횟수·재생성 안내 (ADR-032, COPY "다시 생성하거나 고친 결과물") ───────── */
+
+const SOL_COMMITS = ['f0e698868f321729a36937aca7bca80966c706f9', 'a766e4f00b5a80c4bd1bb1272f5a36f4ed3ae996'] as const;
+/** 레포의 기록 3개와 같은 모양 */
+const sol = fakeModel('model-sol', 'openai', '2026-09-22', 'Model Sol', {}, [
+  fakeDiscarded({ at: '2026-10-13', commit: SOL_COMMITS[0] }),
+  fakeDiscarded({ at: '2026-10-14', commit: SOL_COMMITS[1] }),
+]);
+const flash = fakeModel('model-flash', 'google', '2026-09-02', 'Model Flash', {}, [
+  fakeDiscarded({ at: '2026-10-14', commit: 'eac58e07bb8d3d6ffdb1a4ba7ddc6eabd15d4ff0' }),
+]);
+const sonnet = fakeModel('model-sonnet', 'anthropic', '2026-09-28', 'Model Sonnet', {}, [
+  fakeDiscarded({ reason: 'continued_output', at: '2026-10-13', commit: null }),
+]);
+
+test('생성 횟수: 버린 생성본 수 + 1, 버린 결과물이 있으면 ¶ (DATA "생성 횟수")', () => {
+  const sol3 = show(sol, { outcome: 'ok' });
+  assert.deepEqual([sol3.generationCount, sol3.generationCountMark], ['3회', '¶']);
+  const flash2 = show(flash, { outcome: 'ok' });
+  assert.deepEqual([flash2.generationCount, flash2.generationCountMark], ['2회', '¶']);
+  const sonnet2 = show(sonnet, { outcome: 'truncated' });
+  assert.deepEqual([sonnet2.generationCount, sonnet2.generationCountMark], ['2회', '¶']);
+
+  // 버린 결과물이 없으면 1회, 기호 없음 (결과물이 없어도 응답이 온 기록은 생성을 한 번 한 것이다)
+  for (const spec of [{ outcome: 'ok' }, { outcome: 'no_html' }, { outcome: 'truncated' }, { outcome: 'refused' }] as const) {
+    const d = show(anthropic, spec);
+    assert.deepEqual([d.generationCount, d.generationCountMark], ['1회', ''], spec.outcome);
+  }
+  // meta.json이 없으면 — (기호는 버린 결과물 기준이라 그대로 — check:results가 막는 상태)
+  assert.deepEqual([show(anthropic, null).generationCount, show(anthropic, null).generationCountMark], ['—', '']);
+  assert.deepEqual([show(sol, null).generationCount, show(sol, null).generationCountMark], ['—', '¶']);
+});
+
+test('생성 횟수: 응답이 오지 않은 기록(api_failed)은 표본이 아니라 — (ADR-032, 2026-10-14 사용자 결정)', () => {
+  for (const failure of ['timeout', 'usage_limit'] as const) {
+    const d = show(anthropic, { outcome: 'api_failed', failure });
+    assert.deepEqual([d.generationCount, d.generationCountMark], ['—', ''], failure);
+  }
+  // 버린 결과물이 있는 모델은 check:results가 막는 상태 — 기호는 그대로
+  const solFailed = show(sol, { outcome: 'api_failed', failure: 'timeout' });
+  assert.deepEqual([solFailed.generationCount, solFailed.generationCountMark], ['—', '¶']);
+});
+
+test('재생성 안내: 첫 줄 + 버린 결과물마다 한 줄(오래된 것부터), 커밋은 앞 7자 — COPY 문구 그대로', () => {
+  assert.deepEqual(show(sol, { outcome: 'ok' }).regeneration, {
+    title: '3번째로 생성한 결과물이에요.',
+    lines: [
+      '1번째 생성: 화면에 나무가 그려지지 않아 다시 생성했어요. (커밋 f0e6988)',
+      '2번째 생성: 화면에 나무가 그려지지 않아 다시 생성했어요. (커밋 a766e4f)',
+    ],
+  });
+  assert.deepEqual(show(flash, { outcome: 'ok' }).regeneration, {
+    title: '2번째로 생성한 결과물이에요.',
+    lines: ['1번째 생성: 화면에 나무가 그려지지 않아 다시 생성했어요. (커밋 eac58e0)'],
+  });
+  // 커밋하기 전에 버린 결과물 (ADR-029 Sonnet)
+  assert.deepEqual(show(sonnet, { outcome: 'ok' }).regeneration, {
+    title: '2번째로 생성한 결과물이에요.',
+    lines: [
+      '1번째 생성: 생성 도구가 출력 상한을 넘겨 이어 쓴 응답을 잘못 기록해서, 그 기록을 버리고 다시 생성했어요. (기록은 남아 있지 않아요)',
+    ],
+  });
+});
+
+test('재생성 안내: 버린 결과물이 없는 모델은 null (안내 박스 없음)', () => {
+  assert.equal(show(anthropic, { outcome: 'ok' }).regeneration, null);
+  assert.equal(show(google, null).regeneration, null);
+  for (const c of STATUS_CASES) assert.equal(show(c.model, c.result).regeneration, null, c.label);
+});
+
+test('재생성 안내: 수정 요청 항목은 아직 문구가 없어 표시하지 않고 throw한다 (check:results도 막는다, ADR-032)', () => {
+  for (const d of [fakeDiscarded({ next: 'repair' }), fakeDiscarded({ made: 'repair', next: 'repair' })]) {
+    const model = fakeModel('model-repair', 'openai', '2026-09-22', 'Model Repair', {}, [fakeDiscarded(), d]);
+    assert.throws(() => show(model, { outcome: 'ok' }), /--repair/);
+  }
+});
+
+test('생성 횟수·재생성 안내도 JSON으로 그대로 옮길 수 있다', () => {
+  for (const model of [sol, flash, sonnet, anthropic]) {
+    const d = show(model, { outcome: 'ok' });
+    assert.deepEqual(JSON.parse(JSON.stringify(d)), d, model.slug);
+  }
+});
+
 /* ───────── 그 밖 ───────── */
 
 test('ModelDisplay는 JSON으로 그대로 옮길 수 있다 (사이트가 빌드 때 HTML에 넣는다)', () => {
@@ -431,4 +516,5 @@ test('barrel(@opb/core)에서 results·display·sandbox를 가져올 수 있다'
     assert.equal(typeof fn, 'function');
   }
   assert.deepEqual(core.STATUS_LEGEND, STATUS_LEGEND);
+  assert.deepEqual([core.MAX_GENERATIONS, core.MAX_REPAIRS], [3, 2]);
 });

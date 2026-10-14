@@ -27,6 +27,24 @@ const Timestamp = z.iso.datetime({ offset: true });
 
 /* ───────── 모델 레지스트리 (models.json) ───────── */
 
+/** 횟수 상한 (ADR-032): 생성본은 첫 생성 포함 총 3회, 수정본은 2회 */
+export const MAX_GENERATIONS = 3;
+export const MAX_REPAIRS = 2;
+
+/**
+ * 버린 결과물 하나 (ADR-032). 화면에 나무가 그려지지 않는 등의 이유로 버리고 다음 단계로 넘어간 기록이다.
+ * results/는 --force가 비우므로 사람이 관리하는 레지스트리에 남긴다. 순서·횟수 규칙은 check:results(results.ts)
+ */
+export const DiscardedSchema = z.object({
+  made: z.enum(['generation', 'repair']), // 버린 결과물을 만든 방법: 생성본 · 수정본
+  reason: z.enum(['blank_screen', 'continued_output']), // 나무가 그려지지 않음 · 도구가 이어 쓴 응답을 잘못 기록(ADR-029)
+  next: z.enum(['regenerate', 'repair']), // 다음에 한 일: 다시 생성 · 수정 요청
+  at: z.iso.date(),
+  // 버린 결과물을 처음 커밋한 커밋의 전체 해시. 커밋하기 전에 버렸으면 null (ADR-029 Sonnet만)
+  commit: z.string().regex(/^[a-f0-9]{40}$/, '40-char lowercase hex commit hash').nullable(),
+});
+export type Discarded = z.infer<typeof DiscardedSchema>;
+
 export const ModelEntrySchema = z.object({
   slug: Slug, // 결과 폴더명이자 URL 경로: results/<slug>/
   provider: ProviderSchema,
@@ -39,6 +57,8 @@ export const ModelEntrySchema = z.object({
     asOf: z.iso.date(),
     sourceUrl: z.url(),
   }),
+  // 버린 결과물, 오래된 것부터. 없으면 첫 생성 결과물을 그대로 공개한 모델 (빈 배열은 모호해서 받지 않는다)
+  discarded: z.array(DiscardedSchema).min(1).optional(),
 });
 export type ModelEntry = z.infer<typeof ModelEntrySchema>;
 

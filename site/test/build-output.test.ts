@@ -188,7 +188,7 @@ test('결과 탭 상단: 제목·설명·칩, {N}은 모델 수로 바뀐다', a
   );
   assert.deepEqual(
     elements(element(main, 'ul').inner, 'li').map((li) => text(li.inner)),
-    ['season-tree-v1', `모델 ${MODEL_COUNT}개`, '모델당 1회 생성'],
+    ['season-tree-v1', `모델 ${MODEL_COUNT}개`, '모델당 1회 생성(빈 화면은 다시)'],
   );
   for (const f of sitePages(site)) assert.ok(!(await site.readText(f)).includes('{N}'), `${f} contains {N}`);
 });

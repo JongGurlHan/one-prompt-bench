@@ -3,6 +3,8 @@ import {
   DEFAULT_MAX_OUTPUT_TOKENS,
   GENERATOR_LABEL,
   MARK_LABEL,
+  MAX_GENERATIONS,
+  MAX_REPAIRS,
   REQUIREMENT_LABEL,
   VERDICT_LABEL,
   fillCount,
@@ -41,8 +43,11 @@ export const RESULTS_TAB = {
   },
 } as const;
 
-/** 결과 탭 칩: season-tree-v1 · 모델 {N}개 · 모델당 1회 생성 */
-export const resultsChips = (modelCount: number) => [PROMPT_LABEL, fillCount('모델 {N}개', modelCount), '모델당 1회 생성'];
+/** 결과 탭·소개 탭 칩의 생성 횟수 (괄호 부분은 ADR-031) */
+const GENERATION_CHIP = '모델당 1회 생성(빈 화면은 다시)';
+
+/** 결과 탭 칩: season-tree-v1 · 모델 {N}개 · 모델당 1회 생성(빈 화면은 다시) */
+export const resultsChips = (modelCount: number) => [PROMPT_LABEL, fillCount('모델 {N}개', modelCount), GENERATION_CHIP];
 
 /** 결과물 iframe의 title */
 export const resultFrameTitle = (displayName: string) => `${displayName} 결과물`;
@@ -89,7 +94,16 @@ export const COMPARE_TAB = {
   description: '모델마다 어떻게 만들어졌고, 얼마나 들었고, 프롬프트를 얼마나 지켰는지 나란히 봐요. 모델은 출시일 최신순이에요.',
 } as const;
 
-/** 표 1 "수록 모델"의 열 (이 순서로 보인다. 키는 칸의 data-col) */
+/** 각주 기호 (core displayModel의 *Mark 값) */
+export type FootnoteMark = Exclude<
+  | ModelDisplay['inputTokensMark']
+  | ModelDisplay['outputTokensMark']
+  | ModelDisplay['reasoningTokensMark']
+  | ModelDisplay['generationCountMark'],
+  ''
+>;
+
+/** 표 1 "수록 모델"의 열 (이 순서로 보인다. 키는 칸의 data-col)과 표 아래 각주 ¶ (ADR-032) */
 export const MODELS_TABLE = {
   title: '수록 모델',
   columns: {
@@ -98,16 +112,17 @@ export const MODELS_TABLE = {
     releasedAt: '출시일',
     generator: '생성 도구',
     status: '결과',
+    generationCount: '생성 횟수',
     fileSize: '파일 크기',
     threeVersion: 'three.js 버전',
   },
+  footnotes: [
+    {
+      mark: '¶',
+      text: `다시 생성했거나 고친 결과물이에요. 화면에 나무가 그려지지 않으면 같은 프롬프트로 최대 ${MAX_GENERATIONS}번까지 생성하고, 그래도 안 되면 브라우저 에러를 알려 주고 최대 ${MAX_REPAIRS}번 고치게 해요. 그래도 안 되면 수록에서 빼요. 자세한 과정은 결과 탭에 적었어요.`,
+    },
+  ] satisfies { mark: FootnoteMark; text: string }[],
 } as const;
-
-/** 각주 기호 (core displayModel의 *TokensMark 값) */
-export type FootnoteMark = Exclude<
-  ModelDisplay['inputTokensMark'] | ModelDisplay['outputTokensMark'] | ModelDisplay['reasoningTokensMark'],
-  ''
->;
 
 /** 표 2 "생성 기록": 표 위 안내 박스, 열, 표 아래 각주 († ‡ § 순서) */
 export const RECORD_TABLE = {
@@ -176,11 +191,12 @@ export const CONDITIONS_CARD = {
 export type ConditionKey = keyof typeof CONDITIONS_CARD.rows;
 
 /**
- * "생성 조건"의 값. 출력 상한은 DEFAULT_MAX_OUTPUT_TOKENS, 생성 도구는 GENERATOR_LABEL에서 채운다.
+ * "생성 조건"의 값. 횟수의 최대 생성·수정 횟수는 MAX_GENERATIONS·MAX_REPAIRS(ADR-032), 출력 상한은 DEFAULT_MAX_OUTPUT_TOKENS,
+ * 생성 도구는 GENERATOR_LABEL에서 채운다.
  * 시스템 프롬프트는 prompts/<id>-<version>.system.md 내용 — 끝 줄바꿈은 화면에서만 지우고 큰따옴표로 감싼다.
  */
 export const conditionValues = (systemPrompt: string): Record<ConditionKey, string> => ({
-  count: '모델마다 1회, 사람이 고치지 않음',
+  count: `모델마다 1회, 사람이 고치지 않음 (나무가 그려지지 않으면 최대 ${MAX_GENERATIONS}번까지 생성하고, 그래도 안 되면 에러를 알려 주고 최대 ${MAX_REPAIRS}번 고치게 함)`,
   reasoning: 'high (회사마다 단계 구성이 달라요, 비교표 각주 참고)',
   outputLimit: `${formatInt(DEFAULT_MAX_OUTPUT_TOKENS)} 토큰 (도구별 차이는 비교표 각주 참고)`,
   generators: Object.values(GENERATOR_LABEL).join(' · '),
@@ -212,10 +228,10 @@ export const INTRO_TAB = {
   actions: { results: '결과 보러 가기', compare: '비교표 보기', prompt: '프롬프트 전문' },
 } as const;
 
-/** 소개 탭 칩: 모델 {N}개 · season-tree-v1 · 모델당 1회 생성 */
-export const introChips = (modelCount: number) => [fillCount('모델 {N}개', modelCount), PROMPT_LABEL, '모델당 1회 생성'];
+/** 소개 탭 칩: 모델 {N}개 · season-tree-v1 · 모델당 1회 생성(빈 화면은 다시) */
+export const introChips = (modelCount: number) => [fillCount('모델 {N}개', modelCount), PROMPT_LABEL, GENERATION_CHIP];
 
-/** 소개 탭 카드 3개 (본문의 {N}은 fillCount로 채운다) */
+/** 소개 탭 카드 3개 (본문의 {N}은 fillCount로 채운다. How·Caution의 가운데 문장은 ADR-032) */
 export const INTRO_CARDS = [
   {
     key: 'what',
@@ -227,13 +243,13 @@ export const INTRO_CARDS = [
     key: 'how',
     label: 'How',
     title: '같은 조건, 자동 기록',
-    body: '모델마다 한 번, 추론 강도 high로 만들었고 사람이 손대지 않았어요. 생성과 검증은 프로그램이 자동으로 하고, 토큰과 시간과 에러를 기록해요.',
+    body: '모델마다 한 번, 추론 강도 high로 만들었고 사람이 손대지 않았어요. 화면에 나무가 그려지지 않은 결과물만 다시 생성하거나 모델이 고치게 하고, 그 사실을 표시해요. 생성과 검증은 프로그램이 자동으로 하고, 토큰과 시간과 에러를 기록해요.',
   },
   {
     key: 'caution',
     label: 'Caution',
     title: '순위가 아니라 기록',
-    body: '모델마다 한 번씩만 생성해서 운이 섞여 있어요. 생성 도구마다 조건이 조금씩 다른 부분은 비교표 각주에 적었어요.',
+    body: '모델마다 한 번씩만 생성해서 운이 섞여 있어요. 나무가 그려지지 않아 다시 생성하거나 고치게 한 모델은 기회를 더 받은 셈이라 결과 탭과 비교표에 표시했어요. 생성 도구마다 조건이 조금씩 다른 부분은 비교표 각주에 적었어요.',
   },
 ] as const;
 

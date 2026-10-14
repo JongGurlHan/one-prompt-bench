@@ -1,8 +1,9 @@
+import { commitHashParts } from '../lib/regeneration-line.ts';
 import type { ResultView } from '../lib/results-view.ts';
 
 /* ────────────────────────────────────────────────────────────
  * 결과 탭 클라이언트 동작 (ADR-018 — 순수 TypeScript): 모델 전환 · 다시 시작 · 응답 원문 불러오기
- * 표시 값은 빌드 때 페이지에 넣은 JSON(#result-views)을 그대로 옮긴다. 라벨·포맷을 여기서 만들지 않는다.
+ * 표시 값은 빌드 때 페이지에 넣은 JSON(#result-views)을 그대로 옮긴다. 라벨·포맷·재생성 안내 문구를 여기서 만들지 않는다.
  * 모델은 버튼 목록(넓은 화면)이나 선택기(휴대폰)로 고른다. 둘 다 같은 select()를 지나고, 두 컨트롤의 선택 상태는 늘 같다.
  * 결과물은 한 번에 하나만 실행한다(ADR-009): 결과물이 없는 모델을 고르면 iframe을 문서에서 떼어 내서
  * 앞의 결과물이 계속 돌지 않게 하고, 결과물이 있는 모델을 고르면 같은 iframe을 새 src로 다시 붙인다.
@@ -23,6 +24,9 @@ export function setupResultsTab(doc: Document = document): void {
 
   const buttons = [...root.querySelectorAll<HTMLButtonElement>('button[data-slug]')];
   const picker = one<HTMLSelectElement>('select[data-field="model-select"]');
+  const regeneration = field('regeneration');
+  const regenerationTitle = field('regeneration-title');
+  const regenerationLines = field('regeneration-lines');
   const name = field('name');
   const meta = field('meta');
   const actions = field('actions');
@@ -51,11 +55,33 @@ export function setupResultsTab(doc: Document = document): void {
     selected = slug;
     for (const b of buttons) b.setAttribute('aria-pressed', String(b.dataset.slug === slug));
     picker.value = slug;
+    showRegeneration(view);
     name.textContent = view.displayName;
     meta.textContent = view.runMeta;
     showOutput(view);
     void showResponse(view);
     fillCards(view);
+  }
+
+  /** 재생성 안내 박스 (ADR-032): 버린 결과물이 없는 모델이면 숨긴다. 줄의 커밋 해시만 <code>(Mono)이고 글자는 그대로 */
+  function showRegeneration({ regeneration: notice }: ResultView) {
+    regeneration.hidden = notice === null;
+    regenerationTitle.textContent = notice?.title ?? '';
+    regenerationLines.replaceChildren(
+      ...(notice?.lines ?? []).map((line) => {
+        const li = doc.createElement('li');
+        for (const part of commitHashParts(line)) {
+          if (!part.hash) {
+            li.append(part.text);
+            continue;
+          }
+          const code = doc.createElement('code');
+          code.textContent = part.text;
+          li.append(code);
+        }
+        return li;
+      }),
+    );
   }
 
   function showOutput({ output, missing: why }: ResultView) {

@@ -1,9 +1,19 @@
-import { STATUS_CASES, fakeModel, makeDataRoot, writeResult, type FakeResult, type StatusCase } from '@opb/core/testing';
-import type { ModelEntry, StatusLabel } from '@opb/core';
+import {
+  FAKE_COMMIT,
+  STATUS_CASES,
+  fakeDiscarded,
+  fakeModel,
+  makeDataRoot,
+  writeResult,
+  type FakeResult,
+  type StatusCase,
+} from '@opb/core/testing';
+import type { Discarded, ModelEntry, RegenerationNotice, StatusLabel } from '@opb/core';
 
 /* ────────────────────────────────────────────────────────────
  * 결과 탭 테스트용 데이터 (dist 검사·브라우저 테스트 공용)
  * 상태 라벨 10개(STATUS_CASES) + 맨 위에 결과물이 없는 모델 + ✗ 판정과 콘솔·페이지 에러가 있는 모델.
+ * 그중 두 모델은 버린 결과물이 있다(ADR-032): 커밋한 blank_screen 2개(3회), 커밋하지 않은 continued_output 1개(2회).
  * 결과물 HTML은 load 이벤트마다 콘솔에 runLog(slug)를 남겨서, 브라우저 테스트가 실행·다시 시작을 셀 수 있다.
  * 원문을 보여 주는 라벨(거부·잘림·HTML 없음)의 response.txt에는 표식(RESPONSE_MARK)을 넣어 빌드 HTML에 없는지 본다.
  * ──────────────────────────────────────────────────────────── */
@@ -77,6 +87,55 @@ export const EXPECTED_TONE: Readonly<Record<StatusLabel, string>> = {
   '검증 전': 'gray',
 };
 
+/* ───────── 다시 생성한 모델 (ADR-032) ───────── */
+
+/** 화면에 나무가 그려지지 않아 두 번 버리고(둘 다 커밋 있음) 3번째 생성본을 공개했다 */
+export const REGENERATED_BLANK = 'model-miss';
+/** 생성 도구가 이어 쓴 응답을 잘못 기록해 커밋하기 전에 버리고 2번째 생성본을 공개했다 (Sonnet 모양) */
+export const REGENERATED_CONTINUED = 'model-fail-mark';
+const DISCARDED: Readonly<Record<string, Discarded[]>> = {
+  [REGENERATED_BLANK]: [fakeDiscarded({ at: '2026-10-11' }), fakeDiscarded({ at: '2026-10-12', commit: FAKE_COMMIT })],
+  [REGENERATED_CONTINUED]: [fakeDiscarded({ reason: 'continued_output', commit: null })],
+};
+
+/** 결과 탭 재생성 안내 박스 (docs/COPY.md "다시 생성하거나 고친 결과물" 그대로). 여기에 없는 모델은 안내 박스가 없다 */
+export const EXPECTED_REGENERATION: Readonly<Record<string, RegenerationNotice>> = {
+  [REGENERATED_BLANK]: {
+    title: '3번째로 생성한 결과물이에요.',
+    lines: [
+      '1번째 생성: 화면에 나무가 그려지지 않아 다시 생성했어요. (커밋 9876543)',
+      '2번째 생성: 화면에 나무가 그려지지 않아 다시 생성했어요. (커밋 0123456)',
+    ],
+  },
+  [REGENERATED_CONTINUED]: {
+    title: '2번째로 생성한 결과물이에요.',
+    lines: [
+      '1번째 생성: 생성 도구가 출력 상한을 넘겨 이어 쓴 응답을 잘못 기록해서, 그 기록을 버리고 다시 생성했어요. (기록은 남아 있지 않아요)',
+    ],
+  },
+};
+/** 안내 박스 줄 안의 커밋 해시 (앞 7자, Mono) */
+export const EXPECTED_COMMIT_HASHES: Readonly<Record<string, string[]>> = {
+  [REGENERATED_BLANK]: ['9876543', '0123456'],
+  [REGENERATED_CONTINUED]: [],
+};
+
+/** 비교표 표 1 "생성 횟수" 값 + 각주 기호 (DATA "표시 규칙": meta.json이 없거나 api_failed면 —, 버린 결과물이 있으면 ¶) */
+export const EXPECTED_GENERATION_COUNT: Readonly<Record<string, string>> = {
+  'model-newest': '—',
+  'model-ok': '1회',
+  'model-miss': '3회¶',
+  'model-violation': '1회',
+  'model-truncated': '1회',
+  'model-fail-mark': '2회¶',
+  'model-no-html': '1회',
+  'model-refused': '1회',
+  'model-usage-limit': '—',
+  'model-failed': '—',
+  'model-pending': '—',
+  'model-unvalidated': '1회',
+};
+
 export interface TabCase {
   label: StatusLabel;
   model: ModelEntry;
@@ -92,7 +151,12 @@ const withFixtureFiles = (c: StatusCase): TabCase => {
   return { label, model, result: { ...result, responseText } };
 };
 
-export const TAB_CASES: readonly TabCase[] = [
+const withDiscarded = (c: TabCase): TabCase => {
+  const discarded = DISCARDED[c.model.slug];
+  return discarded ? { ...c, model: { ...c.model, discarded } } : c;
+};
+
+const CASES: readonly TabCase[] = [
   { label: '생성 전', model: NEWEST, result: null },
   ...STATUS_CASES.map(withFixtureFiles),
   {
@@ -106,6 +170,7 @@ export const TAB_CASES: readonly TabCase[] = [
     },
   },
 ];
+export const TAB_CASES: readonly TabCase[] = CASES.map(withDiscarded);
 
 /** 목록 순서 (출시일 최신순, 같은 날은 표시명 알파벳순) */
 export const EXPECTED_ORDER = [
@@ -135,3 +200,7 @@ export const makeResultsTabDataRoot = () => makeRoot(TAB_CASES);
 /** 결과물이 하나도 없는 모델들 (맨 위는 원문을 보여 주는 "잘림") */
 export const NO_OUTPUT_SLUGS = ['model-truncated', 'model-failed', 'model-pending'];
 export const makeNoOutputDataRoot = () => makeRoot(TAB_CASES.filter((c) => NO_OUTPUT_SLUGS.includes(c.model.slug)));
+
+/** 다시 생성한 모델(3회)이 결과물이 있는 첫 모델 = 첫 선택이다. 뒤에 다시 생성하지 않은 모델과 커밋 없이 버린 모델이 있다 */
+export const REGENERATED_FIRST_SLUGS = [REGENERATED_BLANK, 'model-violation', REGENERATED_CONTINUED];
+export const makeRegeneratedFirstDataRoot = () => makeRoot(TAB_CASES.filter((c) => REGENERATED_FIRST_SLUGS.includes(c.model.slug)));

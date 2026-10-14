@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { chromium, type Browser, type Page } from 'playwright';
 import { TEST_BASE, buildSite } from './support/build.ts';
-import { makeResultsTabDataRoot } from './support/results-data.ts';
+import { EXPECTED_REGENERATION, makeResultsTabDataRoot } from './support/results-data.ts';
 import { serveDist, type StaticServer } from './support/static-server.ts';
 
 /* ────────────────────────────────────────────────────────────
@@ -107,6 +107,22 @@ for (const { rel, tables } of TABS) {
     });
   });
 }
+
+test('375px 결과 탭: 재생성 안내 박스가 보이는 모델을 골라도 페이지와 안내 박스가 가로로 넘치지 않는다', async () => {
+  await withPage('', PHONE, async (page) => {
+    const notice = page.locator('[data-field="regeneration"]');
+    assert.ok(!(await notice.isVisible()), '첫 선택 모델은 다시 생성하지 않았다');
+    for (const slug of Object.keys(EXPECTED_REGENERATION)) {
+      await page.locator('select[data-field="model-select"]').selectOption(slug);
+      assert.ok(await notice.isVisible(), slug);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${slug}: page scrollWidth`);
+      const b = await box(page, '[data-field="regeneration"]');
+      assert.ok(b.left >= 16 - 1 && b.right <= PHONE.width - 16 + 1, `${slug}: notice ${b.left}..${b.right}`);
+      const fits = await notice.evaluate((el) => [el, ...el.querySelectorAll('*')].every((e) => e.scrollWidth <= e.clientWidth || e.clientWidth === 0));
+      assert.ok(fits, `${slug}: 줄이 안내 박스 밖으로 넘치지 않는다`);
+    }
+  });
+});
 
 test('375px 프롬프트 탭: 원문 카드와 생성 조건 카드가 한 열로 쌓인다', async () => {
   await withPage('prompt/', PHONE, async (page) => {
