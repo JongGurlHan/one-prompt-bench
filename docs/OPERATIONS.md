@@ -65,13 +65,13 @@ npm run validate -- gpt-6-sol    # 한 모델
 
 ### 화면에 나무가 그려지지 않을 때 (ADR-032)
 
-1단계에서 결과물이 화면에 나무를 그리지 못하면(빈 화면·배경만) 판정하지 않고 아래 사다리를 차례로 밟는다. 나무가 어색하거나 계절이 틀린 것처럼 품질 문제는 해당하지 않는다(그대로 판정). 기술적 실패(503 등 응답이 오지 않음)는 횟수에 넣지 않는다 — `npm run gen -- <slug>`를 다시 실행하면 `api_failed`만 다시 돈다.
+1단계에서 결과물이 화면에 나무를 그리지 못하면(빈 화면·배경만) 판정하지 않고 아래 사다리를 차례로 밟는다. 나무가 어색하거나 계절이 틀린 것처럼 품질 문제는 해당하지 않는다(그대로 판정). 기술적 실패(503 등 응답이 오지 않음)는 횟수에 넣지 않는다 — `npm run gen -- <slug>`를 다시 실행하면 `api_failed`만 다시 돈다. 버린 기록(`discarded`)이 있는 모델이 `api_failed`로 끝난 채면 check:results가 배포를 막으므로, 응답을 받을 때까지 다시 실행한 뒤 push한다(DATA "check:results" 규칙 10).
 
-0. **버리기 전에 커밋**: 지금 결과물이 `results/`에 커밋돼 있는지 본다(`git status -- results/<slug>`). 안 돼 있으면 `data:` 커밋한다. 버린 결과물의 증거가 git에 남아야 한다(phase 6부터 파이프라인이 커밋 안 된 결과물을 버리지 않는다).
+0. **버리기 전에 커밋**: 지금 결과물이 `results/`에 커밋돼 있는지 본다(`git status -- results/<slug>`). 안 돼 있으면 `data:` 커밋한다. 버린 결과물의 증거가 git에 남아야 한다(커밋 안 된 표본이 있으면 `gen --force`가 아무것도 지우지 않고 "먼저 커밋하세요"로 멈춘다).
 1. **다시 생성**(첫 생성 포함 총 3회까지): `npm run gen -- <slug> --force`. 예전 판정도 지워진다.
 2. **수정 요청**(1단계를 다 써도 안 될 때, 2회까지): `npm run gen -- <slug> --repair`. **아직 구현되지 않았다** — 처음 필요해지면 Claude 세션에서 phase로 만든다(사양은 ARCHITECTURE "다시 생성·수정 요청"). 정해진 수정 요청문에 원래 프롬프트·지금 HTML·브라우저 에러를 채워 보낸다.
 3. **수록 제외**(2단계를 다 써도 안 될 때): Claude 세션과 함께 제외를 구현·기록한다(ADR-032, 아직 구현 안 됨).
-4. 단계를 밟을 때마다 버린 결과물을 `models.json`의 그 모델 항목 `discarded`에 오래된 것부터 더한다: `{ made: "generation"|"repair", reason: "blank_screen", next: "regenerate"|"repair", at: "<YYYY-MM-DD>", commit: "<버린 결과물을 처음 커밋한 커밋 전체 해시>" }`. 해시는 `git log --format=%H -- results/<slug>/index.html`의 첫 줄(가장 최근). 새 결과물과 같은 `data:` 커밋에 넣는다(phase 6에서 스키마가 생긴 뒤 — 그 전에 생긴 기록은 phase 6이 한꺼번에 넣는다).
+4. 단계를 밟을 때마다 버린 결과물을 `models.json`의 그 모델 항목 `discarded`에 오래된 것부터 더한다: `{ made: "generation"|"repair", reason: "blank_screen", next: "regenerate"|"repair", at: "<YYYY-MM-DD>", commit: "<버린 결과물을 처음 커밋한 커밋 전체 해시>" }`. 해시는 `git log --format=%H -- results/<slug>/index.html`의 첫 줄(가장 최근). 새 결과물과 같은 `data:` 커밋에 넣는다. 모양은 DATA "버린 결과물"이고, 지금은 `made: "generation"`·`next: "regenerate"`만 받는다(`--repair` 전). 2026-10-14까지의 기록 4개는 phase 6이 넣었다.
 5. 사이트 결과 탭 안내 박스와 비교표 "생성 횟수" 열로 공개된다(COPY "다시 생성하거나 고친 결과물").
 
 ## 배포 (배포 워크플로가 생긴 phase 뒤에 최초 설정)

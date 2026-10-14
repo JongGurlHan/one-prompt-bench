@@ -26,7 +26,7 @@ results/<slug>/
 | `displayName` | 표시명 |
 | `releasedAt` | 출시일 (YYYY-MM-DD). 정렬 기준 |
 | `pricing` | `inputPer1M`·`outputPer1M`(USD, 추론 토큰도 출력 단가), `asOf`, `sourceUrl` |
-| `discarded` | (선택, phase 6에서 추가 — 아래 "스키마 변경 예정") 버린 결과물 기록(ADR-032). 없으면 첫 생성 결과물을 그대로 공개한 모델 |
+| `discarded` | (선택) 버린 결과물 기록(ADR-032), 오래된 것부터. 없으면 첫 생성 결과물을 그대로 공개한 모델. 아래 "버린 결과물" |
 
 | provider | 생성 도구 (`generator.tool`) | 표시 이름 | 회사 표시 |
 |---|---|---|---|
@@ -35,6 +35,27 @@ results/<slug>/
 | google | `gemini-api` | Gemini API | Google |
 
 이 대응표는 core에 상수로 둔다. "생성 전" 모델의 생성 도구도 표시해야 하기 때문이다.
+
+### 버린 결과물 (`discarded`, `DiscardedSchema` — ADR-032, phase 6)
+
+나무가 그려지지 않는 등의 이유로 버리고 다음 단계로 넘어간 결과물의 기록이다. `results/`는 파이프라인만 쓰고 `--force`가 폴더를 비우므로 사람이 관리하는 레지스트리에 둔다. 결과물을 건드리지 않고 기록하므로, 커밋하기 전에 버린 Sonnet(ADR-029)도 남길 수 있다. 언제 어떻게 더하는지는 OPERATIONS "화면에 나무가 그려지지 않을 때".
+
+```ts
+discarded?: Array<{
+  made: 'generation' | 'repair';                // 버린 결과물을 만든 방법: 생성본 · 수정본
+  reason: 'blank_screen' | 'continued_output';  // 버린 이유
+  next: 'regenerate' | 'repair';                // 다음에 한 일: 다시 생성 · 수정 요청
+  at: string;                                   // YYYY-MM-DD
+  commit: string | null;                        // 40자 소문자 hex
+}>
+```
+
+- 오래된 것부터 쌓는다. 빈 배열은 받지 않는다 — 버린 결과물이 없으면 키를 두지 않는다(phase 6에서 엄격하게 정함).
+- 이유 코드: `blank_screen` = 화면에 나무가 그려지지 않음(ADR-032). `continued_output` = 생성 도구가 출력 상한 뒤 이어 쓴 응답을 잘못 기록해 버림(ADR-029, Sonnet). 새 이유가 생기면 코드와 COPY 문구를 함께 더한다.
+- `commit`은 버린 결과물을 처음 커밋한 커밋의 전체 해시다(사이트에는 앞 7자). 커밋하기 전에 버렸으면 null(Sonnet만 — ADR-032부터는 버리기 전에 반드시 커밋하고, `gen --force`가 커밋 안 된 표본을 버리지 않는다).
+- 횟수 상한(`schema.ts` 상수 한 곳): 생성본은 첫 생성 포함 총 3회(`MAX_GENERATIONS = 3`), 수정본은 2회(`MAX_REPAIRS = 2`).
+- 지금 공개 결과물은 항상 생성본이다. 수정 요청 관련 항목(`made: 'repair'` 또는 `next: 'repair'`)은 `gen --repair`가 생길 때까지 check:results가 거절한다(규칙 10). 수정본의 모양·불변식은 아래 "스키마 변경 예정".
+- 레포 기록(phase 6에서 넣음): GPT-6 Sol 2개(`blank_screen`, 커밋 `f0e6988`·`a766e4f` → 3회), Gemini 3.8 Flash 1개(`blank_screen`, `eac58e0` → 2회), Claude Sonnet 5.5 1개(`continued_output`, 커밋 없음 → 2회).
 
 ## meta.json (`GenerationRecordSchema`)
 
@@ -53,21 +74,18 @@ results/<slug>/
 
 | 대상 | 지금 | 바꿀 모양 | 이유 |
 |---|---|---|---|
-| `ModelEntrySchema` (models.json) | 없음 | `discarded?: Array<{ made: 'generation' \| 'repair'; reason: 'blank_screen' \| 'continued_output'; next: 'regenerate' \| 'repair'; at: YYYY-MM-DD; commit: string(40자 hex) \| null }>`, 오래된 것부터 | ADR-032: 버린 결과물(만든 방법·버린 이유·다음에 한 일·날짜·커밋)을 공개한다. `results/`는 파이프라인만 쓰고 `--force`가 폴더를 비우므로 사람이 관리하는 레지스트리에 둔다. 이미 다시 생성한 Sonnet(ADR-029)도 결과물을 건드리지 않고 기록할 수 있다 |
 | `GenerationRecordSchema` (meta.json) | 없음 | `repair?: { round: 1 \| 2; previousOutputSha256: Sha256; errors: Array<{ message: string; count: number }> }` — 공개 결과물이 수정본일 때만 파이프라인(`gen --repair`)이 쓴다. `errors`는 수정 요청문에 실제로 넣은 에러 목록이다. `prompt`의 id·version은 원래 프롬프트 그대로이고 `sha256`은 실제로 보낸 `{system, user(채운 수정 요청문)}`의 해시다 | 수정본이라는 사실과 무엇을 전했는지를 생성 기록에 남긴다 |
-| check:results | — | 규칙 추가는 아래 "불변식(phase 6)" | 기록끼리 어긋나지 않게 |
+| check:results | 규칙 10 (수정 요청 항목 거절) | 아래 "수정본 불변식"으로 바꾼다 | 기록끼리 어긋나지 않게 |
 
-`GenerationRecordSchema`의 `repair`는 `gen --repair`와 함께 실제로 필요해질 때 반영한다(ADR-032). 그 전(phase 6)에는 `discarded`에 수정 요청 관련 항목(`made: 'repair'` 또는 `next: 'repair'`)이 있으면 check:results가 "수정 요청은 아직 구현되지 않았다"로 실패한다.
+`GenerationRecordSchema`의 `repair`와 아래 불변식은 `gen --repair`와 함께 실제로 필요해질 때 반영한다(ADR-032). 그때 check:results 규칙 10의 "수정 요청 항목 거절"을 빼고, 생성 횟수 표시(`3회 · 수정 1회`)와 COPY의 수정본 문구도 함께 더한다.
 
-- 이유 코드: `blank_screen` = 화면에 나무가 그려지지 않음(ADR-032). `continued_output` = 생성 도구가 출력 상한 뒤 이어 쓴 응답을 잘못 기록해 버림(ADR-029, Sonnet). 새 이유가 생기면 코드와 COPY 문구를 함께 더한다.
-- `commit`은 버린 결과물을 처음 커밋한 커밋의 전체 해시다(사이트에는 앞 7자). 커밋하기 전에 버렸으면 null(Sonnet만 — ADR-032부터는 버리기 전에 반드시 커밋한다).
-- 횟수 상한(core 상수 한 곳): 생성본은 첫 생성 포함 총 3회(`MAX_GENERATIONS = 3`), 수정본은 2회(`MAX_REPAIRS = 2`).
-- 불변식(phase 6, 스키마 + check:results):
+- 수정본 불변식:
   - `discarded`의 `made: 'generation'` 항목 수 + (공개 결과물이 생성본이면 1) ≤ 3, `made: 'repair'` 항목 수 + (공개 결과물이 수정본이면 1) ≤ 2.
   - 순서: 생성본 항목이 모두 앞, 수정본 항목이 뒤다. `next: 'repair'`는 마지막 생성본 항목과 수정본 항목에만, 그 앞의 생성본 항목은 `next: 'regenerate'`다. 수정본 항목의 `next`는 `repair`뿐이다.
   - `meta.json`에 `repair`가 있으면 `discarded`의 마지막 항목이 `next: 'repair'`이고, `repair.round` = 수정본 항목 수 + 1이다. `repair`가 없으면 `discarded`의 마지막 항목(있다면)은 `next: 'regenerate'`다.
-  - `discarded`가 있는 모델은 `results/<slug>/meta.json`이 있어야 한다. 커밋이 실제로 있는지는 보지 않는다(CI는 얕은 clone).
 - 수록 제외(ADR-032 3단계)는 실제로 생기면 모양을 정한다(예: `excluded?: { at }`). 지금은 정하지 않는다.
+
+phase 6에서 반영한 변경: `ModelEntrySchema.discarded`(위 "버린 결과물")와 check:results 규칙 10. 선택 필드 추가라 `schemaVersion`은 그대로다.
 
 phase 1에서 반영한 변경(SDK 방식 → CLI 방식): `runtime.sdkPackage`·`sdkVersion` → `runtime.generator`, `params.maxOutputTokens`에 null 허용, `PromptSpec.system` = system.md 내용, 스크린샷 경로 `.webp` → `.jpg`. 실제 데이터가 없던 때라 `schemaVersion`은 1을 유지했다.
 
@@ -93,7 +111,7 @@ phase 1에서 반영한 변경(SDK 방식 → CLI 방식): `runtime.sdkPackage`�
 
 ## check:results (배포 게이트)
 
-`npm run check:results`(`packages/core/scripts/check-results.ts`)는 아래 중 하나라도 어기면 실패한다(배포 중단). 처음 어긴 것에서 멈추지 않고 어긴 것을 모두 `경로: 이유`로 보고한다. 결과가 하나도 없어도(`results/` 없음 포함) 통과한다.
+`npm run check:results`(`packages/core/scripts/check-results.ts`)는 아래 중 하나라도 어기면 실패한다(배포 중단). 처음 어긴 것에서 멈추지 않고 어긴 것을 모두 `경로: 이유`로 보고한다. 결과가 하나도 없어도(`results/` 없음 포함) 통과한다(단 `discarded`가 있는 모델은 규칙 10으로 실패).
 
 1. `models.json`이 스키마를 통과한다.
 2. `results/` 아래 항목은 모두 폴더이고, 이름이 models.json의 slug다.
@@ -104,8 +122,13 @@ phase 1에서 반영한 변경(SDK 방식 → CLI 방식): `runtime.sdkPackage`�
 7. `judgment.json`이 있으면 스키마를 통과하고, `modelSlug`·`prompt`가 meta.json과 같고, `outputSha256`이 meta.json의 `output.sha256`과 같다 (ADR-012).
 8. meta.json의 `runtime.generator.tool`이 models.json `provider`의 생성 도구(`GENERATOR_BY_PROVIDER`)와 같다.
 9. meta.json이 가리키는 경로(`responseTextPath`, `output.path`, 스크린샷)는 모두 `results/<slug>/` 안이다.
+10. models.json의 버린 결과물 기록(`discarded`, ADR-032):
+    - 수정 요청 관련 항목(`made: 'repair'` 또는 `next: 'repair'`)이 없다 — 있으면 `models.json: <slug>.discarded.<i>: 수정 요청(--repair)은 아직 구현되지 않았다(ADR-032)`. `gen --repair`를 만들 때 "스키마 변경 예정"의 수정본 불변식으로 바꾼다.
+    - `made: 'generation'` 항목 수 + 1(공개 결과물) ≤ `MAX_GENERATIONS`(3).
+    - `discarded`가 있는 모델은 `results/<slug>/meta.json`이 있고, 그 기록이 `api_failed`가 아니다. 응답이 오지 않은 기록은 표본이 아니어서, 안내 박스("N번째로 생성한 결과물이에요")와 실행 카드("기술적인 문제로 생성하지 못했어요")가 어긋난 채 공개되지 않게 막는다 — 응답을 받을 때까지 `npm run gen -- <slug>`를 다시 실행한 뒤 배포한다(2026-10-14 사용자 결정). 버린 결과물이 없는 모델의 `api_failed`는 그대로 통과한다.
+    - 커밋이 실제로 있는지는 보지 않는다(CI는 얕은 clone).
 
-8·9는 phase 2 계획 때 더했다(8은 `check-samples.ts`에 있던 대조). 문서에 없는 경우를 만나면 엄격한 쪽(실패)으로 정한다. phase 2 구현에서 엄격하게 정한 것:
+8·9는 phase 2 계획 때, 10은 phase 6에서 더했다(8은 `check-samples.ts`에 있던 대조). 문서에 없는 경우를 만나면 엄격한 쪽(실패)으로 정한다. phase 2 구현에서 엄격하게 정한 것:
 - `results/` 아래의 심볼릭 링크(Windows junction 포함)와 결과 폴더 안의 하위 폴더는 실패다.
 - 결과 폴더에 meta.json이 가리키지 않는 파일이 있으면 실패다(`judgment.json` 제외).
 - `output.path`·`responseTextPath`는 정확히 `results/<slug>/index.html`·`results/<slug>/response.txt`이고, 스크린샷은 폴더 바로 아래에 있어야 한다.
@@ -165,6 +188,6 @@ phase 1에서 반영한 변경(SDK 방식 → CLI 방식): `runtime.sdkPackage`�
 | 그중 추론 ‡ | 회사가 Google인 행 | 값 옆에 ‡ (†와 같음) |
 | 입력 토큰 § | 생성 도구가 Claude Code 또는 Codex CLI인 행 | 값 옆에 § (`inputTokensMark`, ADR-030). 값이 —이어도 붙는다. 결과 탭의 토큰 값에는 붙이지 않는다 |
 | 모델 수 `{N}` | models.json의 모델 수 | 문구의 `{N}` 치환 |
-| 생성 횟수 | 생성본 = `discarded`의 `made: 'generation'` 수 + (공개 결과물이 생성본이면 1), 수정본 = `made: 'repair'` 수 + (수정본이면 1) (ADR-032) | `1회`, `3회 · 수정 1회`. 버린 결과물이 있으면 값 옆에 ¶. 비교표 표 1. meta.json이 없으면 — |
-| 재생성 안내 | 첫 줄(생성본/수정본) + `discarded` 각 항목 → COPY "다시 생성하거나 고친 결과물"의 줄 | `discarded`가 있는 모델에만 결과 탭 안내 박스. 커밋은 앞 7자, null이면 "기록은 남아 있지 않아요" |
+| 생성 횟수 | 생성본 = `discarded`의 `made: 'generation'` 수 + (공개 결과물이 생성본이면 1), 수정본 = `made: 'repair'` 수 + (수정본이면 1) (ADR-032). 지금 공개 결과물은 항상 생성본이다(수정본 표시는 `--repair`와 함께) | `1회`, `3회`(나중에 `3회 · 수정 1회`). 버린 결과물이 있으면 값 옆에 ¶(`generationCountMark` — 값이 —여도 붙는다). 비교표 표 1. meta.json이 없거나 `api_failed`(응답 없음 — 표본이 아님, 2026-10-14 사용자 결정)면 — |
+| 재생성 안내 | 첫 줄(생성본/수정본) + `discarded` 각 항목 → COPY "다시 생성하거나 고친 결과물"의 줄 (`regenerationNotice`) | `discarded`가 있는 모델에만 결과 탭 안내 박스(`regeneration`, 없으면 null). 커밋은 앞 7자, null이면 "기록은 남아 있지 않아요". 지금은 생성본 문구 두 개만 있고, 수정 요청 항목이 오면 throw한다(check:results 규칙 10이 먼저 막는다) |
 | 정렬 | `sortByRelease`: 출시일 최신순, 같은 날은 표시명 알파벳순(숫자는 크기순) | 모든 목록·표 공통 |
