@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "modelSlug": "claude-sonnet-5-5",
+  "prompt": {
+    "id": "season-tree",
+    "version": "v1"
+  },
+  "outputSha256": "5514675bd86763929785d9bae1536e144de2ea3cc4008f4df3215cee6adacf99",
+  "judgedAt": "2026-10-14T11:56:00+09:00",
+  "requirements": {
+    "scene": "pass",
+    "seasonCycle": "pass",
+    "seasonLook": "pass",
+    "seasonLabel": "pass"
+  },
+  "note": null
+}

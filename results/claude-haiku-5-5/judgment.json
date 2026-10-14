@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "modelSlug": "claude-haiku-5-5",
+  "prompt": {
+    "id": "season-tree",
+    "version": "v1"
+  },
+  "outputSha256": "07afbb6fa04323ce2a0e2acf26bb917f286b554e4486e193b0532b69e139111a",
+  "judgedAt": "2026-10-14T11:55:55+09:00",
+  "requirements": {
+    "scene": "pass",
+    "seasonCycle": "pass",
+    "seasonLook": "pass",
+    "seasonLabel": "pass"
+  },
+  "note": null
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "modelSlug": "claude-opus-5-5",
+  "prompt": {
+    "id": "season-tree",
+    "version": "v1"
+  },
+  "outputSha256": "1747a08ed447c155945358150190d29dabd372dcae59e0749cacc43f2bce1797",
+  "judgedAt": "2026-10-14T11:56:03+09:00",
+  "requirements": {
+    "scene": "pass",
+    "seasonCycle": "pass",
+    "seasonLook": "pass",
+    "seasonLabel": "pass"
+  },
+  "note": null
+}

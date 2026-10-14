@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "modelSlug": "gpt-6-1-sol",
+  "prompt": {
+    "id": "season-tree",
+    "version": "v1"
+  },
+  "outputSha256": "1b8035b258fd66de84bb988b5d31c84b991cf43fd898a1233b40883692d5cda5",
+  "judgedAt": "2026-10-14T11:55:58+09:00",
+  "requirements": {
+    "scene": "pass",
+    "seasonCycle": "pass",
+    "seasonLook": "pass",
+    "seasonLabel": "pass"
+  },
+  "note": null
+}

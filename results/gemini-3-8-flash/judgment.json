@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "modelSlug": "gemini-3-8-flash",
+  "prompt": {
+    "id": "season-tree",
+    "version": "v1"
+  },
+  "outputSha256": "e14e7fc09556836bd1d77cef8e8a1ccc50aa3b6c2772b3c84505a37da6a0afa9",
+  "judgedAt": "2026-10-14T11:56:13+09:00",
+  "requirements": {
+    "scene": "pass",
+    "seasonCycle": "pass",
+    "seasonLook": "partial",
+    "seasonLabel": "pass"
+  },
+  "note": "나무 컬러 변화 적용안됨(전부 검정색)"
+}

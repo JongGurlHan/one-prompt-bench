@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "modelSlug": "gpt-6-luna",
+  "prompt": {
+    "id": "season-tree",
+    "version": "v1"
+  },
+  "outputSha256": "e0bbbb6cee817ff86ef8f7858d5711c0a9d1561d39e07ff42737834d4979d5d3",
+  "judgedAt": "2026-10-14T11:56:05+09:00",
+  "requirements": {
+    "scene": "pass",
+    "seasonCycle": "pass",
+    "seasonLook": "pass",
+    "seasonLabel": "pass"
+  },
+  "note": null
+}

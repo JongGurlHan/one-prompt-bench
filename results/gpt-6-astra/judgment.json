@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "modelSlug": "gpt-6-astra",
+  "prompt": {
+    "id": "season-tree",
+    "version": "v1"
+  },
+  "outputSha256": "7a4d6abbde62d1e30fcd10cd06c0265ab314ff29690075a8b7b7561691508032",
+  "judgedAt": "2026-10-14T11:56:10+09:00",
+  "requirements": {
+    "scene": "pass",
+    "seasonCycle": "pass",
+    "seasonLook": "pass",
+    "seasonLabel": "pass"
+  },
+  "note": null
+}
