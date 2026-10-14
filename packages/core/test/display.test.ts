@@ -345,6 +345,10 @@ test('요구사항 판정: ✓ 충족 · △ 부분 충족 · ✗ 미충족, 판
     { key: 'seasonLabel', label: '계절 이름', mark: 'pass', text: '✓ 충족' },
   ]);
   assert.equal(judged.note, '겨울이 늦다');
+  // 메모 없이 판정했으면 판정은 그대로, 메모만 null (결과 탭은 메모 줄을 생략한다)
+  const noNote = show(anthropic, { outcome: 'ok', judgment: { requirements: { seasonLook: 'partial' }, note: null } });
+  assert.equal(noNote.requirements[2]!.text, '△ 부분 충족');
+  assert.equal(noNote.note, null);
 
   const pending = show(anthropic, { outcome: 'ok' });
   assert.deepEqual(

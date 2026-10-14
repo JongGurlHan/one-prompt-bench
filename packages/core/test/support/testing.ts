@@ -123,7 +123,8 @@ export interface FakeValidation {
 
 export interface FakeJudgment {
   requirements?: Partial<Judgment['requirements']>; // 기본: 전부 pass
-  note?: string;
+  /** 생략하면 기본 메모, null = 메모 없이 한 판정 */
+  note?: string | null;
 }
 
 export type FakeResult =
@@ -281,7 +282,7 @@ export function buildResult(
       outputSha256: output!.sha256,
       judgedAt: new Date(finishedAt + 3_600_000).toISOString(),
       requirements: { scene: 'pass', seasonCycle: 'pass', seasonLook: 'pass', seasonLabel: 'pass', ...spec.judgment.requirements },
-      note: spec.judgment.note ?? '네 계절이 순서대로 바뀐다',
+      note: spec.judgment.note === undefined ? '네 계절이 순서대로 바뀐다' : spec.judgment.note,
     } satisfies Judgment);
     files['judgment.json'] = json(judgment);
   }

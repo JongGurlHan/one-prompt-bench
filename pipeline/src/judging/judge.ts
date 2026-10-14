@@ -26,7 +26,8 @@ import { buildJudgment, MARK_SHORTHAND, NOTE_MAX, noteProblem, parseMarkAnswer }
  * `npm run judge -- <slug>`: 사람이 판정한 값을 results/<slug>/judgment.json에 쓴다 (ARCHITECTURE "판정 도우미").
  *  - outcome이 ok이고 결과물이 있는 모델만. 모르는 slug·meta.json 없음·깨진 meta.json·잘못된 플래그는
  *    아무것도 쓰지 않고 exit 1
- *  - 플래그(--scene --cycle --look --label --note)로 받지 못한 값만 묻는다. 값의 기본값은 없다
+ *  - 플래그(--scene --cycle --look --label --note)로 받지 못한 값만 묻는다. 요구사항의 기본값은 없다.
+ *    메모는 선택이다: 요구사항을 모두 플래그로 받으면 묻지 않고(--note가 없으면 null), 물을 때는 Enter로 건너뛴다
  *  - 기존 판정이 있으면(깨졌어도) 보여 주고 덮어쓸지 확인한다(--yes면 확인 없이). 물을 것이 있어도 확인이 먼저다
  * ──────────────────────────────────────────────────────────── */
 
@@ -74,9 +75,12 @@ export async function runJudge(opts: JudgeOptions, deps: JudgeDeps): Promise<num
     }
     given[key] = mark.data;
   }
+  // 메모는 선택이다. 빈 --note는 실수일 수 있어 거절하고, 메모 없이 저장하는 방법(--note를 뺀다)을 알려 준다
   if (opts.note !== undefined) {
     const problem = noteProblem(opts.note);
-    if (problem) return refuse(`--note: ${problem}`);
+    if (problem) {
+      return refuse(`--note: ${problem}${opts.note.trim() === '' ? ' (메모 없이 저장하려면 --note를 빼세요)' : ''}`);
+    }
   }
 
   // 2. 대상: models.json에 있고, meta.json이 스키마를 통과하고, 결과물이 있는 ok
@@ -92,8 +96,9 @@ export async function runJudge(opts: JudgeOptions, deps: JudgeDeps): Promise<num
   if (target.kind === 'refused') return refuse(`${model.slug}: ${target.reason}`);
   const { record } = target;
 
+  // 요구사항을 모두 플래그로 받으면 묻지 않는다(--note가 없으면 메모 없음). 입력이 없는 실행(Claude Code의 !)도 끝까지 간다
   const missing = REQUIREMENT_KEYS.filter((k) => given[k] === undefined);
-  const needsInput = missing.length > 0 || opts.note === undefined;
+  const needsInput = missing.length > 0;
   let criteria: JudgingCriteria | null = null;
   if (needsInput) {
     try {
@@ -155,16 +160,21 @@ export async function runJudge(opts: JudgeOptions, deps: JudgeDeps): Promise<num
         : { ok: true, value: m };
     });
     if (mark === null) return cancelled(out);
-    requirements[key] = mark;
+    requirements[key] = mark.value;
   }
-  let note = opts.note;
-  if (note === undefined) {
-    const answer = await askUntilValid(deps, `메모 (1~${NOTE_MAX}자, 사이트에 그대로 공개): `, (a) => {
-      const problem = noteProblem(a);
-      return problem ? { ok: false, problem } : { ok: true, value: a };
-    });
+  let note: string | null = opts.note ?? null;
+  if (needsInput && opts.note === undefined) {
+    const answer = await askUntilValid<string | null>(
+      deps,
+      `메모 (선택, ${NOTE_MAX}자까지, 사이트에 그대로 공개 — 없으면 Enter): `,
+      (a) => {
+        if (a.trim() === '') return { ok: true, value: null };
+        const problem = noteProblem(a);
+        return problem ? { ok: false, problem } : { ok: true, value: a };
+      },
+    );
     if (answer === null) return cancelled(out);
-    note = answer;
+    note = answer.value;
   }
 
   // 6. 저장: 스키마 검사(buildJudgment) 뒤 meta.json과 같은 형식(2칸 들여쓰기 + 끝 줄바꿈)
@@ -246,17 +256,17 @@ async function readExistingJudgment(file: string): Promise<ExistingJudgment> {
 
 type Parsed<T> = { ok: true; value: T } | { ok: false; problem: string };
 
-/** 답이 맞을 때까지 MAX_TRIES번 묻는다. 취소되거나 다 틀리면 null */
+/** 답이 맞을 때까지 MAX_TRIES번 묻는다. 취소되거나 다 틀리면 null (값 자체가 null일 수 있어 { value }로 감싼다) */
 async function askUntilValid<T>(
   deps: Pick<JudgeDeps, 'ask' | 'out'>,
   question: string,
   parse: (answer: string) => Parsed<T>,
-): Promise<T | null> {
+): Promise<{ value: T } | null> {
   for (let i = 1; i <= MAX_TRIES; i++) {
     const answer = await deps.ask(question);
     if (answer === null) return null;
     const parsed = parse(answer);
-    if (parsed.ok) return parsed.value;
+    if (parsed.ok) return { value: parsed.value };
     deps.out.error(`  ${parsed.problem}${i < MAX_TRIES ? ' — 다시 입력하세요.' : ''}`);
   }
   deps.out.error(`  ${MAX_TRIES}번 잘못 입력했습니다.`);
@@ -285,7 +295,7 @@ function formatJudgment(j: Judgment, record: JudgeableRecord): string[] {
   return [
     `판정 시각: ${j.judgedAt}`,
     ...REQUIREMENT_KEYS.map((k) => `${REQUIREMENT_LABEL[k]}: ${MARK_LABEL[j.requirements[k]]}`),
-    `메모: ${j.note}`,
+    `메모: ${j.note ?? '(없음)'}`,
     ...(j.outputSha256 === record.output.sha256
       ? []
       : [`(이 판정의 outputSha256이 지금 결과물의 sha256과 다릅니다 — 예전 결과물을 보고 한 판정)`]),

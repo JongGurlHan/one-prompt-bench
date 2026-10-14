@@ -103,7 +103,7 @@ const ALL_FLAGS = {
 } as const;
 
 /** 데이터 루트(기본 FAKE_MODELS)에 ok 결과 하나 */
-async function okRoot(slug = 'claude-b', judgment: { note: string } | null = null): Promise<string> {
+async function okRoot(slug = 'claude-b', judgment: { note: string | null } | null = null): Promise<string> {
   const root = await makeDataRoot();
   await writeResult(root, slug, { outcome: 'ok', judgment });
   return root;
@@ -141,6 +141,14 @@ test('buildJudgment: 메모 앞뒤 공백은 스키마가 떼고, 결과물이 �
 
   const truncated = buildResult(model, { outcome: 'truncated' }).record;
   assert.throws(() => buildJudgment({ record: truncated, answers: { requirements, note: '메모' }, now: NOW }), /output/);
+});
+
+test('buildJudgment: 메모는 선택 — null이면 note null로 남긴다 (2026-10-14 사용자 결정)', () => {
+  const { record } = buildResult(fakeModel('gpt-a', 'openai', '2026-09-29', 'GPT A'), { outcome: 'ok' });
+  const requirements = { scene: 'pass', seasonCycle: 'pass', seasonLook: 'partial', seasonLabel: 'pass' } as const;
+  const judgment = buildJudgment({ record, answers: { requirements, note: null }, now: NOW });
+  assert.equal(judgment.note, null);
+  assert.deepEqual(JudgmentSchema.parse(judgment), judgment);
 });
 
 test('toKstIsoString: UTC에 9시간을 더한 벽시계 시각 + "+09:00" (초 단위, 날짜가 넘어가도)', () => {
@@ -200,6 +208,22 @@ test('저장한 판정은 check:results(규칙 7)를 통과한다 — 새 판정
   assert.equal((await readJudgment(root, 'model-ok')).value.note, ALL_FLAGS.note);
 });
 
+test('메모는 선택: 요구사항 4개만 플래그로 주면 묻지 않고 note null로 저장한다 (입력이 없는 ! 실행도 된다)', async () => {
+  const root = await okRoot();
+  const { scene, cycle, look, label } = ALL_FLAGS;
+
+  const r = await run(root, { slug: 'claude-b', scene, cycle, look, label });
+
+  assert.equal(r.code, 0, r.output);
+  assert.deepEqual(r.questions, []);
+  const { text, value } = await readJudgment(root, 'claude-b');
+  assert.equal(value.note, null);
+  assert.match(text, /"note": null\n\}\n$/);
+  assert.ok(!r.output.includes('3D로 만든 언덕 위 나무'), '물을 것이 없으면 기준표도 없다');
+  assert.match(r.output, /메모: \(없음\)/);
+  assert.deepEqual(await checkResults(root), []);
+});
+
 test('메모는 200자까지 받는다 (앞뒤 공백은 떼고 저장)', async () => {
   const root = await okRoot();
   const note = '가'.repeat(200);
@@ -228,6 +252,19 @@ test('일부만 플래그: 받지 못한 요구사항과 메모만 REQUIREMENT_L
   const { value } = await readJudgment(root, 'claude-b');
   assert.deepEqual(value.requirements, { scene: 'fail', seasonCycle: 'pass', seasonLook: 'partial', seasonLabel: 'pass' });
   assert.equal(value.note, '잎이 무성하다');
+});
+
+test('대화형 메모는 선택: 비우고(공백만 포함) Enter면 note null로 저장한다', async () => {
+  for (const blank of ['', '   ']) {
+    const root = await okRoot();
+    const r = await run(root, { slug: 'claude-b', scene: 'pass', cycle: 'pass', look: 'pass' }, { answers: ['a', blank] });
+    assert.equal(r.code, 0, r.output);
+    assert.equal(r.questions.length, 2);
+    assert.match(r.questions[1]!, /메모 \(선택/);
+    const { value } = await readJudgment(root, 'claude-b');
+    assert.equal(value.requirements.seasonLabel, 'partial');
+    assert.equal(value.note, null, JSON.stringify(blank));
+  }
 });
 
 test('모두 대화형: 묻기 전에 결과물 경로·스크린샷 4장 경로·판정 기준표 요약을 보여 준다', async () => {
@@ -271,7 +308,7 @@ test('잘못된 입력은 이유를 보여 주고 다시 묻는다 (요구사항
   const r = await run(
     root,
     { slug: 'claude-b', scene: 'pass', cycle: 'pass', look: 'pass' },
-    { answers: ['좋음', 'y', 'f', '', '가'.repeat(201), '세 번째에 맞게 쓴 메모'] },
+    { answers: ['좋음', 'y', 'f', '가'.repeat(201), '나'.repeat(201), '세 번째에 맞게 쓴 메모'] },
   );
 
   assert.equal(r.code, 0, r.output);
@@ -293,9 +330,10 @@ test('같은 항목을 3번 잘못 입력하면 취소 → 저장하지 않고 e
   assert.match(marks.output, /취소/);
   assert.equal(await hasJudgment(root, 'claude-b'), false);
 
-  const note = await run(root, { slug: 'claude-b', ...ALL_FLAGS, note: undefined }, { answers: ['', '  ', ''] });
+  const long = '가'.repeat(201);
+  const note = await run(root, { slug: 'claude-b', scene: 'pass', cycle: 'pass', look: 'pass' }, { answers: ['p', long, long, long] });
   assert.equal(note.code, 1);
-  assert.equal(note.questions.length, 3);
+  assert.equal(note.questions.length, 4);
   assert.equal(await hasJudgment(root, 'claude-b'), false);
 });
 
@@ -333,6 +371,12 @@ test('기존 판정: 내용을 보여 주고 덮어쓸지 묻는다. 거절하�
   assert.ok(shown.includes('예전 메모'), shown);
   assert.ok(shown.includes(MARK_LABEL.pass), shown);
   assert.ok((await readFile(judgmentPath(root, 'claude-b'))).equals(before));
+
+  // 메모 없이 한 판정은 "(없음)"으로 보여 준다
+  const noNote = await okRoot('claude-b', { note: null });
+  const r2 = await run(noNote, { slug: 'claude-b', ...ALL_FLAGS }, { confirm: false });
+  assert.equal(r2.code, 1);
+  assert.match(r2.output, /메모: \(없음\)/);
 });
 
 test('기존 판정: 승인하면 덮어쓴다', async () => {
@@ -459,10 +503,10 @@ test('거절: meta.json이 JSON이 아니거나 modelSlug가 폴더와 다름', 
   await assertRefused(otherSlug, { slug: 'claude-b', ...ALL_FLAGS }, /modelSlug/);
 });
 
-test('거절: 메모 플래그가 비었거나(공백만 포함) 200자를 넘음', async () => {
+test('거절: 메모 플래그가 비었거나(공백만 포함 — 메모 없이 저장하려면 --note를 뺀다) 200자를 넘음', async () => {
   const root = await okRoot();
-  await assertRefused(root, { slug: 'claude-b', ...ALL_FLAGS, note: '' }, /메모/);
-  await assertRefused(root, { slug: 'claude-b', ...ALL_FLAGS, note: '   ' }, /메모/);
+  await assertRefused(root, { slug: 'claude-b', ...ALL_FLAGS, note: '' }, /메모.*--note를 빼/);
+  await assertRefused(root, { slug: 'claude-b', ...ALL_FLAGS, note: '   ' }, /메모.*--note를 빼/);
   await assertRefused(root, { slug: 'claude-b', ...ALL_FLAGS, note: '가'.repeat(201) }, /메모.*200자/);
 });
 
