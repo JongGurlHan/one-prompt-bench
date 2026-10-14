@@ -289,7 +289,7 @@ export const JudgmentSchema = z.object({
     seasonLook: MarkSchema, // 계절 모습: 네 계절 특징 + 부드러운 전환
     seasonLabel: MarkSchema, // 계절 이름 표시
   }),
-  // 한 줄 메모. 사이트의 '모델별 관찰 코멘트'로 그대로 쓴다
-  note: z.string().trim().min(1).max(200),
+  // 한 줄 메모. 사이트의 '모델별 관찰 코멘트'로 그대로 쓴다. 선택 — 없으면 null (키는 늘 있다, 2026-10-14 사용자 결정)
+  note: z.string().trim().min(1).max(200).nullable(),
 });
 export type Judgment = z.infer<typeof JudgmentSchema>;

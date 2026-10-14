@@ -7,7 +7,8 @@ import { JudgmentSchema, MarkSchema, type GenerationRecord, type Judgment, type 
 
 export interface JudgeAnswers {
   requirements: Judgment['requirements'];
-  note: string;
+  /** null = 메모 없음 (메모는 선택) */
+  note: string | null;
 }
 
 /** JudgmentSchema.parse를 지난 판정. 메모 앞뒤 공백은 스키마가 뗀다. 결과물이 없는 기록이면 던진다 */
@@ -52,11 +53,12 @@ export function parseMarkAnswer(answer: string): Mark | null {
   return MarkSchema.options.find((m) => MARK_SHORTHAND[m] === a) ?? null;
 }
 
-const NoteSchema = JudgmentSchema.shape.note;
+/** 메모가 있을 때의 모양 (스키마는 null = 메모 없음도 받는다) */
+const NoteSchema = JudgmentSchema.shape.note.unwrap();
 /** 메모 최대 길이 (JudgmentSchema에서 읽는다) */
 export const NOTE_MAX = NoteSchema.maxLength ?? Infinity;
 
-/** 메모가 스키마를 통과하면 null, 아니면 한국어 이유 */
+/** 메모 문자열이 스키마를 통과하면 null, 아니면 한국어 이유. 빈 메모는 이유가 된다(메모 없음은 문자열이 아니라 null) */
 export function noteProblem(note: string): string | null {
   if (NoteSchema.safeParse(note).success) return null;
   const length = note.trim().length;

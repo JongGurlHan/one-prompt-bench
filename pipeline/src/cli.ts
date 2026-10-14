@@ -26,7 +26,8 @@ export const USAGE = `사용법: main.ts <명령> [옵션]
   validate <slug…> | --all        Playwright 재검증 → results/<slug>/meta.json의 validation과 스크린샷 4장만 바꾼다
                                   (모델 호출 없음, 결과물의 three.js CDN 접속). 결과물·판정은 그대로
   judge <slug> [플래그…]          사람이 한 판정 → results/<slug>/judgment.json (모델 호출 없음, 결과물이 있는 ok만)
-                                  플래그로 주지 않은 요구사항·메모만 터미널에서 묻는다. 기존 판정은 y/N 확인 뒤 덮어쓴다
+                                  플래그로 주지 않은 요구사항(과 메모)만 터미널에서 묻는다. 요구사항 4개를 모두
+                                  플래그로 주면 묻지 않는다(--note가 없으면 메모 없음). 기존 판정은 y/N 확인 뒤 덮어쓴다
 
 옵션:
   --all       (gen) models.json의 모든 모델 (출시일 최신순)
@@ -35,7 +36,7 @@ export const USAGE = `사용법: main.ts <명령> [옵션]
   --scene · --cycle · --look · --label <pass|partial|fail>
               (judge) 요구사항 scene · seasonCycle · seasonLook · seasonLabel의 판정
   --note <메모>
-              (judge) 한 줄 메모 (1~200자, 사이트에 그대로 공개)
+              (judge) 한 줄 메모 (선택, 1~200자, 사이트에 그대로 공개)
   --yes       (judge) 기존 판정을 확인 없이 덮어쓴다
   -h, --help  사용법 출력`;
 

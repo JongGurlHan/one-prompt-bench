@@ -184,6 +184,19 @@ test('규칙 7: judgment.json이 스키마를 통과하지 못하면 이슈', as
   assertIssue(await checkResults(root), 'results/gemini-a/judgment.json', 'note');
 });
 
+test('규칙 7: 메모는 선택 — note null은 통과, 키가 없으면 이슈 (2026-10-14 사용자 결정)', async () => {
+  const root = await smallRoot();
+  await patchJson<Judgment>(root, 'results/gemini-a/judgment.json', (j) => {
+    j.note = null;
+  });
+  assert.deepEqual(await checkResults(root), []);
+
+  await patchJson<Record<string, unknown>>(root, 'results/gemini-a/judgment.json', (j) => {
+    delete j.note;
+  });
+  assertIssue(await checkResults(root), 'results/gemini-a/judgment.json', 'note');
+});
+
 test('규칙 7: modelSlug·prompt·outputSha256이 meta.json과 다르면 각각 이슈', async () => {
   const root = await smallRoot();
   await patchJson<Judgment>(root, 'results/gemini-a/judgment.json', (j) => {
