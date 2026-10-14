@@ -199,6 +199,15 @@ async function checkFolder(dataRoot: string, slug: string, model: ModelEntry | n
       add(metaRel, `outcome is ok but validation is null (run npm run validate -- ${slug})`);
     }
 
+    // 버린 결과물이 있는 모델의 공개 기록은 표본이어야 한다 — 응답이 오지 않은 기록(api_failed)은 표본이 아니다
+    // (ADR-032, 2026-10-14 사용자 결정: 안내 박스·생성 횟수가 실행 카드와 어긋난 채 공개되지 않게)
+    if (model?.discarded && record.outcome === 'api_failed') {
+      add(
+        metaRel,
+        `outcome is api_failed but models.json ${model.slug}.discarded records discarded results — run npm run gen -- ${slug} again until a response arrives`,
+      );
+    }
+
     // 9. 가리키는 경로는 results/<slug>/ 안이다 → 4. 그 파일이 실제로 있다
     const refs: { field: string; path: string; fixedName?: string }[] = [];
     if (record.responseTextPath !== null) {

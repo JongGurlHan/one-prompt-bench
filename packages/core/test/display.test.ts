@@ -419,14 +419,24 @@ test('생성 횟수: 버린 생성본 수 + 1, 버린 결과물이 있으면 ¶ 
   const sonnet2 = show(sonnet, { outcome: 'truncated' });
   assert.deepEqual([sonnet2.generationCount, sonnet2.generationCountMark], ['2회', '¶']);
 
-  // 버린 결과물이 없으면 1회, 기호 없음 (결과물이 없는 기록도 생성은 한 번 했다)
-  for (const spec of [{ outcome: 'ok' }, { outcome: 'no_html' }, { outcome: 'api_failed' }] as const) {
+  // 버린 결과물이 없으면 1회, 기호 없음 (결과물이 없어도 응답이 온 기록은 생성을 한 번 한 것이다)
+  for (const spec of [{ outcome: 'ok' }, { outcome: 'no_html' }, { outcome: 'truncated' }, { outcome: 'refused' }] as const) {
     const d = show(anthropic, spec);
     assert.deepEqual([d.generationCount, d.generationCountMark], ['1회', ''], spec.outcome);
   }
   // meta.json이 없으면 — (기호는 버린 결과물 기준이라 그대로 — check:results가 막는 상태)
   assert.deepEqual([show(anthropic, null).generationCount, show(anthropic, null).generationCountMark], ['—', '']);
   assert.deepEqual([show(sol, null).generationCount, show(sol, null).generationCountMark], ['—', '¶']);
+});
+
+test('생성 횟수: 응답이 오지 않은 기록(api_failed)은 표본이 아니라 — (ADR-032, 2026-10-14 사용자 결정)', () => {
+  for (const failure of ['timeout', 'usage_limit'] as const) {
+    const d = show(anthropic, { outcome: 'api_failed', failure });
+    assert.deepEqual([d.generationCount, d.generationCountMark], ['—', ''], failure);
+  }
+  // 버린 결과물이 있는 모델은 check:results가 막는 상태 — 기호는 그대로
+  const solFailed = show(sol, { outcome: 'api_failed', failure: 'timeout' });
+  assert.deepEqual([solFailed.generationCount, solFailed.generationCountMark], ['—', '¶']);
 });
 
 test('재생성 안내: 첫 줄 + 버린 결과물마다 한 줄(오래된 것부터), 커밋은 앞 7자 — COPY 문구 그대로', () => {

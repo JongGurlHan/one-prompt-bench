@@ -120,7 +120,7 @@ export const EXPECTED_COMMIT_HASHES: Readonly<Record<string, string[]>> = {
   [REGENERATED_CONTINUED]: [],
 };
 
-/** 비교표 표 1 "생성 횟수" 값 + 각주 기호 (DATA "표시 규칙": meta.json이 없으면 —, 버린 결과물이 있으면 ¶) */
+/** 비교표 표 1 "생성 횟수" 값 + 각주 기호 (DATA "표시 규칙": meta.json이 없거나 api_failed면 —, 버린 결과물이 있으면 ¶) */
 export const EXPECTED_GENERATION_COUNT: Readonly<Record<string, string>> = {
   'model-newest': '—',
   'model-ok': '1회',
@@ -130,8 +130,8 @@ export const EXPECTED_GENERATION_COUNT: Readonly<Record<string, string>> = {
   'model-fail-mark': '2회¶',
   'model-no-html': '1회',
   'model-refused': '1회',
-  'model-usage-limit': '1회',
-  'model-failed': '1회',
+  'model-usage-limit': '—',
+  'model-failed': '—',
   'model-pending': '—',
   'model-unvalidated': '1회',
 };

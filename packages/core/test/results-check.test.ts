@@ -262,12 +262,25 @@ async function regeneratedRoot(models: readonly ModelEntry[] = REGENERATED) {
 test('discarded: 생성본 기록(상한 안)과 공개 결과물(meta.json)이 있으면 통과', async () => {
   const root = await regeneratedRoot();
   assert.deepEqual(await checkResults(root), []);
-  // 공개 결과물이 api_failed·no_html이어도 meta.json만 있으면 된다 (표시는 그대로 생성 횟수)
+  // 공개 결과물이 없어도 응답이 온 기록(no_html·truncated·refused)이면 된다 (표시는 그대로 생성 횟수)
   const other = await makeDataRoot(REGENERATED);
   await writeResult(other, 'sol', { outcome: 'no_html' });
-  await writeResult(other, 'flash', { outcome: 'api_failed' });
+  await writeResult(other, 'flash', { outcome: 'refused' });
   await writeResult(other, 'sonnet', { outcome: 'truncated' });
   assert.deepEqual(await checkResults(other), []);
+});
+
+test('discarded: 공개 기록이 응답 없음(api_failed)이면 이슈 — 응답을 받을 때까지 다시 실행한 뒤 배포한다 (2026-10-14 사용자 결정)', async () => {
+  const root = await makeDataRoot([...REGENERATED, FAKE_MODELS[0]!]);
+  await writeResult(root, 'sol', { outcome: 'ok' });
+  await writeResult(root, 'flash', { outcome: 'api_failed', failure: 'timeout' });
+  await writeResult(root, 'sonnet', { outcome: 'api_failed', failure: 'usage_limit' });
+  // 버린 결과물이 없는 모델의 api_failed는 지금처럼 통과한다 (규칙 3~9만)
+  await writeResult(root, FAKE_MODELS[0]!.slug, { outcome: 'api_failed', failure: 'timeout' });
+  const issues = await checkResults(root);
+  assertIssue(issues, 'results/flash/meta.json', 'api_failed');
+  assertIssue(issues, 'results/sonnet/meta.json', 'api_failed');
+  assert.equal(issues.length, 2, format(issues));
 });
 
 test('discarded: 결과 폴더·meta.json이 없는 모델에 기록이 있으면 이슈 (results/가 없어도)', async () => {

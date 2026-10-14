@@ -259,7 +259,7 @@ export interface ModelDisplay {
   /** 걸린 시간: 3분 34초 · 48초 */
   duration: string;
   retries: string;
-  /** 생성 횟수: 3회 (버린 생성본 + 공개 결과물). meta.json이 없으면 — */
+  /** 생성 횟수: 3회 (버린 생성본 + 공개 결과물). meta.json이 없거나 api_failed면 — */
   generationCount: string;
   /** 생성 횟수 옆 각주 기호: 버린 결과물이 있는 모델이면 ¶ (ADR-032) */
   generationCountMark: '' | '¶';
@@ -310,7 +310,8 @@ export function displayModel(entry: ResultEntry): ModelDisplay {
     cost: record ? formatUsd(record.cost.totalUsd) : NO_VALUE,
     duration: record && record.outcome !== 'api_failed' ? formatDuration(record.attempts.at(-1)!.latencyMs) : NO_VALUE,
     retries: record ? String(record.attempts.length - 1) : NO_VALUE,
-    generationCount: record ? `${generationsOf(model)}회` : NO_VALUE,
+    // 응답이 오지 않은 기록(api_failed)은 표본이 아니라 횟수가 없다 (ADR-032, 2026-10-14 사용자 결정)
+    generationCount: record && record.outcome !== 'api_failed' ? `${generationsOf(model)}회` : NO_VALUE,
     generationCountMark: model.discarded && model.discarded.length > 0 ? '¶' : '',
     regeneration: regenerationNotice(model),
     requirements: (Object.keys(REQUIREMENT_LABEL) as RequirementKey[]).map((key) => {
