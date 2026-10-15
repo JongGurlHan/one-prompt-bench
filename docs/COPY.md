@@ -116,3 +116,4 @@
   - "대상에서 뺀 모델":
     - Claude Mythos 5.1 — 처음부터 대상에서 제외
     - Claude Fable 5.1 — 사용 중인 구독 플랜에서 추가 결제가 필요해 제외
+    - Gemini 4 Argon — Gemini API 무료 티어에서 제공하지 않아 추가 결제가 필요해 제외 (2026-10-15, Gemini API 가격 페이지: 무료 티어 미제공)

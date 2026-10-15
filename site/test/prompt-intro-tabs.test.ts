@@ -88,6 +88,7 @@ const INTRO = {
   excluded: [
     ['Claude Mythos 5.1', '처음부터 대상에서 제외'],
     ['Claude Fable 5.1', '사용 중인 구독 플랜에서 추가 결제가 필요해 제외'],
+    ['Gemini 4 Argon', 'Gemini API 무료 티어에서 제공하지 않아 추가 결제가 필요해 제외'],
   ],
 };
 
@@ -356,7 +357,7 @@ test('소개 탭 카드 3개: What / How / Caution 라벨 + h2 + 본문 ({N}은 
   );
 });
 
-test('소개 탭 수록 기준: 제목·문단과 "대상에서 뺀 모델" 2개(모델명 / 사유)', async () => {
+test('소개 탭 수록 기준: 제목·문단과 "대상에서 뺀 모델" 3개(모델명 / 사유)', async () => {
   const html = await full.page(INTRO_PAGE);
   const section = byField(main(html), 'section', 'inclusion');
   assert.equal(text(element(section.inner, 'h2').inner), INTRO.inclusionTitle);
