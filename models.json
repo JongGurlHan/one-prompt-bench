@@ -1,5 +1,18 @@
 [
   {
+    "slug": "gpt-6-1-terra",
+    "provider": "openai",
+    "modelId": "gpt-6.1-terra",
+    "displayName": "GPT-6.1 Terra",
+    "releasedAt": "2026-10-26",
+    "pricing": {
+      "inputPer1M": 1,
+      "outputPer1M": 5,
+      "asOf": "2026-10-27",
+      "sourceUrl": "https://developers.openai.com/api/docs/models/gpt-6.1-terra"
+    }
+  },
+  {
     "slug": "claude-haiku-5-5",
     "provider": "anthropic",
     "modelId": "claude-haiku-5-5",

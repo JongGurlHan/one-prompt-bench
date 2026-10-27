@@ -12,6 +12,7 @@ test('models.json: 출시일 최신순, 같은 날은 알파벳순', () => {
   assert.deepEqual(
     sortByRelease(registry).map((m) => m.displayName),
     [
+      'GPT-6.1 Terra',
       'Claude Haiku 5.5',
       'GPT-6.1 Sol',
       'Claude Sonnet 5.5',
