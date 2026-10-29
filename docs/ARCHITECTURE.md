@@ -182,7 +182,7 @@ env: CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536
   - Haiku(입력 1,052·출력 41,757)·Opus(입력 2,100·출력 46,549)는 요청 한 번으로 끝났다. Sonnet은 출력 87,265·입력 67,708로 상한 65,536을 넘었다 — 위 "이어 쓰기"가 일어나 `result`가 HTML 중간에서 시작하는 마지막 조각뿐이었고, 그때 어댑터는 `end_turn` 그대로 기록해 `no_html`이 됐다. 이 기록을 계기로 이어 쓰기를 잘림으로 보게 고쳤고, Sonnet은 고친 어댑터로 다시 생성했다(ADR-029): 입력 1,053·출력 65,060(추론 48,767)으로 요청 한 번에 끝나 outcome ok(상한 476토큰 아래).
 - ⚠ 아직 실제 출력으로 확인하지 못한 것(합성 fixture 그대로): 이어 쓰기 없이 `stop_reason: max_tokens`가 오는 경우가 있는가(이어 쓰기 횟수를 다 쓴 경우 등)·거부(`refusal`인지, `safety_stops`와 관계있는지)가 어떻게 나오는가 — 지금은 `is_error: false` + `stop_reason`으로 가정했고, 모르는 값은 stopReason `other`로 둔다. 이어 쓰기가 일어난 실제 stdout(`num_turns`·`usage.iterations`로 드러나는지). API 키 로그인일 때 `authMethod` 값. 529·401 출력의 `api_error` 값과 `result` 문구(에러는 smoke로 일부러 만들 수 없으니 실제로 만나면 옮긴다). 시스템 프롬프트 끝 줄바꿈이 Windows 인자로 그대로 가는지는 출력으로 확인할 수 없다.
 
-**Codex CLI** (0.162.1 — 2026-10-13 0.157.1에서 업데이트. 플래그는 `codex exec --help`, 이벤트 형식·설정 키·에러 문구는 공개 소스 `openai/codex` 태그 `rust-v0.157.1`로 확인했고, `rust-v0.162.1`과 비교해 어댑터가 쓰는 부분이 같음을 확인했다 — 아래 "smoke로 확인한 것")
+**Codex CLI** (0.165.0 — 2026-10-29 GPT-6.1 Terra 때문에 0.162.1에서 업데이트, 아래 "0.162.1 → 0.165.0 소스 비교". 그 전 GPT 4개는 0.162.1로 생성했다. 0.162.1은 2026-10-13 0.157.1에서 업데이트. 플래그는 `codex exec --help`, 이벤트 형식·설정 키·에러 문구는 공개 소스 `openai/codex` 태그 `rust-v0.157.1`로 확인했고, `rust-v0.162.1`과 비교해 어댑터가 쓰는 부분이 같음을 확인했다 — 아래 "smoke로 확인한 것")
 ```
 codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemeral
            --ignore-user-config --ignore-rules --json
@@ -244,6 +244,16 @@ codex exec --model <modelId> --sandbox read-only --skip-git-repo-check --ephemer
   - outcome ok. 설정이 거부되지 않았다. exit 0, stderr 비어 있음, 걸린 시간 13.5초, 응답은 앞 smoke와 같은 Hello HTML.
   - 입력 6,962토큰(`cached_input_tokens` 0), 출력 21, 추론 0. 웹 검색을 끄기 전보다 2,456토큰 적다 — 웹 검색 도구 정의의 크기로 본다. 앞 smoke에서 7,296토큰이 캐시돼 있던 앞부분이 이번엔 캐시되지 않은 것도, 도구 정의가 매 요청 앞부분에 붙는다는 해석과 맞는다(추정). 남은 약 6,900토큰은 셸·파일 수정 등 나머지 도구 정의와 샌드박스 안내, 프롬프트다(ADR-027이 남긴 것).
 - 첫 실제 생성으로 확인한 것(2026-10-13, GPT 4개, 0.162.1, 웹 검색 끔, 원본 stdout은 남지 않아 meta.json으로 본 것): 네 모델 모두 outcome ok, 추론 토큰이 나왔다(1,552~5,673 → `model_reasoning_effort`가 적용된다고 본다). 입력은 네 모델 모두 7,197토큰으로 같다 — 요청 한 번으로 끝났다는 뜻이다(명령 실행·파일 쓰기를 시도했다면 도구 결과를 붙인 요청이 한 번 더 가서 입력이 그만큼 늘었을 것). 걸린 시간 110~416초.
+- 0.162.1 → 0.165.0 소스 비교(2026-10-27·29, 태그 `rust-v0.164.0`·`rust-v0.165.0`):
+  - 업데이트한 이유: `gpt-6.1-terra`(2026-10-26 출시)는 0.162.1·0.164.0(2026-10-23)의 모델 목록에 없고 0.165.0(2026-10-27)에 있다(`available_in_plans`에 `plus`, `high` 지원). 목록에 넣은 커밋은 openai/codex#57293.
+  - `exec/src/cli.rs`·`exec/src/exec_events.rs`·`protocol/src/config_types.rs`는 같다. `-c`로 넘기는 설정 키는 모두 있다.
+  - 0.164.0의 새 키 `include_environment_context_time`(기본 true)은 환경 안내 블록 안에 날짜를 넣는다. 블록을 끄므로(ADR-027) 붙지 않는다. 별도의 `current_time_reminder` 기능은 두 버전 모두 기본 꺼짐이다.
+  - `cli/src/login.rs`(0.164.0): API 키 로그인 문구가 `Logged in using an API key - <가린 키>`에서 `API key configured - <가린 키>`와 다음 줄 `Authentication is checked when you send a request.`로 바뀌었다. preflight는 여전히 실패시키지만(통과는 `Logged in using ChatGPT`뿐, 이 문구는 같다) "모르는 출력" 안내로 떨어져 API 키 전용 안내는 나오지 않는다.
+  - 기본으로 켜진 기능: 0.164.0 `cli_daybreak`는 모델 목록에 cyber 접근 프로그램이 있는 모델에만 요청에 프로그램을 붙인다(GPT-6 모델들은 값이 null이라 해당 없음). 0.165.0 `reasoning_effort_override`는 모델 정보의 `supports_reasoning_effort_updates`가 true면(gpt-6.1-sol·gpt-6.1-terra) 새 세션 첫 요청의 effort를 선택값(high)으로 고정하고, 입력에 하네스가 쓴 `ConfigurationUpdate`(effort) 항목을 덧붙일 수 있다(`core/src/session/reasoning_effort.rs`). 요청의 추론 강도는 high 그대로다.
+- smoke로 확인한 것(2026-10-29, gpt-6.1-terra, Codex 0.165.0, 원본은 `results-smoke/gpt-6-1-terra-20261029-213104/` — 이벤트 모양이 `stdout-smoke-ok.jsonl`과 같아 fixture로 옮기지 않았다):
+  - outcome ok. exit 0, stderr 비어 있음, 걸린 시간 5.1초. 이벤트는 `thread.started` → `turn.started` → `item.completed`(`agent_message`) → `turn.completed` 뿐이고 모델 정보 경고 item이 없다.
+  - 입력 6,944토큰(캐시 0), 출력 22, 추론 0. Sol의 웹 검색 끈 smoke(0.162.1, 6,962)와 비슷하다. `ConfigurationUpdate` 항목이 붙었는지는 출력으로 구분할 수 없다.
+- 실제 생성으로 확인한 것(2026-10-29, gpt-6.1-terra, 0.165.0, meta.json): outcome ok, 입력 7,179토큰(0.162.1로 만든 GPT 4개는 7,197), 출력 4,374, 추론 172, 걸린 시간 43초. 추론이 다른 GPT 모델(1,552~4,660)보다 훨씬 적다. invocation에는 `model_reasoning_effort="high"`가 들어 있고 소스상 요청 effort도 high지만(위 `reasoning_effort_override`), 실제로 high가 적용됐는지는 출력으로 확인할 수 없다. Terra는 빠르고 효율적인 모델로 발표됐다.
 - ⚠ 아직 실제 출력으로 확인하지 못한 것: 모델이 명령 실행·파일 쓰기를 시도할 때의 item 모양(이번 생성에서는 시도하지 않았다). 한도·429·5xx·401의 실제 문구(웹소켓 JSON의 `error.type` 값 포함). 에러 이벤트가 없을 때는 stderr가 meta.json의 에러 message가 되므로, stderr에 사용자 폴더 경로가 찍히면 공개 기록에 남는다(Claude Code도 같은 방식, smoke 두 번 모두 stderr는 비어 있었다).
 
 **Gemini API** (`@google/genai` SDK, `.env`의 GEMINI_API_KEY)
