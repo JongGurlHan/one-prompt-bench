@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "modelSlug": "gpt-6-1-terra",
+  "prompt": {
+    "id": "season-tree",
+    "version": "v1"
+  },
+  "outputSha256": "be07db580811eb6a262ccaece6a0c55947ba037ab1229adda4d6422e4830e2a4",
+  "judgedAt": "2026-10-29T22:08:18+09:00",
+  "requirements": {
+    "scene": "pass",
+    "seasonCycle": "pass",
+    "seasonLook": "pass",
+    "seasonLabel": "pass"
+  },
+  "note": null
+}
