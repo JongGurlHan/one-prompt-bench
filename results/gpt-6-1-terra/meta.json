@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "modelSlug": "gpt-6-1-terra",
+  "modelId": "gpt-6.1-terra",
+  "prompt": {
+    "id": "season-tree",
+    "version": "v1",
+    "sha256": "c0e9226157ca8dc2bb79972a98e8f60e125205fd37455cea727542447443abe6"
+  },
+  "params": {
+    "reasoningEffort": "high",
+    "maxOutputTokens": null
+  },
+  "runtime": {
+    "gitCommit": "b24e3d7cf4c0c181f726063b9febd94e50c6f764",
+    "nodeVersion": "v24.14.0",
+    "generator": {
+      "tool": "codex-cli",
+      "version": "0.165.0",
+      "invocation": "codex exec --model gpt-6.1-terra --sandbox read-only --skip-git-repo-check --ephemeral --ignore-user-config --ignore-rules --json -o <tmp>/last-message.txt -C <tmp>/work -c model_reasoning_effort=\"high\" -c model_instructions_file=\"<tmp>/instructions.md\" -c include_environment_context=false -c include_apps_instructions=false -c include_collaboration_mode_instructions=false -c skills.include_instructions=false -c web_search=\"disabled\" - (stdin: <user prompt>)"
+    }
+  },
+  "startedAt": "2026-10-29T12:42:20.830Z",
+  "finishedAt": "2026-10-29T12:43:04.019Z",
+  "attempts": [
+    {
+      "n": 1,
+      "startedAt": "2026-10-29T12:42:20.830Z",
+      "latencyMs": 43182,
+      "firstTokenMs": null,
+      "result": {
+        "type": "response",
+        "stopReason": "other",
+        "rawStopReason": "turn.completed",
+        "resolvedModelId": null,
+        "requestId": null,
+        "usage": {
+          "inputTokens": 7179,
+          "outputTokens": 4374,
+          "reasoningTokens": 172
+        }
+      }
+    }
+  ],
+  "outcome": "ok",
+  "responseTextPath": "results/gpt-6-1-terra/response.txt",
+  "output": {
+    "path": "results/gpt-6-1-terra/index.html",
+    "bytes": 15439,
+    "sha256": "be07db580811eb6a262ccaece6a0c55947ba037ab1229adda4d6422e4830e2a4",
+    "extraction": "fenced_block"
+  },
+  "usageTotal": {
+    "inputTokens": 7179,
+    "outputTokens": 4374,
+    "reasoningTokens": 172
+  },
+  "cost": {
+    "inputUsd": 0.007179,
+    "outputUsd": 0.02187,
+    "totalUsd": 0.029049,
+    "pricingAsOf": "2026-10-27"
+  },
+  "validation": {
+    "checkedAt": "2026-10-29T12:43:51.967Z",
+    "environment": {
+      "browser": "chromium",
+      "browserVersion": "156.0.8078.4"
+    },
+    "loaded": true,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "externalRequests": [
+      {
+        "url": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js",
+        "resourceType": "script"
+      }
+    ],
+    "screenshots": [
+      {
+        "label": "spring",
+        "atMs": 5000,
+        "path": "results/gpt-6-1-terra/spring.jpg"
+      },
+      {
+        "label": "summer",
+        "atMs": 15000,
+        "path": "results/gpt-6-1-terra/summer.jpg"
+      },
+      {
+        "label": "autumn",
+        "atMs": 25000,
+        "path": "results/gpt-6-1-terra/autumn.jpg"
+      },
+      {
+        "label": "winter",
+        "atMs": 35000,
+        "path": "results/gpt-6-1-terra/winter.jpg"
+      }
+    ]
+  }
+}
